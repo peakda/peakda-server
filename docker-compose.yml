@@ -1,0 +1,15 @@
+services:
+  postgres:
+    image: postgres:16
+    container_name: peakda-postgres
+    environment:
+      POSTGRES_DB: peakda
+      POSTGRES_USER: peakda
+      POSTGRES_PASSWORD: peakda
+    ports:
+      - "5439:5432"
+    volumes:
+      - peakda-postgres-data:/var/lib/postgresql/data
+
+volumes:
+  peakda-postgres-data:
