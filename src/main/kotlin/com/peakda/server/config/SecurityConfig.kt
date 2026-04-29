@@ -28,6 +28,11 @@ class SecurityConfig(
         private val PUBLIC_URLS = arrayOf(
             "/",
             "/favicon.ico",
+            "/swagger-ui.html",
+            "/swagger-ui/**",
+            "/v3/api-docs",
+            "/v3/api-docs/**",
+            "/v3/api-docs.yaml",
             "/oauth2/**",
             "/login/oauth2/**",
             "/api/auth/refresh"
