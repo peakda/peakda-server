@@ -18,6 +18,12 @@ spring:
     redis:
       url: ${SPRING_DATA_REDIS_URL}
 
+app:
+  cookie:
+    domain: ${COOKIE_DOMAIN}
+    secure: true
+    same-site: None
+
 management:
   endpoints:
     web:
