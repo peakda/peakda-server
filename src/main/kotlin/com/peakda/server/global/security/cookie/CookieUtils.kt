@@ -11,17 +11,26 @@ object CookieUtils {
     fun createRefreshTokenCookie(token: String, maxAge: Long, properties: CookieProperties): ResponseCookie =
         baseCookie(properties.refreshTokenName, token, maxAge, properties)
 
+    fun createSignupTokenCookie(token: String, properties: CookieProperties): ResponseCookie =
+        baseCookie(properties.signupTokenName, token, properties.signupTokenValidityInSeconds, properties)
+
     fun deleteAccessTokenCookie(properties: CookieProperties): ResponseCookie =
         baseCookie(properties.accessTokenName, "", 0, properties)
 
     fun deleteRefreshTokenCookie(properties: CookieProperties): ResponseCookie =
         baseCookie(properties.refreshTokenName, "", 0, properties)
 
+    fun deleteSignupTokenCookie(properties: CookieProperties): ResponseCookie =
+        baseCookie(properties.signupTokenName, "", 0, properties)
+
     fun getAccessTokenFromCookies(cookies: Array<Cookie>?, properties: CookieProperties): String? =
         cookies?.firstOrNull { it.name == properties.accessTokenName }?.value
 
     fun getRefreshTokenFromCookies(cookies: Array<Cookie>?, properties: CookieProperties): String? =
         cookies?.firstOrNull { it.name == properties.refreshTokenName }?.value
+
+    fun getSignupTokenFromCookies(cookies: Array<Cookie>?, properties: CookieProperties): String? =
+        cookies?.firstOrNull { it.name == properties.signupTokenName }?.value
 
     private fun baseCookie(
         name: String,
