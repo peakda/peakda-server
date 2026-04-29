@@ -38,3 +38,7 @@ logging:
   level:
     root: INFO
     com.peakda: DEBUG
+
+springdoc:
+  swagger-ui:
+    with-credentials: true
