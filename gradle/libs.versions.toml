@@ -25,7 +25,10 @@ postgresql = { module = "org.postgresql:postgresql" }
 liquibase-core = { module = "org.liquibase:liquibase-core" }
 
 # Test
+spring-boot-testcontainers = { module = "org.springframework.boot:spring-boot-testcontainers" }
 spring-security-test = { module = "org.springframework.security:spring-security-test" }
+testcontainers-junit-jupiter = { module = "org.testcontainers:junit-jupiter" }
+testcontainers-postgresql = { module = "org.testcontainers:postgresql" }
 junit-platform-launcher = { module = "org.junit.platform:junit-platform-launcher" }
 
 # Oauth2
