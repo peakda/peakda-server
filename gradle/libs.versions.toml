@@ -2,6 +2,7 @@
 kotlin = "2.2.20"
 spring-boot = "3.5.13"
 spring-dependency-management = "1.1.7"
+jjwt = "0.12.6"
 
 [libraries]
 # Spring Boot Starters
@@ -12,6 +13,7 @@ spring-boot-starter-security = { module = "org.springframework.boot:spring-boot-
 spring-boot-starter-validation = { module = "org.springframework.boot:spring-boot-starter-validation" }
 spring-boot-starter-web = { module = "org.springframework.boot:spring-boot-starter-web" }
 spring-boot-starter-test = { module = "org.springframework.boot:spring-boot-starter-test" }
+spring-boot-configuration-processor = { module = "org.springframework.boot:spring-boot-configuration-processor" }
 
 # Kotlin
 jackson-module-kotlin = { module = "com.fasterxml.jackson.module:jackson-module-kotlin" }
@@ -20,6 +22,7 @@ kotlin-test-junit5 = { module = "org.jetbrains.kotlin:kotlin-test-junit5" }
 
 # Database
 postgresql = { module = "org.postgresql:postgresql" }
+liquibase-core = { module = "org.liquibase:liquibase-core" }
 
 # Test
 spring-security-test = { module = "org.springframework.security:spring-security-test" }
@@ -27,6 +30,11 @@ junit-platform-launcher = { module = "org.junit.platform:junit-platform-launcher
 
 # Oauth2
 spring-security-oauth2-client = { module = "org.springframework.boot:spring-boot-starter-oauth2-client" }
+
+# JWT
+jjwt-api = { module = "io.jsonwebtoken:jjwt-api", version.ref = "jjwt" }
+jjwt-impl = { module = "io.jsonwebtoken:jjwt-impl", version.ref = "jjwt" }
+jjwt-jackson = { module = "io.jsonwebtoken:jjwt-jackson", version.ref = "jjwt" }
 
 [plugins]
 kotlin-jvm = { id = "org.jetbrains.kotlin.jvm", version.ref = "kotlin" }
