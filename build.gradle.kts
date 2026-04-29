@@ -29,6 +29,7 @@ dependencies {
 	implementation(libs.spring.boot.starter.web)
 	implementation(libs.jackson.module.kotlin)
 	implementation(libs.kotlin.reflect)
+	implementation(libs.spring.security.oauth2.client)
 	runtimeOnly(libs.postgresql)
 	testImplementation(libs.spring.boot.starter.test)
 	testImplementation(libs.kotlin.test.junit5)

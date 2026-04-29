@@ -25,6 +25,9 @@ postgresql = { module = "org.postgresql:postgresql" }
 spring-security-test = { module = "org.springframework.security:spring-security-test" }
 junit-platform-launcher = { module = "org.junit.platform:junit-platform-launcher" }
 
+# Oauth2
+spring-security-oauth2-client = { module = "org.springframework.boot:spring-boot-starter-oauth2-client" }
+
 [plugins]
 kotlin-jvm = { id = "org.jetbrains.kotlin.jvm", version.ref = "kotlin" }
 kotlin-spring = { id = "org.jetbrains.kotlin.plugin.spring", version.ref = "kotlin" }
