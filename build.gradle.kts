@@ -30,6 +30,7 @@ dependencies {
 	implementation(libs.jackson.module.kotlin)
 	implementation(libs.kotlin.reflect)
 	implementation(libs.spring.security.oauth2.client)
+	implementation(libs.springdoc.openapi.starter.webmvc.ui)
 	implementation(libs.liquibase.core)
 	implementation(libs.jjwt.api)
 	runtimeOnly(libs.jjwt.impl)
