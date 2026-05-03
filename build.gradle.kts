@@ -28,6 +28,7 @@ dependencies {
 	implementation(libs.spring.boot.starter.validation)
 	implementation(libs.spring.boot.starter.web)
 	implementation(libs.jackson.module.kotlin)
+	implementation(libs.jackson.dataformat.xml)
 	implementation(libs.kotlin.reflect)
 	implementation(libs.spring.security.oauth2.client)
 	implementation(libs.springdoc.openapi.starter.webmvc.ui)

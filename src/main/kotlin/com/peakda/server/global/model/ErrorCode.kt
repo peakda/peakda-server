@@ -20,4 +20,11 @@ enum class ErrorCode(
     NICKNAME_DUPLICATED(HttpStatus.CONFLICT, "이미 사용 중인 닉네임입니다."),
     NICKNAME_INVALID(HttpStatus.BAD_REQUEST, "닉네임은 특수문자를 제외하고 2~10자로 입력해 주세요."),
     PROFILE_ALREADY_COMPLETED(HttpStatus.CONFLICT, "이미 가입이 완료된 사용자입니다."),
+
+    EXTERNAL_API_UNAVAILABLE(HttpStatus.BAD_GATEWAY, "외부 API를 사용할 수 없습니다."),
+    EXTERNAL_API_TIMEOUT(HttpStatus.GATEWAY_TIMEOUT, "외부 API 응답 시간이 초과되었습니다."),
+    EXTERNAL_API_QUOTA_EXCEEDED(HttpStatus.TOO_MANY_REQUESTS, "외부 API 호출 한도를 초과했습니다."),
+    EXTERNAL_API_AUTH_FAILED(HttpStatus.BAD_GATEWAY, "외부 API 인증에 실패했습니다."),
+    EXTERNAL_API_INVALID_RESPONSE(HttpStatus.BAD_GATEWAY, "외부 API 응답 형식이 올바르지 않습니다."),
+    EXTERNAL_API_BAD_REQUEST(HttpStatus.INTERNAL_SERVER_ERROR, "외부 API 요청 구성이 올바르지 않습니다."),
 }

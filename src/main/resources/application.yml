@@ -52,3 +52,9 @@ app:
     servers:
       local: http://localhost:8080
       dev: ${PEAKDA_SERVER_DEV}
+
+external:
+  data-go-kr:
+    mobile-app: peakda
+    connect-timeout: 3s
+    read-timeout: 5s
