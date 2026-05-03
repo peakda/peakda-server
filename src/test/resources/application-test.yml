@@ -9,3 +9,9 @@ app:
     allowed-origins: http://localhost:3000
   oauth2:
     redirect-uri: http://localhost:3000/auth/callback
+
+external:
+  data-go-kr:
+    mobile-app: peakda-test
+    connect-timeout: 1s
+    read-timeout: 1s
