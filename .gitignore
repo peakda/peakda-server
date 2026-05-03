@@ -41,6 +41,8 @@ out/
 
 ### AI Agent ###
 .claude/
+.codex/
 CLAUDE.md
 AGENTS.md
 /docs/
+/graphify-out/
