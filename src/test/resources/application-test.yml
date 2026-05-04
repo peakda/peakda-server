@@ -15,6 +15,14 @@ external:
     mobile-app: peakda-test
     connect-timeout: 1s
     read-timeout: 1s
+  kto:
+    service-key: test-kto-service-key
+    base-url:
+      kor-service: http://localhost:18081/kto/kor-service
+      tats-cnctr: http://localhost:18081/kto/tats-cnctr
+      data-lab: http://localhost:18081/kto/data-lab
+      photo: http://localhost:18081/kto/photo
+      durunubi: http://localhost:18081/kto/durunubi
   kma:
     service-key: test-kma-service-key
     base-url:
