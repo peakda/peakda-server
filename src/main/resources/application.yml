@@ -58,3 +58,20 @@ external:
     mobile-app: peakda
     connect-timeout: 3s
     read-timeout: 5s
+  kto:
+    service-key: ${KTO_SERVICE_KEY}
+    base-url:
+      kor-service: https://apis.data.go.kr/B551011/KorService2
+      tats-cnctr: https://apis.data.go.kr/B551011/TatsCnctrRateService
+      data-lab: https://apis.data.go.kr/B551011/DataLabService
+      photo: https://apis.data.go.kr/B551011/PhotoGalleryService1
+      durunubi: https://apis.data.go.kr/B551011/Durunubi
+  kma:
+    service-key: ${KMA_SERVICE_KEY}
+    base-url:
+      vilage-fcst: https://apis.data.go.kr/1360000/VilageFcstInfoService_2.0
+      mid-fcst: https://apis.data.go.kr/1360000/MidFcstInfoService
+  pubdata:
+    festival:
+      service-key: ${PUBDATA_FESTIVAL_SERVICE_KEY}
+      base-url: https://api.data.go.kr/openapi/tn_pubr_public_cltur_fstvl_api

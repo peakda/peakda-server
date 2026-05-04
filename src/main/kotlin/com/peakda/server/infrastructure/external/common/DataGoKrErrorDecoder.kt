@@ -1,7 +1,9 @@
 package com.peakda.server.infrastructure.external.common
 
 import com.fasterxml.jackson.dataformat.xml.XmlMapper
+import org.springframework.stereotype.Component
 
+@Component
 class DataGoKrErrorDecoder(
     private val xmlMapper: XmlMapper = XmlMapper(),
 ) {

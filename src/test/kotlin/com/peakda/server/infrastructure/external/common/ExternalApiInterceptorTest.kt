@@ -50,7 +50,7 @@ class ExternalApiInterceptorTest {
         }
 
         assertThat(captured.toString()).isEqualTo(
-            "https://apis.data.go.kr/test?MobileOS=IOS&MobileApp=peakda&_type=json"
+            "https://apis.data.go.kr/test?MobileOS=IOS&MobileApp=peakda"
         )
     }
 
