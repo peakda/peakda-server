@@ -71,3 +71,7 @@ external:
     base-url:
       vilage-fcst: https://apis.data.go.kr/1360000/VilageFcstInfoService_2.0
       mid-fcst: https://apis.data.go.kr/1360000/MidFcstInfoService
+  pubdata:
+    festival:
+      service-key: ${PUBDATA_FESTIVAL_SERVICE_KEY}
+      base-url: https://api.data.go.kr/openapi/tn_pubr_public_cltur_fstvl_api
