@@ -16,7 +16,6 @@ class KtoCommonParamInterceptor(
         val uri = request.uri
             .let { UriQueryAppender.appendEncoded(it, "MobileOS", "ETC") }
             .let { UriQueryAppender.appendEncoded(it, "MobileApp", mobileApp) }
-            .let { UriQueryAppender.appendEncoded(it, "_type", "json") }
 
         return execution.execute(UriMutatingHttpRequest(request, uri), body)
     }
