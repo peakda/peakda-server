@@ -58,3 +58,8 @@ external:
     mobile-app: peakda
     connect-timeout: 3s
     read-timeout: 5s
+  kma:
+    service-key: ${KMA_SERVICE_KEY}
+    base-url:
+      vilage-fcst: https://apis.data.go.kr/1360000/VilageFcstInfoService_2.0
+      mid-fcst: https://apis.data.go.kr/1360000/MidFcstInfoService

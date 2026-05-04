@@ -15,3 +15,8 @@ external:
     mobile-app: peakda-test
     connect-timeout: 1s
     read-timeout: 1s
+  kma:
+    service-key: test-kma-service-key
+    base-url:
+      vilage-fcst: http://localhost:18081/kma/vilage-fcst
+      mid-fcst: http://localhost:18081/kma/mid-fcst
