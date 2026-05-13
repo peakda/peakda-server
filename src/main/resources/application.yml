@@ -75,3 +75,25 @@ external:
     festival:
       service-key: ${PUBDATA_FESTIVAL_SERVICE_KEY}
       base-url: https://api.data.go.kr/openapi/tn_pubr_public_cltur_fstvl_api
+  scheduler:
+    enabled: ${EXTERNAL_SCHEDULER_ENABLED:false}
+    kto:
+      kor-service: { cron: "0 0 3 * * *", enabled: true }
+      durunubi: { cron: "0 0 4 * * *", enabled: true }
+      tats-cnctr: { cron: "0 30 4 * * *", enabled: true }
+      data-lab: { cron: "0 0 5 * * *", enabled: true }
+      photo: { cron: "0 30 5 * * *", enabled: true }
+    kma:
+      vilage-fcst:
+        cron: "0 15 */3 * * *"
+        enabled: true
+        grids:
+          - { name: "서울", nx: 60, ny: 127 }
+          - { name: "부산", nx: 98, ny: 76 }
+          - { name: "대구", nx: 89, ny: 90 }
+          - { name: "인천", nx: 55, ny: 124 }
+          - { name: "광주", nx: 58, ny: 74 }
+          - { name: "대전", nx: 67, ny: 100 }
+      mid-fcst: { cron: "0 30 6,18 * * *", enabled: true }
+    pubdata:
+      festival: { cron: "0 0 6 * * MON", enabled: true }
