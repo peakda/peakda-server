@@ -24,10 +24,10 @@ app:
     secure: false
     same-site: Lax
 
-# 로컬 스케줄러 검증용. 검증할 잡 하나만 enabled: true 로 바꿔서 사용.
+# 로컬 스케줄러 검증용. enabled 와 검증할 잡 하나만 true 로 바꿔서 사용.
 external:
   scheduler:
-    enabled: true
+    enabled: false
     kto:
       kor-service: { cron: "0/30 * * * * *", enabled: false }
       durunubi:    { cron: "0/30 * * * * *", enabled: false }
