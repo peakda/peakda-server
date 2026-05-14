@@ -1,6 +1,5 @@
 package com.peakda.server.domain.weather.application
 
-import com.peakda.server.domain.weather.entity.WeatherMidForecast
 import com.peakda.server.domain.weather.repository.WeatherMidForecastRepository
 import com.peakda.server.infrastructure.external.kma.midfcst.response.MidLandFcstItem
 import com.peakda.server.infrastructure.external.kma.midfcst.response.MidTaItem
@@ -18,10 +17,7 @@ class WeatherMidForecastSyncService(
         announceTime: String,
         item: MidLandFcstItem,
     ): Int {
-        val entity = findOrCreate(regionCode, announceTime)
-        entity.sourceLandRegionCode = sourceRegionCode
-        entity.applyLandForecast(item)
-        return 1
+        return repository.upsertLand(item.toUpsertCommand(regionCode, sourceRegionCode, announceTime))
     }
 
     @Transactional
@@ -31,14 +27,6 @@ class WeatherMidForecastSyncService(
         announceTime: String,
         item: MidTaItem,
     ): Int {
-        val entity = findOrCreate(regionCode, announceTime)
-        entity.sourceTemperatureRegionCode = sourceRegionCode
-        entity.applyTemperatureForecast(item)
-        return 1
-    }
-
-    private fun findOrCreate(regionCode: String, announceTime: String): WeatherMidForecast {
-        return repository.findByRegionCodeAndAnnounceTime(regionCode, announceTime)
-            ?: repository.save(WeatherMidForecast(regionCode = regionCode, announceTime = announceTime))
+        return repository.upsertTemperature(item.toUpsertCommand(regionCode, sourceRegionCode, announceTime))
     }
 }

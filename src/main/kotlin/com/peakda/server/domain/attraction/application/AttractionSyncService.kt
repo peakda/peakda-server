@@ -11,15 +11,8 @@ class AttractionSyncService(
 ) {
     @Transactional
     fun upsertPage(items: List<AreaBasedSyncListItem>): Int {
-        for (item in items) {
-            if (item.contentid.isBlank()) continue
-            val existing = repository.findByTourApiContentId(item.contentid)
-            if (existing == null) {
-                repository.save(item.toAttraction())
-            } else {
-                existing.applyUpdate(item)
-            }
-        }
-        return items.count { it.contentid.isNotBlank() }
+        return items
+            .filter { it.contentid.isNotBlank() }
+            .sumOf { repository.upsert(it.toUpsertCommand()) }
     }
 }

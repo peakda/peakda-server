@@ -11,23 +11,8 @@ class WeatherShortForecastSyncService(
 ) {
     @Transactional
     fun upsertPage(items: List<VilageFcstItem>): Int {
-        var saved = 0
-        for (item in items) {
-            if (item.category.isBlank() || item.fcstDate.isBlank() || item.fcstTime.isBlank()) continue
-            val existing = repository.findByGridXAndGridYAndForecastDateAndForecastTimeAndForecastCategory(
-                item.nx,
-                item.ny,
-                item.fcstDate,
-                item.fcstTime,
-                item.category,
-            )
-            if (existing == null) {
-                repository.save(item.toShortForecast())
-            } else {
-                existing.applyUpdate(item)
-            }
-            saved++
-        }
-        return saved
+        return items
+            .filter { it.category.isNotBlank() && it.fcstDate.isNotBlank() && it.fcstTime.isNotBlank() }
+            .sumOf { repository.upsert(it.toUpsertCommand()) }
     }
 }

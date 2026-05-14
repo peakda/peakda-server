@@ -1,6 +1,7 @@
 package com.peakda.server.domain.gallery.application
 
 import com.peakda.server.domain.gallery.entity.GalleryPhoto
+import com.peakda.server.domain.gallery.repository.GalleryPhotoUpsertCommand
 import com.peakda.server.infrastructure.external.kto.photo.response.GalleryListItem
 
 fun GalleryListItem.toGalleryPhoto(): GalleryPhoto = GalleryPhoto(
@@ -27,3 +28,16 @@ fun GalleryPhoto.applyUpdate(item: GalleryListItem) {
     photographer = item.galPhotographer.ifBlank { photographer }
     searchKeyword = item.galSearchKeyword.ifBlank { searchKeyword }
 }
+
+fun GalleryListItem.toUpsertCommand(): GalleryPhotoUpsertCommand = GalleryPhotoUpsertCommand(
+    tourApiContentId = galContentId,
+    contentTypeCode = galContentTypeId.ifBlank { null },
+    title = galTitle.ifBlank { null },
+    webImageUrl = galWebImageUrl.ifBlank { null },
+    externalCreatedAt = galCreatedtime.ifBlank { null },
+    externalModifiedAt = galModifiedtime.ifBlank { null },
+    photographyMonth = galPhotographyMonth.ifBlank { null },
+    photographyLocation = galPhotographyLocation.ifBlank { null },
+    photographer = galPhotographer.ifBlank { null },
+    searchKeyword = galSearchKeyword.ifBlank { null },
+)

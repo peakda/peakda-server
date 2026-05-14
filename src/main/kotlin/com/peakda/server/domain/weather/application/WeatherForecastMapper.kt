@@ -2,6 +2,9 @@ package com.peakda.server.domain.weather.application
 
 import com.peakda.server.domain.weather.entity.WeatherMidForecast
 import com.peakda.server.domain.weather.entity.WeatherShortForecast
+import com.peakda.server.domain.weather.repository.WeatherMidLandForecastUpsertCommand
+import com.peakda.server.domain.weather.repository.WeatherMidTemperatureForecastUpsertCommand
+import com.peakda.server.domain.weather.repository.WeatherShortForecastUpsertCommand
 import com.peakda.server.infrastructure.external.kma.midfcst.response.MidLandFcstItem
 import com.peakda.server.infrastructure.external.kma.midfcst.response.MidTaItem
 import com.peakda.server.infrastructure.external.kma.vilagefcst.response.VilageFcstItem
@@ -70,3 +73,76 @@ fun WeatherShortForecast.applyUpdate(item: VilageFcstItem) {
     announceTime = item.baseTime
     forecastValue = item.fcstValue
 }
+
+fun VilageFcstItem.toUpsertCommand(): WeatherShortForecastUpsertCommand = WeatherShortForecastUpsertCommand(
+    gridX = nx,
+    gridY = ny,
+    announceDate = baseDate,
+    announceTime = baseTime,
+    forecastDate = fcstDate,
+    forecastTime = fcstTime,
+    forecastCategory = category,
+    forecastValue = fcstValue,
+)
+
+fun MidLandFcstItem.toUpsertCommand(
+    regionCode: String,
+    sourceRegionCode: String,
+    announceTime: String,
+): WeatherMidLandForecastUpsertCommand = WeatherMidLandForecastUpsertCommand(
+    regionCode = regionCode,
+    sourceLandRegionCode = sourceRegionCode,
+    announceTime = announceTime,
+    weatherDay3Am = wf3Am.ifBlank { null },
+    weatherDay3Pm = wf3Pm.ifBlank { null },
+    weatherDay4Am = wf4Am.ifBlank { null },
+    weatherDay4Pm = wf4Pm.ifBlank { null },
+    weatherDay5Am = wf5Am.ifBlank { null },
+    weatherDay5Pm = wf5Pm.ifBlank { null },
+    weatherDay6Am = wf6Am.ifBlank { null },
+    weatherDay6Pm = wf6Pm.ifBlank { null },
+    weatherDay7Am = wf7Am.ifBlank { null },
+    weatherDay7Pm = wf7Pm.ifBlank { null },
+    weatherDay8 = wf8.ifBlank { null },
+    weatherDay9 = wf9.ifBlank { null },
+    weatherDay10 = wf10.ifBlank { null },
+    rainProbabilityDay3Am = rnSt3Am,
+    rainProbabilityDay3Pm = rnSt3Pm,
+    rainProbabilityDay4Am = rnSt4Am,
+    rainProbabilityDay4Pm = rnSt4Pm,
+    rainProbabilityDay5Am = rnSt5Am,
+    rainProbabilityDay5Pm = rnSt5Pm,
+    rainProbabilityDay6Am = rnSt6Am,
+    rainProbabilityDay6Pm = rnSt6Pm,
+    rainProbabilityDay7Am = rnSt7Am,
+    rainProbabilityDay7Pm = rnSt7Pm,
+    rainProbabilityDay8 = rnSt8,
+    rainProbabilityDay9 = rnSt9,
+    rainProbabilityDay10 = rnSt10,
+)
+
+fun MidTaItem.toUpsertCommand(
+    regionCode: String,
+    sourceRegionCode: String,
+    announceTime: String,
+): WeatherMidTemperatureForecastUpsertCommand = WeatherMidTemperatureForecastUpsertCommand(
+    regionCode = regionCode,
+    sourceTemperatureRegionCode = sourceRegionCode,
+    announceTime = announceTime,
+    temperatureMinDay3 = taMin3,
+    temperatureMaxDay3 = taMax3,
+    temperatureMinDay4 = taMin4,
+    temperatureMaxDay4 = taMax4,
+    temperatureMinDay5 = taMin5,
+    temperatureMaxDay5 = taMax5,
+    temperatureMinDay6 = taMin6,
+    temperatureMaxDay6 = taMax6,
+    temperatureMinDay7 = taMin7,
+    temperatureMaxDay7 = taMax7,
+    temperatureMinDay8 = taMin8,
+    temperatureMaxDay8 = taMax8,
+    temperatureMinDay9 = taMin9,
+    temperatureMaxDay9 = taMax9,
+    temperatureMinDay10 = taMin10,
+    temperatureMaxDay10 = taMax10,
+)

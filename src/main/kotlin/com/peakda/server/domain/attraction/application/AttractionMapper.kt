@@ -1,6 +1,7 @@
 package com.peakda.server.domain.attraction.application
 
 import com.peakda.server.domain.attraction.entity.Attraction
+import com.peakda.server.domain.attraction.repository.AttractionUpsertCommand
 import com.peakda.server.infrastructure.external.kto.korservice.response.AreaBasedSyncListItem
 
 fun AreaBasedSyncListItem.toAttraction(): Attraction = Attraction(
@@ -41,3 +42,23 @@ fun Attraction.applyUpdate(item: AreaBasedSyncListItem) {
     externalModifiedAt = item.modifiedtime.ifBlank { externalModifiedAt }
     visible = item.showflag != "0"
 }
+
+fun AreaBasedSyncListItem.toUpsertCommand(): AttractionUpsertCommand = AttractionUpsertCommand(
+    tourApiContentId = contentid,
+    contentTypeCode = contenttypeid.ifBlank { null },
+    title = title,
+    addressMain = addr1.ifBlank { null },
+    addressDetail = addr2.ifBlank { null },
+    areaCode = areacode.ifBlank { null },
+    sigunguCode = sigungucode.ifBlank { null },
+    longitude = mapx.toDoubleOrNull(),
+    latitude = mapy.toDoubleOrNull(),
+    primaryImageUrl = firstimage.ifBlank { null },
+    thumbnailImageUrl = firstimage2.ifBlank { null },
+    categoryMajor = cat1.ifBlank { null },
+    categoryMedium = cat2.ifBlank { null },
+    categoryMinor = cat3.ifBlank { null },
+    externalCreatedAt = createdtime.ifBlank { null },
+    externalModifiedAt = modifiedtime.ifBlank { null },
+    visible = showflag != "0",
+)

@@ -1,6 +1,7 @@
 package com.peakda.server.domain.festival.application
 
 import com.peakda.server.domain.festival.entity.Festival
+import com.peakda.server.domain.festival.repository.FestivalUpsertCommand
 import com.peakda.server.infrastructure.external.pubdata.festival.response.FestivalItem
 
 fun FestivalItem.toFestival(): Festival = Festival(
@@ -37,3 +38,22 @@ fun Festival.applyUpdate(item: FestivalItem) {
     providerInstitutionCode = item.insttCode.ifBlank { providerInstitutionCode }
     providerInstitutionName = item.insttNm.ifBlank { providerInstitutionName }
 }
+
+fun FestivalItem.toUpsertCommand(): FestivalUpsertCommand = FestivalUpsertCommand(
+    name = fstvlNm,
+    venue = opar,
+    startDate = fstvlStartDate,
+    endDate = fstvlEndDate.ifBlank { null },
+    hostOrganization = mnnstNm.ifBlank { null },
+    organizingInstitution = auspcInsttNm.ifBlank { null },
+    supportingInstitution = suprtInsttNm.ifBlank { null },
+    phoneNumber = phoneNumber.ifBlank { null },
+    homepageUrl = homepageUrl.ifBlank { null },
+    roadAddress = rdnmadr.ifBlank { null },
+    landLotAddress = lnmadr.ifBlank { null },
+    latitude = latitude.toDoubleOrNull(),
+    longitude = longitude.toDoubleOrNull(),
+    referenceDate = referenceDate.ifBlank { null },
+    providerInstitutionCode = insttCode.ifBlank { null },
+    providerInstitutionName = insttNm.ifBlank { null },
+)
