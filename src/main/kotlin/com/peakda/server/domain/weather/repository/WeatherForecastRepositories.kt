@@ -5,15 +5,15 @@ import com.peakda.server.domain.weather.entity.WeatherShortForecast
 import org.springframework.data.jpa.repository.JpaRepository
 
 interface WeatherMidForecastRepository : JpaRepository<WeatherMidForecast, Long> {
-    fun findByRegIdAndTmFc(regId: String, tmFc: String): WeatherMidForecast?
+    fun findByRegionCodeAndAnnounceTime(regionCode: String, announceTime: String): WeatherMidForecast?
 }
 
 interface WeatherShortForecastRepository : JpaRepository<WeatherShortForecast, Long> {
-    fun findByNxAndNyAndFcstDateAndFcstTimeAndCategory(
-        nx: Int,
-        ny: Int,
-        fcstDate: String,
-        fcstTime: String,
-        category: String,
+    fun findByGridXAndGridYAndForecastDateAndForecastTimeAndForecastCategory(
+        gridX: Int,
+        gridY: Int,
+        forecastDate: String,
+        forecastTime: String,
+        forecastCategory: String,
     ): WeatherShortForecast?
 }

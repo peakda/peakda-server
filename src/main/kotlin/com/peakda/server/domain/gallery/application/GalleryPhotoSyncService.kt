@@ -14,7 +14,7 @@ class GalleryPhotoSyncService(
         var saved = 0
         for (item in items) {
             if (item.galContentId.isBlank()) continue
-            val existing = repository.findByGalContentId(item.galContentId)
+            val existing = repository.findByTourApiContentId(item.galContentId)
             if (existing == null) repository.save(item.toGalleryPhoto()) else existing.applyUpdate(item)
             saved++
         }

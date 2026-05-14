@@ -4,40 +4,40 @@ import com.peakda.server.domain.attraction.entity.Attraction
 import com.peakda.server.infrastructure.external.kto.korservice.response.AreaBasedSyncListItem
 
 fun AreaBasedSyncListItem.toAttraction(): Attraction = Attraction(
-    contentId = contentid,
-    contentTypeId = contenttypeid.ifBlank { null },
+    tourApiContentId = contentid,
+    contentTypeCode = contenttypeid.ifBlank { null },
     title = title,
-    addr1 = addr1.ifBlank { null },
-    addr2 = addr2.ifBlank { null },
+    addressMain = addr1.ifBlank { null },
+    addressDetail = addr2.ifBlank { null },
     areaCode = areacode.ifBlank { null },
     sigunguCode = sigungucode.ifBlank { null },
-    mapX = mapx.toDoubleOrNull(),
-    mapY = mapy.toDoubleOrNull(),
-    firstImage = firstimage.ifBlank { null },
-    firstImage2 = firstimage2.ifBlank { null },
-    cat1 = cat1.ifBlank { null },
-    cat2 = cat2.ifBlank { null },
-    cat3 = cat3.ifBlank { null },
-    createdTime = createdtime.ifBlank { null },
-    modifiedTime = modifiedtime.ifBlank { null },
+    longitude = mapx.toDoubleOrNull(),
+    latitude = mapy.toDoubleOrNull(),
+    primaryImageUrl = firstimage.ifBlank { null },
+    thumbnailImageUrl = firstimage2.ifBlank { null },
+    categoryMajor = cat1.ifBlank { null },
+    categoryMedium = cat2.ifBlank { null },
+    categoryMinor = cat3.ifBlank { null },
+    externalCreatedAt = createdtime.ifBlank { null },
+    externalModifiedAt = modifiedtime.ifBlank { null },
     visible = showflag != "0",
 )
 
 fun Attraction.applyUpdate(item: AreaBasedSyncListItem) {
-    contentTypeId = item.contenttypeid.ifBlank { contentTypeId }
+    contentTypeCode = item.contenttypeid.ifBlank { contentTypeCode }
     title = item.title
-    addr1 = item.addr1.ifBlank { addr1 }
-    addr2 = item.addr2.ifBlank { addr2 }
+    addressMain = item.addr1.ifBlank { addressMain }
+    addressDetail = item.addr2.ifBlank { addressDetail }
     areaCode = item.areacode.ifBlank { areaCode }
     sigunguCode = item.sigungucode.ifBlank { sigunguCode }
-    item.mapx.toDoubleOrNull()?.let { mapX = it }
-    item.mapy.toDoubleOrNull()?.let { mapY = it }
-    firstImage = item.firstimage.ifBlank { firstImage }
-    firstImage2 = item.firstimage2.ifBlank { firstImage2 }
-    cat1 = item.cat1.ifBlank { cat1 }
-    cat2 = item.cat2.ifBlank { cat2 }
-    cat3 = item.cat3.ifBlank { cat3 }
-    createdTime = item.createdtime.ifBlank { createdTime }
-    modifiedTime = item.modifiedtime.ifBlank { modifiedTime }
+    item.mapx.toDoubleOrNull()?.let { longitude = it }
+    item.mapy.toDoubleOrNull()?.let { latitude = it }
+    primaryImageUrl = item.firstimage.ifBlank { primaryImageUrl }
+    thumbnailImageUrl = item.firstimage2.ifBlank { thumbnailImageUrl }
+    categoryMajor = item.cat1.ifBlank { categoryMajor }
+    categoryMedium = item.cat2.ifBlank { categoryMedium }
+    categoryMinor = item.cat3.ifBlank { categoryMinor }
+    externalCreatedAt = item.createdtime.ifBlank { externalCreatedAt }
+    externalModifiedAt = item.modifiedtime.ifBlank { externalModifiedAt }
     visible = item.showflag != "0"
 }

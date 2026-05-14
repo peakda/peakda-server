@@ -4,16 +4,16 @@ import com.peakda.server.domain.visitor.entity.RegionVisitor
 import com.peakda.server.infrastructure.external.kto.datalab.response.MetcoVisitrItem
 
 fun MetcoVisitrItem.toRegionVisitor(): RegionVisitor = RegionVisitor(
-    baseYmd = baseYmd,
-    areaCd = areaCd,
-    touDivCd = touDivCd,
-    areaNm = areaNm.ifBlank { null },
-    touDivNm = touDivNm.ifBlank { null },
-    num = num.toLongOrNull(),
+    baseDate = baseYmd,
+    areaCode = areaCd,
+    touristTypeCode = touDivCd,
+    areaName = areaNm.ifBlank { null },
+    touristTypeName = touDivNm.ifBlank { null },
+    visitorCount = num.toLongOrNull(),
 )
 
 fun RegionVisitor.applyUpdate(item: MetcoVisitrItem) {
-    areaNm = item.areaNm.ifBlank { areaNm }
-    touDivNm = item.touDivNm.ifBlank { touDivNm }
-    item.num.toLongOrNull()?.let { num = it }
+    areaName = item.areaNm.ifBlank { areaName }
+    touristTypeName = item.touDivNm.ifBlank { touristTypeName }
+    item.num.toLongOrNull()?.let { visitorCount = it }
 }

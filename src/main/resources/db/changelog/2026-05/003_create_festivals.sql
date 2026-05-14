@@ -2,27 +2,27 @@
 
 --changeset peakda:20260513-003-create-festivals
 CREATE TABLE festivals (
-    id                BIGSERIAL   PRIMARY KEY,
-    fstvl_nm          TEXT        NOT NULL,
-    opar              TEXT        NOT NULL,
-    fstvl_start_date  TEXT        NOT NULL,
-    fstvl_end_date    TEXT,
-    mnnst_nm          TEXT,
-    auspc_instt_nm    TEXT,
-    suprt_instt_nm    TEXT,
-    phone_number      TEXT,
-    homepage_url      TEXT,
-    rdnmadr           TEXT,
-    lnmadr            TEXT,
-    latitude          DOUBLE PRECISION,
-    longitude         DOUBLE PRECISION,
-    reference_date    TEXT,
-    instt_code        TEXT,
-    instt_nm          TEXT,
-    created_at        TIMESTAMPTZ NOT NULL,
-    updated_at        TIMESTAMPTZ NOT NULL,
-    CONSTRAINT uk_festivals_name_opar_start UNIQUE (fstvl_nm, opar, fstvl_start_date)
+    id                            BIGSERIAL   PRIMARY KEY,
+    name                          TEXT        NOT NULL,
+    venue                         TEXT        NOT NULL,
+    start_date                    TEXT        NOT NULL,
+    end_date                      TEXT,
+    host_organization             TEXT,
+    organizing_institution        TEXT,
+    supporting_institution        TEXT,
+    phone_number                  TEXT,
+    homepage_url                  TEXT,
+    road_address                  TEXT,
+    land_lot_address              TEXT,
+    latitude                      DOUBLE PRECISION,
+    longitude                     DOUBLE PRECISION,
+    reference_date                TEXT,
+    provider_institution_code     TEXT,
+    provider_institution_name     TEXT,
+    created_at                    TIMESTAMPTZ NOT NULL,
+    updated_at                    TIMESTAMPTZ NOT NULL,
+    CONSTRAINT uk_festivals_name_venue_start UNIQUE (name, venue, start_date)
 );
 
-CREATE INDEX idx_festivals_start_date ON festivals (fstvl_start_date);
+CREATE INDEX idx_festivals_start_date ON festivals (start_date);
 --rollback DROP TABLE festivals;

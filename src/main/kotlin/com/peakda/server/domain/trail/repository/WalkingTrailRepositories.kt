@@ -5,9 +5,9 @@ import com.peakda.server.domain.trail.entity.WalkingRoute
 import org.springframework.data.jpa.repository.JpaRepository
 
 interface WalkingRouteRepository : JpaRepository<WalkingRoute, Long> {
-    fun findByRouteIdx(routeIdx: String): WalkingRoute?
+    fun findByDurunubiRouteId(durunubiRouteId: String): WalkingRoute?
 }
 
 interface WalkingCourseRepository : JpaRepository<WalkingCourse, Long> {
-    fun findByCrsIdx(crsIdx: String): WalkingCourse?
+    fun findByDurunubiCourseId(durunubiCourseId: String): WalkingCourse?
 }

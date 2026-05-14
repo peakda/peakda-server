@@ -67,10 +67,10 @@ class MidFcstSyncJobTest {
         WeatherMidForecastSyncService(Mockito.mock(WeatherMidForecastRepository::class.java)) {
         var landCalls = 0
         var taCalls = 0
-        override fun upsertLand(regId: String, tmFc: String, item: MidLandFcstItem): Int {
+        override fun upsertLand(regionCode: String, announceTime: String, item: MidLandFcstItem): Int {
             landCalls++; return 1
         }
-        override fun upsertTa(regId: String, tmFc: String, item: MidTaItem): Int {
+        override fun upsertTa(regionCode: String, announceTime: String, item: MidTaItem): Int {
             taCalls++; return 1
         }
     }

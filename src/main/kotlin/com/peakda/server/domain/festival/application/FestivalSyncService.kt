@@ -14,7 +14,7 @@ class FestivalSyncService(
         var saved = 0
         for (item in items) {
             if (item.fstvlNm.isBlank() || item.opar.isBlank() || item.fstvlStartDate.isBlank()) continue
-            val existing = repository.findByFstvlNmAndOparAndFstvlStartDate(
+            val existing = repository.findByNameAndVenueAndStartDate(
                 item.fstvlNm,
                 item.opar,
                 item.fstvlStartDate,

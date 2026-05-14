@@ -6,41 +6,41 @@ import com.peakda.server.infrastructure.external.kto.durunubi.response.CourseIte
 import com.peakda.server.infrastructure.external.kto.durunubi.response.RouteItem
 
 fun RouteItem.toWalkingRoute(): WalkingRoute = WalkingRoute(
-    routeIdx = routeIdx,
+    durunubiRouteId = routeIdx,
     routeName = routeName.ifBlank { null },
-    brdDiv = brdDiv.ifBlank { null },
-    themeNm = themeNm.ifBlank { null },
-    sigun = sigun.ifBlank { null },
+    regionDivision = brdDiv.ifBlank { null },
+    themeName = themeNm.ifBlank { null },
+    cityCounty = sigun.ifBlank { null },
     distance = distance.ifBlank { null },
     requiredTime = requiredTime.ifBlank { null },
 )
 
 fun WalkingRoute.applyUpdate(item: RouteItem) {
     routeName = item.routeName.ifBlank { routeName }
-    brdDiv = item.brdDiv.ifBlank { brdDiv }
-    themeNm = item.themeNm.ifBlank { themeNm }
-    sigun = item.sigun.ifBlank { sigun }
+    regionDivision = item.brdDiv.ifBlank { regionDivision }
+    themeName = item.themeNm.ifBlank { themeName }
+    cityCounty = item.sigun.ifBlank { cityCounty }
     distance = item.distance.ifBlank { distance }
     requiredTime = item.requiredTime.ifBlank { requiredTime }
 }
 
 fun CourseItem.toWalkingCourse(): WalkingCourse = WalkingCourse(
-    crsIdx = crsIdx,
-    routeIdx = routeIdx.ifBlank { null },
-    crsKorNm = crsKorNm.ifBlank { null },
-    crsDstnc = crsDstnc.ifBlank { null },
-    crsTotlRqrmHour = crsTotlRqrmHour.ifBlank { null },
-    crsLevel = crsLevel.ifBlank { null },
-    sigun = sigun.ifBlank { null },
-    brdDiv = brdDiv.ifBlank { null },
+    durunubiCourseId = crsIdx,
+    durunubiRouteId = routeIdx.ifBlank { null },
+    name = crsKorNm.ifBlank { null },
+    distance = crsDstnc.ifBlank { null },
+    totalRequiredTime = crsTotlRqrmHour.ifBlank { null },
+    difficultyLevel = crsLevel.ifBlank { null },
+    cityCounty = sigun.ifBlank { null },
+    regionDivision = brdDiv.ifBlank { null },
 )
 
 fun WalkingCourse.applyUpdate(item: CourseItem) {
-    routeIdx = item.routeIdx.ifBlank { routeIdx }
-    crsKorNm = item.crsKorNm.ifBlank { crsKorNm }
-    crsDstnc = item.crsDstnc.ifBlank { crsDstnc }
-    crsTotlRqrmHour = item.crsTotlRqrmHour.ifBlank { crsTotlRqrmHour }
-    crsLevel = item.crsLevel.ifBlank { crsLevel }
-    sigun = item.sigun.ifBlank { sigun }
-    brdDiv = item.brdDiv.ifBlank { brdDiv }
+    durunubiRouteId = item.routeIdx.ifBlank { durunubiRouteId }
+    name = item.crsKorNm.ifBlank { name }
+    distance = item.crsDstnc.ifBlank { distance }
+    totalRequiredTime = item.crsTotlRqrmHour.ifBlank { totalRequiredTime }
+    difficultyLevel = item.crsLevel.ifBlank { difficultyLevel }
+    cityCounty = item.sigun.ifBlank { cityCounty }
+    regionDivision = item.brdDiv.ifBlank { regionDivision }
 }

@@ -12,26 +12,26 @@ import jakarta.persistence.UniqueConstraint
 @Entity
 @Table(
     name = "congestions",
-    uniqueConstraints = [UniqueConstraint(name = "uk_congestions_ymd_tats", columnNames = ["base_ymd", "t_ats_cd"])],
+    uniqueConstraints = [UniqueConstraint(name = "uk_congestions_date_attraction", columnNames = ["base_date", "tourist_attraction_code"])],
 )
 class Congestion(
-    @Column(name = "base_ymd", nullable = false, columnDefinition = "TEXT")
-    val baseYmd: String,
+    @Column(name = "base_date", nullable = false, columnDefinition = "TEXT")
+    val baseDate: String,
 
-    @Column(name = "t_ats_cd", nullable = false, columnDefinition = "TEXT")
-    val tAtsCd: String,
+    @Column(name = "tourist_attraction_code", nullable = false, columnDefinition = "TEXT")
+    val touristAttractionCode: String,
 
-    @Column(name = "t_ats_nm", columnDefinition = "TEXT")
-    var tAtsNm: String? = null,
+    @Column(name = "tourist_attraction_name", columnDefinition = "TEXT")
+    var touristAttractionName: String? = null,
 
-    @Column(name = "area_cd", columnDefinition = "TEXT")
-    var areaCd: String? = null,
+    @Column(name = "area_code", columnDefinition = "TEXT")
+    var areaCode: String? = null,
 
-    @Column(name = "signgu_cd", columnDefinition = "TEXT")
-    var signguCd: String? = null,
+    @Column(name = "sigungu_code", columnDefinition = "TEXT")
+    var sigunguCode: String? = null,
 
-    @Column(name = "cnctr_rate", columnDefinition = "TEXT")
-    var cnctrRate: String? = null,
+    @Column(name = "congestion_rate", columnDefinition = "TEXT")
+    var congestionRate: String? = null,
 ) : BaseTimeEntity() {
 
     @Id

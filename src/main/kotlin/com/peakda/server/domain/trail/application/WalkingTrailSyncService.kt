@@ -16,7 +16,7 @@ class WalkingRouteSyncService(
         var saved = 0
         for (item in items) {
             if (item.routeIdx.isBlank()) continue
-            val existing = repository.findByRouteIdx(item.routeIdx)
+            val existing = repository.findByDurunubiRouteId(item.routeIdx)
             if (existing == null) repository.save(item.toWalkingRoute()) else existing.applyUpdate(item)
             saved++
         }
@@ -33,7 +33,7 @@ class WalkingCourseSyncService(
         var saved = 0
         for (item in items) {
             if (item.crsIdx.isBlank()) continue
-            val existing = repository.findByCrsIdx(item.crsIdx)
+            val existing = repository.findByDurunubiCourseId(item.crsIdx)
             if (existing == null) repository.save(item.toWalkingCourse()) else existing.applyUpdate(item)
             saved++
         }

@@ -13,7 +13,7 @@ class AttractionSyncService(
     fun upsertPage(items: List<AreaBasedSyncListItem>): Int {
         for (item in items) {
             if (item.contentid.isBlank()) continue
-            val existing = repository.findByContentId(item.contentid)
+            val existing = repository.findByTourApiContentId(item.contentid)
             if (existing == null) {
                 repository.save(item.toAttraction())
             } else {

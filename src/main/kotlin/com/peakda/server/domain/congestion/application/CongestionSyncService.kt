@@ -14,7 +14,7 @@ class CongestionSyncService(
         var saved = 0
         for (item in items) {
             if (item.baseYmd.isBlank() || item.tAtsCd.isBlank()) continue
-            val existing = repository.findByBaseYmdAndTAtsCd(item.baseYmd, item.tAtsCd)
+            val existing = repository.findByBaseDateAndTouristAttractionCode(item.baseYmd, item.tAtsCd)
             if (existing == null) repository.save(item.toCongestion()) else existing.applyUpdate(item)
             saved++
         }

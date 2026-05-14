@@ -12,32 +12,32 @@ import jakarta.persistence.UniqueConstraint
 @Entity
 @Table(
     name = "walking_courses",
-    uniqueConstraints = [UniqueConstraint(name = "uk_walking_courses_crs_idx", columnNames = ["crs_idx"])],
+    uniqueConstraints = [UniqueConstraint(name = "uk_walking_courses_durunubi_course_id", columnNames = ["durunubi_course_id"])],
 )
 class WalkingCourse(
-    @Column(name = "crs_idx", nullable = false, columnDefinition = "TEXT")
-    val crsIdx: String,
+    @Column(name = "durunubi_course_id", nullable = false, columnDefinition = "TEXT")
+    val durunubiCourseId: String,
 
-    @Column(name = "route_idx", columnDefinition = "TEXT")
-    var routeIdx: String? = null,
+    @Column(name = "durunubi_route_id", columnDefinition = "TEXT")
+    var durunubiRouteId: String? = null,
 
-    @Column(name = "crs_kor_nm", columnDefinition = "TEXT")
-    var crsKorNm: String? = null,
+    @Column(name = "name", columnDefinition = "TEXT")
+    var name: String? = null,
 
-    @Column(name = "crs_dstnc", columnDefinition = "TEXT")
-    var crsDstnc: String? = null,
+    @Column(name = "distance", columnDefinition = "TEXT")
+    var distance: String? = null,
 
-    @Column(name = "crs_totl_rqrm_hour", columnDefinition = "TEXT")
-    var crsTotlRqrmHour: String? = null,
+    @Column(name = "total_required_time", columnDefinition = "TEXT")
+    var totalRequiredTime: String? = null,
 
-    @Column(name = "crs_level", columnDefinition = "TEXT")
-    var crsLevel: String? = null,
+    @Column(name = "difficulty_level", columnDefinition = "TEXT")
+    var difficultyLevel: String? = null,
 
-    @Column(name = "sigun", columnDefinition = "TEXT")
-    var sigun: String? = null,
+    @Column(name = "city_county", columnDefinition = "TEXT")
+    var cityCounty: String? = null,
 
-    @Column(name = "brd_div", columnDefinition = "TEXT")
-    var brdDiv: String? = null,
+    @Column(name = "region_division", columnDefinition = "TEXT")
+    var regionDivision: String? = null,
 ) : BaseTimeEntity() {
 
     @Id

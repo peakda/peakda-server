@@ -2,17 +2,17 @@
 
 --changeset peakda:20260513-008-create-region-visitors
 CREATE TABLE region_visitors (
-    id              BIGSERIAL   PRIMARY KEY,
-    base_ymd        TEXT        NOT NULL,
-    area_cd         TEXT        NOT NULL,
-    area_nm         TEXT,
-    tou_div_cd      TEXT        NOT NULL,
-    tou_div_nm      TEXT,
-    num             BIGINT,
-    created_at      TIMESTAMPTZ NOT NULL,
-    updated_at      TIMESTAMPTZ NOT NULL,
-    CONSTRAINT uk_region_visitors_ymd_area_div UNIQUE (base_ymd, area_cd, tou_div_cd)
+    id                  BIGSERIAL   PRIMARY KEY,
+    base_date           TEXT        NOT NULL,
+    area_code           TEXT        NOT NULL,
+    area_name           TEXT,
+    tourist_type_code   TEXT        NOT NULL,
+    tourist_type_name   TEXT,
+    visitor_count       BIGINT,
+    created_at          TIMESTAMPTZ NOT NULL,
+    updated_at          TIMESTAMPTZ NOT NULL,
+    CONSTRAINT uk_region_visitors_date_area_type UNIQUE (base_date, area_code, tourist_type_code)
 );
 
-CREATE INDEX idx_region_visitors_base_ymd ON region_visitors (base_ymd DESC);
+CREATE INDEX idx_region_visitors_base_date ON region_visitors (base_date DESC);
 --rollback DROP TABLE region_visitors;

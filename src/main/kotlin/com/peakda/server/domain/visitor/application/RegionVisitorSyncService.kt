@@ -14,7 +14,11 @@ class RegionVisitorSyncService(
         var saved = 0
         for (item in items) {
             if (item.baseYmd.isBlank() || item.areaCd.isBlank() || item.touDivCd.isBlank()) continue
-            val existing = repository.findByBaseYmdAndAreaCdAndTouDivCd(item.baseYmd, item.areaCd, item.touDivCd)
+            val existing = repository.findByBaseDateAndAreaCodeAndTouristTypeCode(
+                item.baseYmd,
+                item.areaCd,
+                item.touDivCd,
+            )
             if (existing == null) repository.save(item.toRegionVisitor()) else existing.applyUpdate(item)
             saved++
         }

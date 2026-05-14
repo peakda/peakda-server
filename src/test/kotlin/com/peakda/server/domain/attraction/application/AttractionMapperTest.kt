@@ -22,12 +22,12 @@ class AttractionMapperTest {
 
         val attraction = item.toAttraction()
 
-        assertThat(attraction.contentId).isEqualTo("126128")
+        assertThat(attraction.tourApiContentId).isEqualTo("126128")
         assertThat(attraction.title).isEqualTo("경복궁")
-        assertThat(attraction.mapX).isEqualTo(126.977)
-        assertThat(attraction.mapY).isEqualTo(37.578)
+        assertThat(attraction.longitude).isEqualTo(126.977)
+        assertThat(attraction.latitude).isEqualTo(37.578)
         assertThat(attraction.visible).isTrue
-        assertThat(attraction.cat1).isEqualTo("A02")
+        assertThat(attraction.categoryMajor).isEqualTo("A02")
     }
 
     @Test

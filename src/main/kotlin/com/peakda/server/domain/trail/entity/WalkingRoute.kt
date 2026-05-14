@@ -12,23 +12,23 @@ import jakarta.persistence.UniqueConstraint
 @Entity
 @Table(
     name = "walking_routes",
-    uniqueConstraints = [UniqueConstraint(name = "uk_walking_routes_route_idx", columnNames = ["route_idx"])],
+    uniqueConstraints = [UniqueConstraint(name = "uk_walking_routes_durunubi_route_id", columnNames = ["durunubi_route_id"])],
 )
 class WalkingRoute(
-    @Column(name = "route_idx", nullable = false, columnDefinition = "TEXT")
-    val routeIdx: String,
+    @Column(name = "durunubi_route_id", nullable = false, columnDefinition = "TEXT")
+    val durunubiRouteId: String,
 
     @Column(name = "route_name", columnDefinition = "TEXT")
     var routeName: String? = null,
 
-    @Column(name = "brd_div", columnDefinition = "TEXT")
-    var brdDiv: String? = null,
+    @Column(name = "region_division", columnDefinition = "TEXT")
+    var regionDivision: String? = null,
 
-    @Column(name = "theme_nm", columnDefinition = "TEXT")
-    var themeNm: String? = null,
+    @Column(name = "theme_name", columnDefinition = "TEXT")
+    var themeName: String? = null,
 
-    @Column(name = "sigun", columnDefinition = "TEXT")
-    var sigun: String? = null,
+    @Column(name = "city_county", columnDefinition = "TEXT")
+    var cityCounty: String? = null,
 
     @Column(name = "distance", columnDefinition = "TEXT")
     var distance: String? = null,

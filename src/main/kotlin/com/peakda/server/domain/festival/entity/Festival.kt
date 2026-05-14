@@ -14,32 +14,32 @@ import jakarta.persistence.UniqueConstraint
     name = "festivals",
     uniqueConstraints = [
         UniqueConstraint(
-            name = "uk_festivals_name_opar_start",
-            columnNames = ["fstvl_nm", "opar", "fstvl_start_date"],
+            name = "uk_festivals_name_venue_start",
+            columnNames = ["name", "venue", "start_date"],
         ),
     ],
 )
 class Festival(
-    @Column(name = "fstvl_nm", nullable = false, columnDefinition = "TEXT")
-    val fstvlNm: String,
+    @Column(name = "name", nullable = false, columnDefinition = "TEXT")
+    val name: String,
 
-    @Column(name = "opar", nullable = false, columnDefinition = "TEXT")
-    val opar: String,
+    @Column(name = "venue", nullable = false, columnDefinition = "TEXT")
+    val venue: String,
 
-    @Column(name = "fstvl_start_date", nullable = false, columnDefinition = "TEXT")
-    val fstvlStartDate: String,
+    @Column(name = "start_date", nullable = false, columnDefinition = "TEXT")
+    val startDate: String,
 
-    @Column(name = "fstvl_end_date", columnDefinition = "TEXT")
-    var fstvlEndDate: String? = null,
+    @Column(name = "end_date", columnDefinition = "TEXT")
+    var endDate: String? = null,
 
-    @Column(name = "mnnst_nm", columnDefinition = "TEXT")
-    var mnnstNm: String? = null,
+    @Column(name = "host_organization", columnDefinition = "TEXT")
+    var hostOrganization: String? = null,
 
-    @Column(name = "auspc_instt_nm", columnDefinition = "TEXT")
-    var auspcInsttNm: String? = null,
+    @Column(name = "organizing_institution", columnDefinition = "TEXT")
+    var organizingInstitution: String? = null,
 
-    @Column(name = "suprt_instt_nm", columnDefinition = "TEXT")
-    var suprtInsttNm: String? = null,
+    @Column(name = "supporting_institution", columnDefinition = "TEXT")
+    var supportingInstitution: String? = null,
 
     @Column(name = "phone_number", columnDefinition = "TEXT")
     var phoneNumber: String? = null,
@@ -47,11 +47,11 @@ class Festival(
     @Column(name = "homepage_url", columnDefinition = "TEXT")
     var homepageUrl: String? = null,
 
-    @Column(name = "rdnmadr", columnDefinition = "TEXT")
-    var rdnmadr: String? = null,
+    @Column(name = "road_address", columnDefinition = "TEXT")
+    var roadAddress: String? = null,
 
-    @Column(name = "lnmadr", columnDefinition = "TEXT")
-    var lnmadr: String? = null,
+    @Column(name = "land_lot_address", columnDefinition = "TEXT")
+    var landLotAddress: String? = null,
 
     @Column(name = "latitude")
     var latitude: Double? = null,
@@ -62,11 +62,11 @@ class Festival(
     @Column(name = "reference_date", columnDefinition = "TEXT")
     var referenceDate: String? = null,
 
-    @Column(name = "instt_code", columnDefinition = "TEXT")
-    var insttCode: String? = null,
+    @Column(name = "provider_institution_code", columnDefinition = "TEXT")
+    var providerInstitutionCode: String? = null,
 
-    @Column(name = "instt_nm", columnDefinition = "TEXT")
-    var insttNm: String? = null,
+    @Column(name = "provider_institution_name", columnDefinition = "TEXT")
+    var providerInstitutionName: String? = null,
 ) : BaseTimeEntity() {
 
     @Id

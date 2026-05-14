@@ -14,7 +14,7 @@ class WeatherShortForecastSyncService(
         var saved = 0
         for (item in items) {
             if (item.category.isBlank() || item.fcstDate.isBlank() || item.fcstTime.isBlank()) continue
-            val existing = repository.findByNxAndNyAndFcstDateAndFcstTimeAndCategory(
+            val existing = repository.findByGridXAndGridYAndForecastDateAndForecastTimeAndForecastCategory(
                 item.nx,
                 item.ny,
                 item.fcstDate,

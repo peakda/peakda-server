@@ -12,38 +12,38 @@ import jakarta.persistence.UniqueConstraint
 @Entity
 @Table(
     name = "gallery_photos",
-    uniqueConstraints = [UniqueConstraint(name = "uk_gallery_photos_content_id", columnNames = ["gal_content_id"])],
+    uniqueConstraints = [UniqueConstraint(name = "uk_gallery_photos_tour_api_content_id", columnNames = ["tour_api_content_id"])],
 )
 class GalleryPhoto(
-    @Column(name = "gal_content_id", nullable = false, columnDefinition = "TEXT")
-    val galContentId: String,
+    @Column(name = "tour_api_content_id", nullable = false, columnDefinition = "TEXT")
+    val tourApiContentId: String,
 
-    @Column(name = "gal_content_type_id", columnDefinition = "TEXT")
-    var galContentTypeId: String? = null,
+    @Column(name = "content_type_code", columnDefinition = "TEXT")
+    var contentTypeCode: String? = null,
 
-    @Column(name = "gal_title", columnDefinition = "TEXT")
-    var galTitle: String? = null,
+    @Column(name = "title", columnDefinition = "TEXT")
+    var title: String? = null,
 
-    @Column(name = "gal_web_image_url", columnDefinition = "TEXT")
-    var galWebImageUrl: String? = null,
+    @Column(name = "web_image_url", columnDefinition = "TEXT")
+    var webImageUrl: String? = null,
 
-    @Column(name = "gal_created_time", columnDefinition = "TEXT")
-    var galCreatedTime: String? = null,
+    @Column(name = "external_created_at", columnDefinition = "TEXT")
+    var externalCreatedAt: String? = null,
 
-    @Column(name = "gal_modified_time", columnDefinition = "TEXT")
-    var galModifiedTime: String? = null,
+    @Column(name = "external_modified_at", columnDefinition = "TEXT")
+    var externalModifiedAt: String? = null,
 
-    @Column(name = "gal_photography_month", columnDefinition = "TEXT")
-    var galPhotographyMonth: String? = null,
+    @Column(name = "photography_month", columnDefinition = "TEXT")
+    var photographyMonth: String? = null,
 
-    @Column(name = "gal_photography_location", columnDefinition = "TEXT")
-    var galPhotographyLocation: String? = null,
+    @Column(name = "photography_location", columnDefinition = "TEXT")
+    var photographyLocation: String? = null,
 
-    @Column(name = "gal_photographer", columnDefinition = "TEXT")
-    var galPhotographer: String? = null,
+    @Column(name = "photographer", columnDefinition = "TEXT")
+    var photographer: String? = null,
 
-    @Column(name = "gal_search_keyword", columnDefinition = "TEXT")
-    var galSearchKeyword: String? = null,
+    @Column(name = "search_keyword", columnDefinition = "TEXT")
+    var searchKeyword: String? = null,
 ) : BaseTimeEntity() {
 
     @Id

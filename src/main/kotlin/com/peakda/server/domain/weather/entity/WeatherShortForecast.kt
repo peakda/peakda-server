@@ -14,35 +14,35 @@ import jakarta.persistence.UniqueConstraint
     name = "weather_short_forecasts",
     uniqueConstraints = [
         UniqueConstraint(
-            name = "uk_weather_short_forecasts_grid_fcst",
-            columnNames = ["nx", "ny", "fcst_date", "fcst_time", "category"],
+            name = "uk_weather_short_forecasts_grid_forecast",
+            columnNames = ["grid_x", "grid_y", "forecast_date", "forecast_time", "forecast_category"],
         ),
     ],
 )
 class WeatherShortForecast(
-    @Column(name = "nx", nullable = false)
-    val nx: Int,
+    @Column(name = "grid_x", nullable = false)
+    val gridX: Int,
 
-    @Column(name = "ny", nullable = false)
-    val ny: Int,
+    @Column(name = "grid_y", nullable = false)
+    val gridY: Int,
 
-    @Column(name = "base_date", nullable = false, columnDefinition = "TEXT")
-    var baseDate: String,
+    @Column(name = "announce_date", nullable = false, columnDefinition = "TEXT")
+    var announceDate: String,
 
-    @Column(name = "base_time", nullable = false, columnDefinition = "TEXT")
-    var baseTime: String,
+    @Column(name = "announce_time", nullable = false, columnDefinition = "TEXT")
+    var announceTime: String,
 
-    @Column(name = "fcst_date", nullable = false, columnDefinition = "TEXT")
-    val fcstDate: String,
+    @Column(name = "forecast_date", nullable = false, columnDefinition = "TEXT")
+    val forecastDate: String,
 
-    @Column(name = "fcst_time", nullable = false, columnDefinition = "TEXT")
-    val fcstTime: String,
+    @Column(name = "forecast_time", nullable = false, columnDefinition = "TEXT")
+    val forecastTime: String,
 
-    @Column(name = "category", nullable = false, columnDefinition = "TEXT")
-    val category: String,
+    @Column(name = "forecast_category", nullable = false, columnDefinition = "TEXT")
+    val forecastCategory: String,
 
-    @Column(name = "fcst_value", nullable = false, columnDefinition = "TEXT")
-    var fcstValue: String,
+    @Column(name = "forecast_value", nullable = false, columnDefinition = "TEXT")
+    var forecastValue: String,
 ) : BaseTimeEntity() {
 
     @Id

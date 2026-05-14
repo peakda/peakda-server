@@ -14,29 +14,29 @@ import jakarta.persistence.UniqueConstraint
     name = "region_visitors",
     uniqueConstraints = [
         UniqueConstraint(
-            name = "uk_region_visitors_ymd_area_div",
-            columnNames = ["base_ymd", "area_cd", "tou_div_cd"],
+            name = "uk_region_visitors_date_area_type",
+            columnNames = ["base_date", "area_code", "tourist_type_code"],
         ),
     ],
 )
 class RegionVisitor(
-    @Column(name = "base_ymd", nullable = false, columnDefinition = "TEXT")
-    val baseYmd: String,
+    @Column(name = "base_date", nullable = false, columnDefinition = "TEXT")
+    val baseDate: String,
 
-    @Column(name = "area_cd", nullable = false, columnDefinition = "TEXT")
-    val areaCd: String,
+    @Column(name = "area_code", nullable = false, columnDefinition = "TEXT")
+    val areaCode: String,
 
-    @Column(name = "tou_div_cd", nullable = false, columnDefinition = "TEXT")
-    val touDivCd: String,
+    @Column(name = "tourist_type_code", nullable = false, columnDefinition = "TEXT")
+    val touristTypeCode: String,
 
-    @Column(name = "area_nm", columnDefinition = "TEXT")
-    var areaNm: String? = null,
+    @Column(name = "area_name", columnDefinition = "TEXT")
+    var areaName: String? = null,
 
-    @Column(name = "tou_div_nm", columnDefinition = "TEXT")
-    var touDivNm: String? = null,
+    @Column(name = "tourist_type_name", columnDefinition = "TEXT")
+    var touristTypeName: String? = null,
 
-    @Column(name = "num")
-    var num: Long? = null,
+    @Column(name = "visitor_count")
+    var visitorCount: Long? = null,
 ) : BaseTimeEntity() {
 
     @Id
