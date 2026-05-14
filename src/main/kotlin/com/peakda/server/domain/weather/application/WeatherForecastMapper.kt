@@ -6,7 +6,7 @@ import com.peakda.server.infrastructure.external.kma.midfcst.response.MidLandFcs
 import com.peakda.server.infrastructure.external.kma.midfcst.response.MidTaItem
 import com.peakda.server.infrastructure.external.kma.vilagefcst.response.VilageFcstItem
 
-fun WeatherMidForecast.applyLand(item: MidLandFcstItem) {
+fun WeatherMidForecast.applyLandForecast(item: MidLandFcstItem) {
     weatherDay3Am = item.wf3Am.ifBlank { weatherDay3Am }
     weatherDay3Pm = item.wf3Pm.ifBlank { weatherDay3Pm }
     weatherDay4Am = item.wf4Am.ifBlank { weatherDay4Am }
@@ -35,7 +35,7 @@ fun WeatherMidForecast.applyLand(item: MidLandFcstItem) {
     rainProbabilityDay10 = item.rnSt10
 }
 
-fun WeatherMidForecast.applyTa(item: MidTaItem) {
+fun WeatherMidForecast.applyTemperatureForecast(item: MidTaItem) {
     temperatureMinDay3 = item.taMin3
     temperatureMaxDay3 = item.taMax3
     temperatureMinDay4 = item.taMin4

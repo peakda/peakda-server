@@ -12,18 +12,28 @@ class WeatherMidForecastSyncService(
     private val repository: WeatherMidForecastRepository,
 ) {
     @Transactional
-    fun upsertLand(regionCode: String, sourceRegionCode: String, announceTime: String, item: MidLandFcstItem): Int {
+    fun upsertLandForecast(
+        regionCode: String,
+        sourceRegionCode: String,
+        announceTime: String,
+        item: MidLandFcstItem,
+    ): Int {
         val entity = findOrCreate(regionCode, announceTime)
         entity.sourceLandRegionCode = sourceRegionCode
-        entity.applyLand(item)
+        entity.applyLandForecast(item)
         return 1
     }
 
     @Transactional
-    fun upsertTa(regionCode: String, sourceRegionCode: String, announceTime: String, item: MidTaItem): Int {
+    fun upsertTemperatureForecast(
+        regionCode: String,
+        sourceRegionCode: String,
+        announceTime: String,
+        item: MidTaItem,
+    ): Int {
         val entity = findOrCreate(regionCode, announceTime)
         entity.sourceTemperatureRegionCode = sourceRegionCode
-        entity.applyTa(item)
+        entity.applyTemperatureForecast(item)
         return 1
     }
 
