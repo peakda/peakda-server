@@ -42,7 +42,7 @@ external:
           - { name: "서울", nx: 60, ny: 127 }
       mid-fcst:    { cron: "0/30 * * * * *", enabled: false }
     pubdata:
-      festival:    { cron: "0/30 * * * * *", enabled: false }
+      festival:    { cron: "0/30 * * * * *", enabled: true }
 
 logging:
   level:

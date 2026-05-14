@@ -11,7 +11,7 @@ class DataGoKrErrorDecoderTest {
     @Test
     fun `0000 resultCode is successful`() {
         val body = DataGoKrBody(
-            items = DataGoKrItems(listOf(TestItem("1"))),
+            items = listOf(TestItem("1")),
             numOfRows = 10,
             pageNo = 1,
             totalCount = 1,
@@ -25,7 +25,7 @@ class DataGoKrErrorDecoderTest {
 
     @Test
     fun `00 resultCode is successful`() {
-        val body = DataGoKrBody(items = DataGoKrItems(listOf(TestItem("1"))))
+        val body = DataGoKrBody(items = listOf(TestItem("1")))
 
         val decoded = decoder.decode(envelope("00", body = body))
 
