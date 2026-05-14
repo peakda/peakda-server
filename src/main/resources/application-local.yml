@@ -24,7 +24,28 @@ app:
     secure: false
     same-site: Lax
 
+# 로컬 스케줄러 검증용. 검증할 잡 하나만 enabled: true 로 바꿔서 사용.
+external:
+  scheduler:
+    enabled: true
+    kto:
+      kor-service: { cron: "0/30 * * * * *", enabled: false }
+      durunubi:    { cron: "0/30 * * * * *", enabled: false }
+      tats-cnctr:  { cron: "0/30 * * * * *", enabled: false }
+      data-lab:    { cron: "0/30 * * * * *", enabled: false }
+      photo:       { cron: "0/30 * * * * *", enabled: false }
+    kma:
+      vilage-fcst:
+        cron: "0/30 * * * * *"
+        enabled: false
+        grids:
+          - { name: "서울", nx: 60, ny: 127 }
+      mid-fcst:    { cron: "0/30 * * * * *", enabled: false }
+    pubdata:
+      festival:    { cron: "0/30 * * * * *", enabled: false }
+
 logging:
   level:
     org.hibernate.SQL: DEBUG
     org.hibernate.orm.jdbc.bind: TRACE
+    com.peakda.server.infrastructure.scheduler: DEBUG

@@ -3,7 +3,6 @@ package com.peakda.server.infrastructure.external.kma
 import com.peakda.server.infrastructure.external.common.DataGoKrProperties
 import com.peakda.server.infrastructure.external.common.ExternalApiLoggingInterceptor
 import com.peakda.server.infrastructure.external.common.ExternalRestClientFactory
-import com.peakda.server.infrastructure.external.common.JsonOnlyInterceptor
 import com.peakda.server.infrastructure.external.common.ServiceKeyInterceptor
 import org.springframework.beans.factory.annotation.Qualifier
 import org.springframework.context.annotation.Bean
@@ -31,7 +30,7 @@ class KmaRestClientConfig(
             properties = dataGoKrProperties,
             interceptors = listOf(
                 ServiceKeyInterceptor(kmaProperties.serviceKey),
-                JsonOnlyInterceptor(),
+                KmaJsonInterceptor(),
                 ExternalApiLoggingInterceptor("KMA", service),
             ),
         )

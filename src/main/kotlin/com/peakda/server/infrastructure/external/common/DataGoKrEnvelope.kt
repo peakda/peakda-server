@@ -1,6 +1,8 @@
 package com.peakda.server.infrastructure.external.common
 
+import com.fasterxml.jackson.annotation.JsonIgnore
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties
+import com.fasterxml.jackson.databind.annotation.JsonDeserialize
 
 @JsonIgnoreProperties(ignoreUnknown = true)
 data class DataGoKrEnvelope<T>(
@@ -21,20 +23,17 @@ data class DataGoKrHeader(
 
 @JsonIgnoreProperties(ignoreUnknown = true)
 data class DataGoKrBody<T>(
-    val items: DataGoKrItems<T> = DataGoKrItems(),
+    @param:JsonDeserialize(using = DataGoKrItemsDeserializer::class)
+    val items: List<T> = emptyList(),
     val numOfRows: Int = 0,
     val pageNo: Int = 0,
     val totalCount: Int = 0,
 ) {
+    @get:JsonIgnore
     val item: List<T>
-        get() = items.item
+        get() = items
 
     companion object {
         fun <T> empty(): DataGoKrBody<T> = DataGoKrBody()
     }
 }
-
-@JsonIgnoreProperties(ignoreUnknown = true)
-data class DataGoKrItems<T>(
-    val item: List<T> = emptyList(),
-)
