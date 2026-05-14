@@ -11,6 +11,7 @@ interface SchedulerJobRunRecorder {
     fun start(jobName: String): Long?
     fun complete(runId: Long?, processedCount: Int?, totalCount: Int?)
     fun fail(runId: Long?, throwable: Throwable)
+    fun skip(jobName: String, reason: String)
 }
 
 @Component
@@ -36,6 +37,14 @@ class JpaSchedulerJobRunRecorder(
         val runIdNonNull = runId ?: return
         val run = repository.findById(runIdNonNull).orElse(null) ?: return
         run.fail(Instant.now(), throwable.message, stackTraceOf(throwable))
+    }
+
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    override fun skip(jobName: String, reason: String) {
+        val now = Instant.now()
+        val run = SchedulerJobRun(jobName = jobName, startedAt = now)
+        run.skip(now, reason)
+        repository.save(run)
     }
 
     private fun stackTraceOf(throwable: Throwable): String {

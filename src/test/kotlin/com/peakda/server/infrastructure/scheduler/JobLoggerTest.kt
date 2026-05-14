@@ -11,7 +11,7 @@ class JobLoggerTest {
     fun `정상 실행 시 start와 complete를 순서대로 기록한다`() {
         val recorder = RecordingRecorder()
         val registry = SimpleMeterRegistry()
-        val logger = JobLogger(recorder, registry)
+        val logger = JobLogger(recorder, registry, AcquiringLock)
 
         logger.run("testJob") {
             mapOf(JobLogger.KEY_PROCESSED to 7, JobLogger.KEY_TOTAL to 42)
@@ -29,7 +29,7 @@ class JobLoggerTest {
     fun `예외 발생 시 fail을 기록하고 호출자에게 전파하지 않는다`() {
         val recorder = RecordingRecorder()
         val registry = SimpleMeterRegistry()
-        val logger = JobLogger(recorder, registry)
+        val logger = JobLogger(recorder, registry, AcquiringLock)
 
         logger.run("boomJob") {
             throw IllegalStateException("boom")
@@ -40,6 +40,35 @@ class JobLoggerTest {
             "fail:1:IllegalStateException:boom",
         )
         assertThat(registry.counter("scheduler.job.failure_total", "job", "boomJob").count()).isEqualTo(1.0)
+    }
+
+    @Test
+    fun `비활성 잡은 실행 이력을 남기지 않는다`() {
+        val recorder = RecordingRecorder()
+        val registry = SimpleMeterRegistry()
+        val logger = JobLogger(recorder, registry, AcquiringLock)
+
+        logger.runIfEnabled("disabledJob", false) {
+            error("should not run")
+        }
+
+        assertThat(recorder.events).isEmpty()
+        assertThat(registry.find("scheduler.job.skip_total").counter()).isNull()
+    }
+
+    @Test
+    fun `락 획득 실패는 실행 이력을 skipped locked로 기록한다`() {
+        val recorder = RecordingRecorder()
+        val registry = SimpleMeterRegistry()
+        val logger = JobLogger(recorder, registry, LockedLock)
+
+        logger.runIfEnabled("lockedJob", true) {
+            error("should not run")
+        }
+
+        assertThat(recorder.events).containsExactly("skip:lockedJob:locked")
+        assertThat(registry.counter("scheduler.job.skip_total", "job", "lockedJob", "reason", "locked").count())
+            .isEqualTo(1.0)
     }
 
     private class RecordingRecorder : SchedulerJobRunRecorder {
@@ -56,5 +85,18 @@ class JobLoggerTest {
         override fun fail(runId: Long?, throwable: Throwable) {
             events += "fail:$runId:${throwable::class.simpleName}:${throwable.message}"
         }
+        override fun skip(jobName: String, reason: String) {
+            events += "skip:$jobName:$reason"
+        }
+    }
+
+    private object AcquiringLock : SchedulerJobLock {
+        override fun <T> withLock(jobName: String, block: () -> T): SchedulerJobLockResult<T> =
+            SchedulerJobLockResult.Acquired(block())
+    }
+
+    private object LockedLock : SchedulerJobLock {
+        override fun <T> withLock(jobName: String, block: () -> T): SchedulerJobLockResult<T> =
+            SchedulerJobLockResult.Locked
     }
 }

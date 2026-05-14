@@ -10,11 +10,18 @@ import org.springframework.stereotype.Component
 class JobLogger(
     private val recorder: SchedulerJobRunRecorder,
     private val meterRegistry: MeterRegistry,
+    private val lock: SchedulerJobLock,
 ) {
     /** [enabled] 가 false 면 아무 일도 하지 않고 종료한다. 모든 SyncJob 의 표준 진입점. */
     fun runIfEnabled(jobName: String, enabled: Boolean, block: () -> Map<String, Any?>) {
-        if (!enabled) return
-        run(jobName, block)
+        if (!enabled) {
+            log.debug("[scheduler] job={} status=DISABLED", jobName)
+            return
+        }
+        when (lock.withLock(jobName) { run(jobName, block) }) {
+            is SchedulerJobLockResult.Acquired -> Unit
+            SchedulerJobLockResult.Locked -> skip(jobName, SKIP_LOCKED)
+        }
     }
 
     fun run(jobName: String, block: () -> Map<String, Any?>) {
@@ -45,9 +52,16 @@ class JobLogger(
         }
     }
 
+    private fun skip(jobName: String, reason: String) {
+        recorder.skip(jobName, reason)
+        meterRegistry.counter("scheduler.job.skip_total", "job", jobName, "reason", reason).increment()
+        log.info("[scheduler] job={} status=SKIPPED reason={}", jobName, reason)
+    }
+
     companion object {
         const val KEY_PROCESSED = "processedCount"
         const val KEY_TOTAL = "totalCount"
+        const val SKIP_LOCKED = "locked"
         private val log = LoggerFactory.getLogger(JobLogger::class.java)
     }
 }

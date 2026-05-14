@@ -43,6 +43,9 @@ class SchedulerJobRun(
 
     @Column(name = "error_stack", columnDefinition = "TEXT")
     var errorStack: String? = null,
+
+    @Column(name = "skip_reason", columnDefinition = "TEXT")
+    var skipReason: String? = null,
 ) {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -63,10 +66,17 @@ class SchedulerJobRun(
         this.errorMessage = errorMessage
         this.errorStack = errorStack
     }
+
+    fun skip(finishedAt: Instant, reason: String) {
+        this.status = SchedulerJobStatus.SKIPPED
+        this.finishedAt = finishedAt
+        this.skipReason = reason
+    }
 }
 
 enum class SchedulerJobStatus {
     RUNNING,
     COMPLETED,
     FAILED,
+    SKIPPED,
 }
