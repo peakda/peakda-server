@@ -26,6 +26,12 @@ class WeatherMidForecast(
     @Column(name = "announce_time", nullable = false, columnDefinition = "TEXT")
     val announceTime: String,
 
+    @Column(name = "source_land_region_code", columnDefinition = "TEXT")
+    var sourceLandRegionCode: String? = null,
+
+    @Column(name = "source_temperature_region_code", columnDefinition = "TEXT")
+    var sourceTemperatureRegionCode: String? = null,
+
     @Column(name = "weather_day3_am", columnDefinition = "TEXT") var weatherDay3Am: String? = null,
     @Column(name = "weather_day3_pm", columnDefinition = "TEXT") var weatherDay3Pm: String? = null,
     @Column(name = "weather_day4_am", columnDefinition = "TEXT") var weatherDay4Am: String? = null,

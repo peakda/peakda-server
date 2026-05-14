@@ -44,6 +44,8 @@ class MidFcstSyncJobTest {
         fixture.server.verify()
         assertThat(syncService.landCalls).isEqualTo(regions)
         assertThat(syncService.taCalls).isEqualTo(regions)
+        assertThat(syncService.landRegions).contains("SEOUL" to "11B00000")
+        assertThat(syncService.taRegions).contains("SEOUL" to "11B10101")
     }
 
     @Test
@@ -67,10 +69,24 @@ class MidFcstSyncJobTest {
         WeatherMidForecastSyncService(Mockito.mock(WeatherMidForecastRepository::class.java)) {
         var landCalls = 0
         var taCalls = 0
-        override fun upsertLand(regionCode: String, announceTime: String, item: MidLandFcstItem): Int {
+        val landRegions = mutableListOf<Pair<String, String>>()
+        val taRegions = mutableListOf<Pair<String, String>>()
+        override fun upsertLand(
+            regionCode: String,
+            sourceRegionCode: String,
+            announceTime: String,
+            item: MidLandFcstItem,
+        ): Int {
+            landRegions += regionCode to sourceRegionCode
             landCalls++; return 1
         }
-        override fun upsertTa(regionCode: String, announceTime: String, item: MidTaItem): Int {
+        override fun upsertTa(
+            regionCode: String,
+            sourceRegionCode: String,
+            announceTime: String,
+            item: MidTaItem,
+        ): Int {
+            taRegions += regionCode to sourceRegionCode
             taCalls++; return 1
         }
     }
