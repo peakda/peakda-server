@@ -1,5 +1,4 @@
---liquibase formatted sql
---logicalFilePath db/changelog/v1.0.0/001_create_users.sql
+--liquibase formatted sql logicalFilePath:db/changelog/v1.0.0/001_create_users.sql
 
 --changeset peakda:001-create-users
 CREATE TABLE users (

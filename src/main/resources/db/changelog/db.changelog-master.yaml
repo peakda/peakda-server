@@ -1,7 +1,8 @@
 databaseChangeLog:
   # 변경 세트는 월별(YYYY-MM) 디렉터리로 분리하고, 파일 내 changeset id 는
   # `YYYYMMDD-NNN-slug` 형식으로 작성한다. 이미 적용된 변경 세트는 파일을 이동하더라도
-  # `--logicalFilePath` 로 원래 경로를 유지해 재실행되지 않도록 한다.
+  # 첫 줄의 `--liquibase formatted sql logicalFilePath:<원래 경로>` 로 식별자를 유지해
+  # 재실행되지 않도록 한다.
   - includeAll:
       path: db/changelog/2026-04/
       relativeToChangelogFile: false

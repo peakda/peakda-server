@@ -1,5 +1,4 @@
---liquibase formatted sql
---logicalFilePath db/changelog/v1.0.0/002_create_signup_sessions.sql
+--liquibase formatted sql logicalFilePath:db/changelog/v1.0.0/002_create_signup_sessions.sql
 
 --changeset peakda:002-create-signup-sessions
 CREATE TABLE signup_sessions (
