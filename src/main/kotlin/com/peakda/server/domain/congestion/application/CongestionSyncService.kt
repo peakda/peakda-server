@@ -11,13 +11,8 @@ class CongestionSyncService(
 ) {
     @Transactional
     fun upsertPage(items: List<CnctrRateItem>): Int {
-        var saved = 0
-        for (item in items) {
-            if (item.baseYmd.isBlank() || item.tAtsCd.isBlank()) continue
-            val existing = repository.findByBaseDateAndTouristAttractionCode(item.baseYmd, item.tAtsCd)
-            if (existing == null) repository.save(item.toCongestion()) else existing.applyUpdate(item)
-            saved++
-        }
-        return saved
+        return items
+            .filter { it.baseYmd.isNotBlank() && it.tAtsCd.isNotBlank() }
+            .sumOf { repository.upsert(it.toUpsertCommand()) }
     }
 }

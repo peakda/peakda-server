@@ -11,17 +11,8 @@ class RegionVisitorSyncService(
 ) {
     @Transactional
     fun upsertPage(items: List<MetcoVisitrItem>): Int {
-        var saved = 0
-        for (item in items) {
-            if (item.baseYmd.isBlank() || item.areaCd.isBlank() || item.touDivCd.isBlank()) continue
-            val existing = repository.findByBaseDateAndAreaCodeAndTouristTypeCode(
-                item.baseYmd,
-                item.areaCd,
-                item.touDivCd,
-            )
-            if (existing == null) repository.save(item.toRegionVisitor()) else existing.applyUpdate(item)
-            saved++
-        }
-        return saved
+        return items
+            .filter { it.baseYmd.isNotBlank() && it.areaCd.isNotBlank() && it.touDivCd.isNotBlank() }
+            .sumOf { repository.upsert(it.toUpsertCommand()) }
     }
 }

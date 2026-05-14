@@ -11,21 +11,8 @@ class FestivalSyncService(
 ) {
     @Transactional
     fun upsertPage(items: List<FestivalItem>): Int {
-        var saved = 0
-        for (item in items) {
-            if (item.fstvlNm.isBlank() || item.opar.isBlank() || item.fstvlStartDate.isBlank()) continue
-            val existing = repository.findByNameAndVenueAndStartDate(
-                item.fstvlNm,
-                item.opar,
-                item.fstvlStartDate,
-            )
-            if (existing == null) {
-                repository.save(item.toFestival())
-            } else {
-                existing.applyUpdate(item)
-            }
-            saved++
-        }
-        return saved
+        return items
+            .filter { it.fstvlNm.isNotBlank() && it.opar.isNotBlank() && it.fstvlStartDate.isNotBlank() }
+            .sumOf { repository.upsert(it.toUpsertCommand()) }
     }
 }

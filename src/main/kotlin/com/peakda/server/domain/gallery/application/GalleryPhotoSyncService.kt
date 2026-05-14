@@ -11,13 +11,8 @@ class GalleryPhotoSyncService(
 ) {
     @Transactional
     fun upsertPage(items: List<GalleryListItem>): Int {
-        var saved = 0
-        for (item in items) {
-            if (item.galContentId.isBlank()) continue
-            val existing = repository.findByTourApiContentId(item.galContentId)
-            if (existing == null) repository.save(item.toGalleryPhoto()) else existing.applyUpdate(item)
-            saved++
-        }
-        return saved
+        return items
+            .filter { it.galContentId.isNotBlank() }
+            .sumOf { repository.upsert(it.toUpsertCommand()) }
     }
 }

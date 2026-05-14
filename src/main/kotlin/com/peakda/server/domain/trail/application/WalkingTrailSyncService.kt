@@ -13,14 +13,9 @@ class WalkingRouteSyncService(
 ) {
     @Transactional
     fun upsertPage(items: List<RouteItem>): Int {
-        var saved = 0
-        for (item in items) {
-            if (item.routeIdx.isBlank()) continue
-            val existing = repository.findByDurunubiRouteId(item.routeIdx)
-            if (existing == null) repository.save(item.toWalkingRoute()) else existing.applyUpdate(item)
-            saved++
-        }
-        return saved
+        return items
+            .filter { it.routeIdx.isNotBlank() }
+            .sumOf { repository.upsert(it.toUpsertCommand()) }
     }
 }
 
@@ -30,13 +25,8 @@ class WalkingCourseSyncService(
 ) {
     @Transactional
     fun upsertPage(items: List<CourseItem>): Int {
-        var saved = 0
-        for (item in items) {
-            if (item.crsIdx.isBlank()) continue
-            val existing = repository.findByDurunubiCourseId(item.crsIdx)
-            if (existing == null) repository.save(item.toWalkingCourse()) else existing.applyUpdate(item)
-            saved++
-        }
-        return saved
+        return items
+            .filter { it.crsIdx.isNotBlank() }
+            .sumOf { repository.upsert(it.toUpsertCommand()) }
     }
 }
