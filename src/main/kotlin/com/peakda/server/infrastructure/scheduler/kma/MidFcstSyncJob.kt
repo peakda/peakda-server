@@ -37,10 +37,10 @@ class MidFcstSyncJob(
     private fun syncRegion(region: MidRegionCode, tmFc: String): Int {
         var processed = 0
         client.getMidLandFcst(landParams(region, tmFc)).item.firstOrNull()?.let {
-            processed += syncService.upsertLand(region.landRegId, tmFc, it)
+            processed += syncService.upsertLand(region.name, region.landRegId, tmFc, it)
         }
         client.getMidTa(taParams(region, tmFc)).item.firstOrNull()?.let {
-            processed += syncService.upsertTa(region.temperatureRegId, tmFc, it)
+            processed += syncService.upsertTa(region.name, region.temperatureRegId, tmFc, it)
         }
         return processed
     }
