@@ -47,8 +47,7 @@ class VilageFcstSyncJob(
     }
 
     private fun latestVilageBase(): LocalDateTime {
-        val now = LocalDateTime.now(KST).minusMinutes(10)
-        return now.withHour((now.hour / 3) * 3).withMinute(0).withSecond(0).withNano(0)
+        return resolveLatestVilageBase(LocalDateTime.now(KST))
     }
 
     companion object {
@@ -56,5 +55,20 @@ class VilageFcstSyncJob(
         private const val PAGE_SIZE = 1000
         private const val MAX_PAGES = 20
         private val DEFAULT_GRID = SchedulerProperties.VilageFcstJobProps.Grid("서울", 60, 127)
+        private val BASE_HOURS = listOf(2, 5, 8, 11, 14, 17, 20, 23)
+
+        internal fun resolveLatestVilageBase(now: LocalDateTime): LocalDateTime {
+            val availableAt = now.minusMinutes(10)
+            val baseHour = BASE_HOURS.lastOrNull { it <= availableAt.hour }
+
+            return if (baseHour == null) {
+                availableAt.toLocalDate()
+                    .minusDays(1)
+                    .atTime(BASE_HOURS.last(), 0)
+            } else {
+                availableAt.toLocalDate()
+                    .atTime(baseHour, 0)
+            }
+        }
     }
 }

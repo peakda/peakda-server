@@ -16,6 +16,7 @@ import org.mockito.Mockito
 import org.springframework.http.MediaType
 import org.springframework.test.web.client.match.MockRestRequestMatchers.requestTo
 import org.springframework.test.web.client.response.MockRestResponseCreators.withSuccess
+import java.time.LocalDateTime
 
 class VilageFcstSyncJobTest {
     private val fixture = kmaFixture("https://example.test/vilage", "VilageFcstInfoService") {
@@ -44,6 +45,27 @@ class VilageFcstSyncJobTest {
 
         fixture.server.verify()
         assertThat(syncService.pages).isEmpty()
+    }
+
+    @Test
+    fun `03시 15분 이후 기준시각은 같은 날 0200 이다`() {
+        val base = VilageFcstSyncJob.resolveLatestVilageBase(LocalDateTime.of(2026, 5, 12, 3, 15))
+
+        assertThat(base).isEqualTo(LocalDateTime.of(2026, 5, 12, 2, 0))
+    }
+
+    @Test
+    fun `06시 15분 이후 기준시각은 같은 날 0500 이다`() {
+        val base = VilageFcstSyncJob.resolveLatestVilageBase(LocalDateTime.of(2026, 5, 12, 6, 15))
+
+        assertThat(base).isEqualTo(LocalDateTime.of(2026, 5, 12, 5, 0))
+    }
+
+    @Test
+    fun `00시 15분 이후 기준시각은 전날 2300 이다`() {
+        val base = VilageFcstSyncJob.resolveLatestVilageBase(LocalDateTime.of(2026, 5, 12, 0, 15))
+
+        assertThat(base).isEqualTo(LocalDateTime.of(2026, 5, 11, 23, 0))
     }
 
     private fun enabled(jobEnabled: Boolean) = SchedulerProperties(
