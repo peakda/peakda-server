@@ -72,6 +72,12 @@ internal class NoOpSchedulerJobRunRecorder : SchedulerJobRunRecorder {
     override fun start(jobName: String): Long? = null
     override fun complete(runId: Long?, processedCount: Int?, totalCount: Int?) = Unit
     override fun fail(runId: Long?, throwable: Throwable) = Unit
+    override fun skip(jobName: String, reason: String) = Unit
 }
 
-internal fun testJobLogger(): JobLogger = JobLogger(NoOpSchedulerJobRunRecorder(), SimpleMeterRegistry())
+internal object NoOpSchedulerJobLock : SchedulerJobLock {
+    override fun <T> withLock(jobName: String, block: () -> T): SchedulerJobLockResult<T> =
+        SchedulerJobLockResult.Acquired(block())
+}
+
+internal fun testJobLogger(): JobLogger = JobLogger(NoOpSchedulerJobRunRecorder(), SimpleMeterRegistry(), NoOpSchedulerJobLock)
