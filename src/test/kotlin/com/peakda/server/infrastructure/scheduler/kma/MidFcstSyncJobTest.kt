@@ -27,7 +27,7 @@ class MidFcstSyncJobTest {
     private val syncService = RecordingMidSync()
 
     @Test
-    fun `run 시 모든 region에 대해 land와 ta 를 호출한다`() {
+    fun `run 시 모든 region에 대해 육상예보와 기온예보를 호출한다`() {
         val regions = MidRegionCode.entries.size
         fixture.server.expect(
             ExpectedCount.times(regions),
@@ -36,16 +36,16 @@ class MidFcstSyncJobTest {
         fixture.server.expect(
             ExpectedCount.times(regions),
             requestTo(startsWith("https://example.test/mid/getMidTa")),
-        ).andRespond(withSuccess(TA_JSON, MediaType.APPLICATION_JSON))
+        ).andRespond(withSuccess(TEMPERATURE_JSON, MediaType.APPLICATION_JSON))
 
         val job = MidFcstSyncJob(fixture.client, syncService, enabled(true), testJobLogger())
         job.run()
 
         fixture.server.verify()
         assertThat(syncService.landCalls).isEqualTo(regions)
-        assertThat(syncService.taCalls).isEqualTo(regions)
+        assertThat(syncService.temperatureCalls).isEqualTo(regions)
         assertThat(syncService.landRegions).contains("SEOUL" to "11B00000")
-        assertThat(syncService.taRegions).contains("SEOUL" to "11B10101")
+        assertThat(syncService.temperatureRegions).contains("SEOUL" to "11B10101")
     }
 
     @Test
@@ -68,10 +68,10 @@ class MidFcstSyncJobTest {
     private class RecordingMidSync :
         WeatherMidForecastSyncService(Mockito.mock(WeatherMidForecastRepository::class.java)) {
         var landCalls = 0
-        var taCalls = 0
+        var temperatureCalls = 0
         val landRegions = mutableListOf<Pair<String, String>>()
-        val taRegions = mutableListOf<Pair<String, String>>()
-        override fun upsertLand(
+        val temperatureRegions = mutableListOf<Pair<String, String>>()
+        override fun upsertLandForecast(
             regionCode: String,
             sourceRegionCode: String,
             announceTime: String,
@@ -80,14 +80,14 @@ class MidFcstSyncJobTest {
             landRegions += regionCode to sourceRegionCode
             landCalls++; return 1
         }
-        override fun upsertTa(
+        override fun upsertTemperatureForecast(
             regionCode: String,
             sourceRegionCode: String,
             announceTime: String,
             item: MidTaItem,
         ): Int {
-            taRegions += regionCode to sourceRegionCode
-            taCalls++; return 1
+            temperatureRegions += regionCode to sourceRegionCode
+            temperatureCalls++; return 1
         }
     }
 
@@ -96,7 +96,7 @@ class MidFcstSyncJobTest {
             { "response": { "header": { "resultCode": "00", "resultMsg": "NORMAL_SERVICE" },
               "body": { "items": { "item": [ { "regId": "11B00000", "wf3Am": "맑음" } ] }, "totalCount": 1 } } }
         """.trimIndent()
-        private val TA_JSON = """
+        private val TEMPERATURE_JSON = """
             { "response": { "header": { "resultCode": "00", "resultMsg": "NORMAL_SERVICE" },
               "body": { "items": { "item": [ { "regId": "11B10101", "taMin3": 10, "taMax3": 20 } ] }, "totalCount": 1 } } }
         """.trimIndent()

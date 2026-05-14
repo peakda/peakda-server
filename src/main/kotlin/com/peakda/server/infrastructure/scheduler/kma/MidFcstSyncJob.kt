@@ -21,37 +21,37 @@ class MidFcstSyncJob(
     @Scheduled(cron = "\${external.scheduler.kma.mid-fcst.cron}", zone = "Asia/Seoul")
     fun run() {
         jobLogger.runIfEnabled(JOB_NAME, props.enabled && props.kma.midFcst.enabled) {
-            val tmFc = latestAnnouncement()
+            val announcementTime = latestAnnouncementTime()
             var processed = 0
             for (region in MidRegionCode.entries) {
-                processed += syncRegion(region, tmFc)
+                processed += syncRegion(region, announcementTime)
             }
             mapOf(
                 JobLogger.KEY_PROCESSED to processed,
                 "regions" to MidRegionCode.entries.size,
-                "tmFc" to tmFc,
+                "tmFc" to announcementTime,
             )
         }
     }
 
-    private fun syncRegion(region: MidRegionCode, tmFc: String): Int {
+    private fun syncRegion(region: MidRegionCode, announcementTime: String): Int {
         var processed = 0
-        client.getMidLandFcst(landParams(region, tmFc)).item.firstOrNull()?.let {
-            processed += syncService.upsertLand(region.name, region.landRegId, tmFc, it)
+        client.getMidLandFcst(landForecastParams(region, announcementTime)).item.firstOrNull()?.let {
+            processed += syncService.upsertLandForecast(region.name, region.landRegId, announcementTime, it)
         }
-        client.getMidTa(taParams(region, tmFc)).item.firstOrNull()?.let {
-            processed += syncService.upsertTa(region.name, region.temperatureRegId, tmFc, it)
+        client.getMidTa(temperatureForecastParams(region, announcementTime)).item.firstOrNull()?.let {
+            processed += syncService.upsertTemperatureForecast(region.name, region.temperatureRegId, announcementTime, it)
         }
         return processed
     }
 
-    private fun landParams(region: MidRegionCode, tmFc: String) =
-        mapOf("numOfRows" to 10, "pageNo" to 1, "regId" to region.landRegId, "tmFc" to tmFc)
+    private fun landForecastParams(region: MidRegionCode, announcementTime: String) =
+        mapOf("numOfRows" to 10, "pageNo" to 1, "regId" to region.landRegId, "tmFc" to announcementTime)
 
-    private fun taParams(region: MidRegionCode, tmFc: String) =
-        mapOf("numOfRows" to 10, "pageNo" to 1, "regId" to region.temperatureRegId, "tmFc" to tmFc)
+    private fun temperatureForecastParams(region: MidRegionCode, announcementTime: String) =
+        mapOf("numOfRows" to 10, "pageNo" to 1, "regId" to region.temperatureRegId, "tmFc" to announcementTime)
 
-    private fun latestAnnouncement(): String {
+    private fun latestAnnouncementTime(): String {
         val now = LocalDateTime.now(KST)
         val day = now.toLocalDate()
         return when {
