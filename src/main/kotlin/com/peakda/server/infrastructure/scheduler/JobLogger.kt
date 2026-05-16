@@ -1,5 +1,7 @@
 package com.peakda.server.infrastructure.scheduler
 
+import com.peakda.server.global.model.ErrorCode
+import com.peakda.server.infrastructure.external.common.ExternalApiException
 import com.peakda.server.infrastructure.scheduler.history.SchedulerJobRunRecorder
 import io.micrometer.core.instrument.MeterRegistry
 import io.micrometer.core.instrument.Timer
@@ -43,6 +45,25 @@ class JobLogger(
             } else {
                 log.info("[scheduler] job={} status=COMPLETED ms={}", jobName, elapsed)
             }
+        } catch (e: ExternalApiException) {
+            val elapsed = System.currentTimeMillis() - started
+            sample.stop(meterRegistry.timer("scheduler.job.duration", "job", jobName))
+            if (e.errorCode == ErrorCode.EXTERNAL_API_QUOTA_EXCEEDED) {
+                recorder.skipExisting(runId, SKIP_QUOTA_EXHAUSTED)
+                meterRegistry.counter(
+                    "scheduler.job.skip_total",
+                    "job", jobName,
+                    "reason", SKIP_QUOTA_EXHAUSTED,
+                ).increment()
+                log.warn(
+                    "[scheduler] job={} status=SKIPPED reason={} ms={} message={}",
+                    jobName, SKIP_QUOTA_EXHAUSTED, elapsed, e.message,
+                )
+            } else {
+                recorder.fail(runId, e)
+                meterRegistry.counter("scheduler.job.failure_total", "job", jobName).increment()
+                log.error("[scheduler] job={} status=FAILED ms={} error={}", jobName, elapsed, e.message, e)
+            }
         } catch (e: Exception) {
             val elapsed = System.currentTimeMillis() - started
             sample.stop(meterRegistry.timer("scheduler.job.duration", "job", jobName))
@@ -62,6 +83,7 @@ class JobLogger(
         const val KEY_PROCESSED = "processedCount"
         const val KEY_TOTAL = "totalCount"
         const val SKIP_LOCKED = "locked"
+        const val SKIP_QUOTA_EXHAUSTED = "quota_exhausted"
         private val log = LoggerFactory.getLogger(JobLogger::class.java)
     }
 }

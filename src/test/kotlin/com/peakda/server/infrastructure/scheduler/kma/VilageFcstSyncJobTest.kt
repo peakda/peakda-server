@@ -9,6 +9,7 @@ import com.peakda.server.infrastructure.scheduler.kmaFixture
 import com.peakda.server.infrastructure.scheduler.testErrorDecoder
 import com.peakda.server.infrastructure.scheduler.testJobLogger
 import com.peakda.server.infrastructure.scheduler.testObjectMapper
+import com.peakda.server.infrastructure.scheduler.testResilience
 import org.assertj.core.api.Assertions.assertThat
 import org.hamcrest.Matchers.startsWith
 import org.junit.jupiter.api.Test
@@ -20,7 +21,7 @@ import java.time.LocalDateTime
 
 class VilageFcstSyncJobTest {
     private val fixture = kmaFixture("https://example.test/vilage", "VilageFcstInfoService") {
-        VilageFcstClient(it, testObjectMapper, testErrorDecoder)
+        VilageFcstClient(it, testObjectMapper, testErrorDecoder, testResilience)
     }
     private val syncService = RecordingShortFcstSync()
 

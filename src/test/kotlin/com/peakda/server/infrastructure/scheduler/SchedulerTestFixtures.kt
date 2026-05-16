@@ -3,6 +3,7 @@ package com.peakda.server.infrastructure.scheduler
 import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
 import com.peakda.server.infrastructure.external.common.DataGoKrErrorDecoder
 import com.peakda.server.infrastructure.external.common.ExternalApiLoggingInterceptor
+import com.peakda.server.infrastructure.external.common.ExternalApiResilienceExecutor
 import com.peakda.server.infrastructure.external.common.JsonOnlyInterceptor
 import com.peakda.server.infrastructure.external.common.KtoCommonParamInterceptor
 import com.peakda.server.infrastructure.external.common.ServiceKeyInterceptor
@@ -67,12 +68,14 @@ internal fun <T> pubdataFixture(
 
 internal val testObjectMapper get() = jacksonObjectMapper()
 internal val testErrorDecoder get() = DataGoKrErrorDecoder()
+internal val testResilience get() = ExternalApiResilienceExecutor.noop()
 
 internal class NoOpSchedulerJobRunRecorder : SchedulerJobRunRecorder {
     override fun start(jobName: String): Long? = null
     override fun complete(runId: Long?, processedCount: Int?, totalCount: Int?) = Unit
     override fun fail(runId: Long?, throwable: Throwable) = Unit
     override fun skip(jobName: String, reason: String) = Unit
+    override fun skipExisting(runId: Long?, reason: String) = Unit
 }
 
 internal object NoOpSchedulerJobLock : SchedulerJobLock {
