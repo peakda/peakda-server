@@ -5,6 +5,7 @@ spring-dependency-management = "1.1.7"
 jjwt = "0.12.6"
 springdoc-openapi = "2.8.17"
 redisson = "4.3.1"
+resilience4j = "2.2.0"
 
 [libraries]
 # Spring Boot Starters
@@ -27,6 +28,7 @@ kotlin-test-junit5 = { module = "org.jetbrains.kotlin:kotlin-test-junit5" }
 postgresql = { module = "org.postgresql:postgresql" }
 liquibase-core = { module = "org.liquibase:liquibase-core" }
 redisson = { module = "org.redisson:redisson", version.ref = "redisson" }
+resilience4j-spring-boot3 = { module = "io.github.resilience4j:resilience4j-spring-boot3", version.ref = "resilience4j" }
 
 # Test
 spring-boot-testcontainers = { module = "org.springframework.boot:spring-boot-testcontainers" }
