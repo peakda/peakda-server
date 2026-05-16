@@ -3,6 +3,7 @@ package com.peakda.server.infrastructure.external.kma.vilagefcst
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.peakda.server.infrastructure.external.common.DataGoKrBody
 import com.peakda.server.infrastructure.external.common.DataGoKrErrorDecoder
+import com.peakda.server.infrastructure.external.common.ExternalApiResilienceExecutor
 import com.peakda.server.infrastructure.external.common.getDataGoKrBody
 import com.peakda.server.infrastructure.external.kma.vilagefcst.response.FcstVersionItem
 import com.peakda.server.infrastructure.external.kma.vilagefcst.response.UltraSrtFcstItem
@@ -17,6 +18,7 @@ class VilageFcstClient(
     @param:Qualifier("vilageFcstRestClient") private val restClient: RestClient,
     private val objectMapper: ObjectMapper,
     private val errorDecoder: DataGoKrErrorDecoder,
+    private val resilience: ExternalApiResilienceExecutor,
 ) {
     fun getVilageFcst(params: Map<String, Any?>): DataGoKrBody<VilageFcstItem> = get("/getVilageFcst", params)
 
@@ -27,6 +29,12 @@ class VilageFcstClient(
     fun getFcstVersion(params: Map<String, Any?>): DataGoKrBody<FcstVersionItem> = get("/getFcstVersion", params)
 
     private inline fun <reified T : Any> get(path: String, params: Map<String, Any?>): DataGoKrBody<T> {
-        return restClient.getDataGoKrBody(objectMapper, errorDecoder, path, params)
+        return resilience.execute(PROVIDER) {
+            restClient.getDataGoKrBody<T>(objectMapper, errorDecoder, path, params)
+        }
+    }
+
+    companion object {
+        private const val PROVIDER = "KMA"
     }
 }

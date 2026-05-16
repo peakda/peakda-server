@@ -3,6 +3,7 @@ package com.peakda.server.infrastructure.external.kto.durunubi
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.peakda.server.infrastructure.external.common.DataGoKrBody
 import com.peakda.server.infrastructure.external.common.DataGoKrErrorDecoder
+import com.peakda.server.infrastructure.external.common.ExternalApiResilienceExecutor
 import com.peakda.server.infrastructure.external.common.getDataGoKrBody
 import com.peakda.server.infrastructure.external.kto.durunubi.response.CourseItem
 import com.peakda.server.infrastructure.external.kto.durunubi.response.RouteItem
@@ -15,10 +16,19 @@ class DurunubiClient(
     @param:Qualifier("durunubiRestClient") private val restClient: RestClient,
     private val objectMapper: ObjectMapper,
     private val errorDecoder: DataGoKrErrorDecoder,
+    private val resilience: ExternalApiResilienceExecutor,
 ) {
-    fun routeList(params: Map<String, Any?>): DataGoKrBody<RouteItem> =
-        restClient.getDataGoKrBody(objectMapper, errorDecoder, "/routeList", params)
+    fun routeList(params: Map<String, Any?>): DataGoKrBody<RouteItem> = get("/routeList", params)
 
-    fun courseList(params: Map<String, Any?>): DataGoKrBody<CourseItem> =
-        restClient.getDataGoKrBody(objectMapper, errorDecoder, "/courseList", params)
+    fun courseList(params: Map<String, Any?>): DataGoKrBody<CourseItem> = get("/courseList", params)
+
+    private inline fun <reified T : Any> get(path: String, params: Map<String, Any?>): DataGoKrBody<T> {
+        return resilience.execute(PROVIDER) {
+            restClient.getDataGoKrBody<T>(objectMapper, errorDecoder, path, params)
+        }
+    }
+
+    companion object {
+        private const val PROVIDER = "KTO"
+    }
 }

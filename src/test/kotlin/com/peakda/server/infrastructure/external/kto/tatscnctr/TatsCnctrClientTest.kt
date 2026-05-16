@@ -3,6 +3,7 @@ package com.peakda.server.infrastructure.external.kto.tatscnctr
 import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
 import com.peakda.server.infrastructure.external.common.DataGoKrErrorDecoder
 import com.peakda.server.infrastructure.external.common.ExternalApiLoggingInterceptor
+import com.peakda.server.infrastructure.external.common.ExternalApiResilienceExecutor
 import com.peakda.server.infrastructure.external.common.JsonOnlyInterceptor
 import com.peakda.server.infrastructure.external.common.KtoCommonParamInterceptor
 import com.peakda.server.infrastructure.external.common.ServiceKeyInterceptor
@@ -72,7 +73,10 @@ class TatsCnctrClientTest {
                 it.add(ExternalApiLoggingInterceptor("KTO", "TatsCnctrRateService"))
             }
         val server = MockRestServiceServer.bindTo(builder).build()
-        return ClientFixture(TatsCnctrClient(builder.build(), jacksonObjectMapper(), DataGoKrErrorDecoder()), server)
+        return ClientFixture(
+            TatsCnctrClient(builder.build(), jacksonObjectMapper(), DataGoKrErrorDecoder(), ExternalApiResilienceExecutor.noop()),
+            server,
+        )
     }
 
     private data class ClientFixture(

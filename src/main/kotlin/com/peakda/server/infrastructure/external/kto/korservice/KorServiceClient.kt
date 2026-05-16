@@ -3,6 +3,7 @@ package com.peakda.server.infrastructure.external.kto.korservice
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.peakda.server.infrastructure.external.common.DataGoKrBody
 import com.peakda.server.infrastructure.external.common.DataGoKrErrorDecoder
+import com.peakda.server.infrastructure.external.common.ExternalApiResilienceExecutor
 import com.peakda.server.infrastructure.external.common.getDataGoKrBody
 import com.peakda.server.infrastructure.external.kto.korservice.response.AreaBasedListItem
 import com.peakda.server.infrastructure.external.kto.korservice.response.AreaBasedSyncListItem
@@ -24,6 +25,7 @@ class KorServiceClient(
     @param:Qualifier("korServiceRestClient") private val restClient: RestClient,
     private val objectMapper: ObjectMapper,
     private val errorDecoder: DataGoKrErrorDecoder,
+    private val resilience: ExternalApiResilienceExecutor,
 ) {
     fun areaBasedList(params: Map<String, Any?>): DataGoKrBody<AreaBasedListItem> =
         get("/areaBasedList2", params)
@@ -59,7 +61,12 @@ class KorServiceClient(
         get("/detailPetTour2", params)
 
     private inline fun <reified T : Any> get(path: String, params: Map<String, Any?>): DataGoKrBody<T> {
-        return restClient.getDataGoKrBody(objectMapper, errorDecoder, path, params)
+        return resilience.execute(PROVIDER) {
+            restClient.getDataGoKrBody<T>(objectMapper, errorDecoder, path, params)
+        }
+    }
+
+    companion object {
+        private const val PROVIDER = "KTO"
     }
 }
-
