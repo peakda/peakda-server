@@ -10,6 +10,7 @@ import org.springframework.security.core.AuthenticationException
 import org.springframework.web.bind.MethodArgumentNotValidException
 import org.springframework.web.bind.annotation.ExceptionHandler
 import org.springframework.web.bind.annotation.RestControllerAdvice
+import org.springframework.web.servlet.resource.NoResourceFoundException
 
 @RestControllerAdvice
 class GlobalExceptionHandler {
@@ -39,6 +40,11 @@ class GlobalExceptionHandler {
     fun handleAuthentication(e: AuthenticationException): ResponseEntity<ApiResponse<Unit>> {
         log.warn("인증 실패 - {}", e.message)
         return buildResponse(ErrorCode.UNAUTHORIZED)
+    }
+
+    @ExceptionHandler(NoResourceFoundException::class)
+    fun handleNoResourceFound(e: NoResourceFoundException): ResponseEntity<ApiResponse<Unit>> {
+        return buildResponse(ErrorCode.RESOURCE_NOT_FOUND)
     }
 
     @ExceptionHandler(Exception::class)
