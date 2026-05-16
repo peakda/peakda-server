@@ -3,7 +3,12 @@ package com.peakda.server.infrastructure.external.kma
 import com.peakda.server.infrastructure.external.common.DataGoKrProperties
 import com.peakda.server.infrastructure.external.common.ExternalApiLoggingInterceptor
 import com.peakda.server.infrastructure.external.common.ExternalRestClientFactory
+import com.peakda.server.infrastructure.external.common.ProviderRateLimiterRegistry
+import com.peakda.server.infrastructure.external.common.QuotaGuardInterceptor
+import com.peakda.server.infrastructure.external.common.QuotaService
+import com.peakda.server.infrastructure.external.common.RateLimitInterceptor
 import com.peakda.server.infrastructure.external.common.ServiceKeyInterceptor
+import io.micrometer.core.instrument.MeterRegistry
 import org.springframework.beans.factory.annotation.Qualifier
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
@@ -14,6 +19,9 @@ class KmaRestClientConfig(
     private val kmaProperties: KmaProperties,
     private val dataGoKrProperties: DataGoKrProperties,
     private val restClientBuilder: RestClient.Builder,
+    private val quotaService: QuotaService,
+    private val rateLimiterRegistry: ProviderRateLimiterRegistry,
+    private val meterRegistry: MeterRegistry,
 ) {
     @Bean
     @Qualifier("vilageFcstRestClient")
@@ -29,10 +37,16 @@ class KmaRestClientConfig(
             baseUrl = baseUrl,
             properties = dataGoKrProperties,
             interceptors = listOf(
+                RateLimitInterceptor(PROVIDER, rateLimiterRegistry, meterRegistry),
+                QuotaGuardInterceptor(PROVIDER, service, quotaService, meterRegistry),
                 ServiceKeyInterceptor(kmaProperties.serviceKey),
                 KmaJsonInterceptor(),
-                ExternalApiLoggingInterceptor("KMA", service),
+                ExternalApiLoggingInterceptor(PROVIDER, service),
             ),
         )
+    }
+
+    companion object {
+        private const val PROVIDER = "KMA"
     }
 }

@@ -5,7 +5,12 @@ import com.peakda.server.infrastructure.external.common.ExternalApiLoggingInterc
 import com.peakda.server.infrastructure.external.common.ExternalRestClientFactory
 import com.peakda.server.infrastructure.external.common.JsonOnlyInterceptor
 import com.peakda.server.infrastructure.external.common.KtoCommonParamInterceptor
+import com.peakda.server.infrastructure.external.common.ProviderRateLimiterRegistry
+import com.peakda.server.infrastructure.external.common.QuotaGuardInterceptor
+import com.peakda.server.infrastructure.external.common.QuotaService
+import com.peakda.server.infrastructure.external.common.RateLimitInterceptor
 import com.peakda.server.infrastructure.external.common.ServiceKeyInterceptor
+import io.micrometer.core.instrument.MeterRegistry
 import org.springframework.beans.factory.annotation.Qualifier
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
@@ -16,6 +21,9 @@ class KtoRestClientConfig(
     private val ktoProperties: KtoProperties,
     private val dataGoKrProperties: DataGoKrProperties,
     private val restClientBuilder: RestClient.Builder,
+    private val quotaService: QuotaService,
+    private val rateLimiterRegistry: ProviderRateLimiterRegistry,
+    private val meterRegistry: MeterRegistry,
 ) {
     @Bean
     @Qualifier("korServiceRestClient")
@@ -43,11 +51,17 @@ class KtoRestClientConfig(
             baseUrl = baseUrl,
             properties = dataGoKrProperties,
             interceptors = listOf(
+                RateLimitInterceptor(PROVIDER, rateLimiterRegistry, meterRegistry),
+                QuotaGuardInterceptor(PROVIDER, service, quotaService, meterRegistry),
                 ServiceKeyInterceptor(ktoProperties.serviceKey),
                 KtoCommonParamInterceptor(dataGoKrProperties.mobileApp),
                 JsonOnlyInterceptor(),
-                ExternalApiLoggingInterceptor("KTO", service),
+                ExternalApiLoggingInterceptor(PROVIDER, service),
             ),
         )
+    }
+
+    companion object {
+        private const val PROVIDER = "KTO"
     }
 }
