@@ -1,10 +1,10 @@
 package com.peakda.server.infrastructure.external.kto.photo
 
 import com.fasterxml.jackson.databind.ObjectMapper
-import com.peakda.server.infrastructure.external.common.DataGoKrBody
-import com.peakda.server.infrastructure.external.common.DataGoKrErrorDecoder
+import com.peakda.server.infrastructure.external.datagokr.DataGoKrBody
+import com.peakda.server.infrastructure.external.datagokr.DataGoKrErrorDecoder
 import com.peakda.server.infrastructure.external.common.ExternalApiResilienceExecutor
-import com.peakda.server.infrastructure.external.common.getDataGoKrBody
+import com.peakda.server.infrastructure.external.datagokr.getDataGoKrBody
 import com.peakda.server.infrastructure.external.kto.photo.response.GalleryDetailItem
 import com.peakda.server.infrastructure.external.kto.photo.response.GalleryListItem
 import com.peakda.server.infrastructure.external.kto.photo.response.GallerySearchItem

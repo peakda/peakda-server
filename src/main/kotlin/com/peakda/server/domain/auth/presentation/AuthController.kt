@@ -1,12 +1,12 @@
 package com.peakda.server.domain.auth.presentation
 
 import com.peakda.server.domain.auth.application.AuthService
-import com.peakda.server.domain.auth.application.response.UserInfoResponse
+import com.peakda.server.domain.auth.presentation.response.UserInfoResponse
 import com.peakda.server.domain.auth.signup.presentation.request.SignupCompleteRequest
 import com.peakda.server.domain.auth.signup.presentation.response.NicknameCheckResponse
-import com.peakda.server.global.model.ApiResponse
-import com.peakda.server.global.security.principal.PrincipalDetails
-import com.peakda.server.global.security.principal.SignupSessionPrincipal
+import com.peakda.server.common.response.ApiResponse
+import com.peakda.server.common.security.principal.PrincipalDetails
+import com.peakda.server.common.security.principal.SignupSessionPrincipal
 import jakarta.servlet.http.HttpServletRequest
 import jakarta.servlet.http.HttpServletResponse
 import org.springframework.http.HttpStatus

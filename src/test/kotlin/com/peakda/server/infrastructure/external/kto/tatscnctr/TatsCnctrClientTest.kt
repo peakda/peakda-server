@@ -1,7 +1,7 @@
 package com.peakda.server.infrastructure.external.kto.tatscnctr
 
 import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
-import com.peakda.server.infrastructure.external.common.DataGoKrErrorDecoder
+import com.peakda.server.infrastructure.external.datagokr.DataGoKrErrorDecoder
 import com.peakda.server.infrastructure.external.common.ExternalApiLoggingInterceptor
 import com.peakda.server.infrastructure.external.common.ExternalApiResilienceExecutor
 import com.peakda.server.infrastructure.external.common.JsonOnlyInterceptor

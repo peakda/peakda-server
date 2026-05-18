@@ -1,7 +1,7 @@
 package com.peakda.server.domain.auth.signup.entity
 
 import com.peakda.server.domain.auth.oauth.model.OAuth2LoginType
-import com.peakda.server.global.persistence.BaseTimeEntity
+import com.peakda.server.common.persistence.BaseTimeEntity
 import jakarta.persistence.Column
 import jakarta.persistence.Entity
 import jakarta.persistence.EnumType

@@ -1,6 +1,6 @@
 package com.peakda.server.domain.auth.application
 
-import com.peakda.server.global.security.jwt.JwtProperties
+import com.peakda.server.common.security.jwt.JwtProperties
 import org.springframework.data.redis.core.StringRedisTemplate
 import org.springframework.stereotype.Service
 import java.util.concurrent.TimeUnit

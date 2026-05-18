@@ -1,12 +1,12 @@
 package com.peakda.server.domain.auth.oauth.handler
 
 import com.peakda.server.domain.auth.application.RefreshTokenService
-import com.peakda.server.global.security.cookie.CookieProperties
-import com.peakda.server.global.security.cookie.CookieUtils
-import com.peakda.server.global.security.jwt.JwtProperties
-import com.peakda.server.global.security.jwt.JwtTokenGenerator
-import com.peakda.server.global.security.principal.OAuth2SignupPrincipal
-import com.peakda.server.global.security.principal.PrincipalDetails
+import com.peakda.server.common.security.cookie.CookieProperties
+import com.peakda.server.common.security.cookie.CookieUtils
+import com.peakda.server.common.security.jwt.JwtProperties
+import com.peakda.server.common.security.jwt.JwtTokenGenerator
+import com.peakda.server.common.security.principal.OAuth2SignupPrincipal
+import com.peakda.server.common.security.principal.PrincipalDetails
 import jakarta.servlet.http.HttpServletRequest
 import jakarta.servlet.http.HttpServletResponse
 import org.slf4j.LoggerFactory

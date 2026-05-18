@@ -1,6 +1,6 @@
 package com.peakda.server.infrastructure.external.common
 
-import com.peakda.server.global.exception.BusinessException
+import com.peakda.server.common.exception.BusinessException
 
 class ExternalApiException(
     externalApiErrorCode: ExternalApiErrorCode,

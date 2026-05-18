@@ -4,7 +4,7 @@ import com.peakda.server.domain.auth.oauth.model.OAuth2LoginType
 import com.peakda.server.domain.auth.oauth.model.OAuth2UserInfo
 import com.peakda.server.domain.auth.signup.entity.SignupSession
 import com.peakda.server.domain.auth.signup.repository.SignupSessionRepository
-import com.peakda.server.global.security.cookie.CookieProperties
+import com.peakda.server.common.security.cookie.CookieProperties
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 import java.time.Instant

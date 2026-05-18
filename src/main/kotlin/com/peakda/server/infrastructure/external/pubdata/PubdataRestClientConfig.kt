@@ -1,6 +1,6 @@
 package com.peakda.server.infrastructure.external.pubdata
 
-import com.peakda.server.infrastructure.external.common.DataGoKrProperties
+import com.peakda.server.infrastructure.external.datagokr.DataGoKrProperties
 import com.peakda.server.infrastructure.external.common.ExternalApiLoggingInterceptor
 import com.peakda.server.infrastructure.external.common.ExternalRestClientFactory
 import com.peakda.server.infrastructure.external.common.ProviderRateLimiterRegistry

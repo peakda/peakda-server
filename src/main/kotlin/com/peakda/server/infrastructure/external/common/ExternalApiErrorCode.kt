@@ -1,6 +1,6 @@
 package com.peakda.server.infrastructure.external.common
 
-import com.peakda.server.global.model.ErrorCode
+import com.peakda.server.common.exception.ErrorCode
 
 enum class ExternalApiErrorCode(
     val errorCode: ErrorCode,

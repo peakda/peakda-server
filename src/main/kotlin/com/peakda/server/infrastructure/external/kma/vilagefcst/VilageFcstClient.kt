@@ -1,10 +1,10 @@
 package com.peakda.server.infrastructure.external.kma.vilagefcst
 
 import com.fasterxml.jackson.databind.ObjectMapper
-import com.peakda.server.infrastructure.external.common.DataGoKrBody
-import com.peakda.server.infrastructure.external.common.DataGoKrErrorDecoder
+import com.peakda.server.infrastructure.external.datagokr.DataGoKrBody
+import com.peakda.server.infrastructure.external.datagokr.DataGoKrErrorDecoder
 import com.peakda.server.infrastructure.external.common.ExternalApiResilienceExecutor
-import com.peakda.server.infrastructure.external.common.getDataGoKrBody
+import com.peakda.server.infrastructure.external.datagokr.getDataGoKrBody
 import com.peakda.server.infrastructure.external.kma.vilagefcst.response.FcstVersionItem
 import com.peakda.server.infrastructure.external.kma.vilagefcst.response.UltraSrtFcstItem
 import com.peakda.server.infrastructure.external.kma.vilagefcst.response.UltraSrtNcstItem
