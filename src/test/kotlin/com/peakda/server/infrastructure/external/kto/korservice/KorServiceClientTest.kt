@@ -3,6 +3,7 @@ package com.peakda.server.infrastructure.external.kto.korservice
 import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
 import com.peakda.server.infrastructure.external.common.DataGoKrErrorDecoder
 import com.peakda.server.infrastructure.external.common.ExternalApiLoggingInterceptor
+import com.peakda.server.infrastructure.external.common.ExternalApiResilienceExecutor
 import com.peakda.server.infrastructure.external.common.JsonOnlyInterceptor
 import com.peakda.server.infrastructure.external.common.KtoCommonParamInterceptor
 import com.peakda.server.infrastructure.external.common.ServiceKeyInterceptor
@@ -115,7 +116,10 @@ class KorServiceClientTest {
                 it.add(ExternalApiLoggingInterceptor("KTO", "KorService2"))
             }
         val server = MockRestServiceServer.bindTo(builder).build()
-        return ClientFixture(KorServiceClient(builder.build(), jacksonObjectMapper(), DataGoKrErrorDecoder()), server)
+        return ClientFixture(
+            KorServiceClient(builder.build(), jacksonObjectMapper(), DataGoKrErrorDecoder(), ExternalApiResilienceExecutor.noop()),
+            server,
+        )
     }
 
     private data class ClientFixture(

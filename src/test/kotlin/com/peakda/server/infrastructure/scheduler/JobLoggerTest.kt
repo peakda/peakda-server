@@ -1,5 +1,7 @@
 package com.peakda.server.infrastructure.scheduler
 
+import com.peakda.server.infrastructure.external.common.ExternalApiErrorCode
+import com.peakda.server.infrastructure.external.common.ExternalApiException
 import com.peakda.server.infrastructure.scheduler.history.SchedulerJobRunRecorder
 import io.micrometer.core.instrument.simple.SimpleMeterRegistry
 import org.assertj.core.api.Assertions.assertThat
@@ -57,6 +59,45 @@ class JobLoggerTest {
     }
 
     @Test
+    fun `QUOTA_EXCEEDED 예외는 실행 row를 skip quota_exhausted로 전환한다`() {
+        val recorder = RecordingRecorder()
+        val registry = SimpleMeterRegistry()
+        val logger = JobLogger(recorder, registry, AcquiringLock)
+
+        logger.run("quotaJob") {
+            throw ExternalApiException(ExternalApiErrorCode.EXTERNAL_API_QUOTA_EXCEEDED, "exhausted")
+        }
+
+        assertThat(recorder.events).containsExactly(
+            "start:quotaJob",
+            "skipExisting:1:quota_exhausted",
+        )
+        assertThat(registry.find("scheduler.job.failure_total").counter()).isNull()
+        assertThat(
+            registry.counter(
+                "scheduler.job.skip_total",
+                "job", "quotaJob",
+                "reason", "quota_exhausted",
+            ).count(),
+        ).isEqualTo(1.0)
+    }
+
+    @Test
+    fun `quota 외 ExternalApiException 은 failure 로 기록한다`() {
+        val recorder = RecordingRecorder()
+        val registry = SimpleMeterRegistry()
+        val logger = JobLogger(recorder, registry, AcquiringLock)
+
+        logger.run("authJob") {
+            throw ExternalApiException(ExternalApiErrorCode.EXTERNAL_API_AUTH_FAILED, "auth")
+        }
+
+        assertThat(recorder.events.first()).isEqualTo("start:authJob")
+        assertThat(recorder.events).anyMatch { it.startsWith("fail:1:ExternalApiException") }
+        assertThat(registry.counter("scheduler.job.failure_total", "job", "authJob").count()).isEqualTo(1.0)
+    }
+
+    @Test
     fun `락 획득 실패는 실행 이력을 skipped locked로 기록한다`() {
         val recorder = RecordingRecorder()
         val registry = SimpleMeterRegistry()
@@ -87,6 +128,9 @@ class JobLoggerTest {
         }
         override fun skip(jobName: String, reason: String) {
             events += "skip:$jobName:$reason"
+        }
+        override fun skipExisting(runId: Long?, reason: String) {
+            events += "skipExisting:$runId:$reason"
         }
     }
 

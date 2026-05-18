@@ -3,6 +3,7 @@ package com.peakda.server.infrastructure.external.kto.photo
 import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
 import com.peakda.server.infrastructure.external.common.DataGoKrErrorDecoder
 import com.peakda.server.infrastructure.external.common.ExternalApiLoggingInterceptor
+import com.peakda.server.infrastructure.external.common.ExternalApiResilienceExecutor
 import com.peakda.server.infrastructure.external.common.JsonOnlyInterceptor
 import com.peakda.server.infrastructure.external.common.KtoCommonParamInterceptor
 import com.peakda.server.infrastructure.external.common.ServiceKeyInterceptor
@@ -50,7 +51,10 @@ class PhotoGalleryClientTest {
                 it.add(ExternalApiLoggingInterceptor("KTO", "PhotoGalleryService1"))
             }
         val server = MockRestServiceServer.bindTo(builder).build()
-        return ClientFixture(PhotoGalleryClient(builder.build(), jacksonObjectMapper(), DataGoKrErrorDecoder()), server)
+        return ClientFixture(
+            PhotoGalleryClient(builder.build(), jacksonObjectMapper(), DataGoKrErrorDecoder(), ExternalApiResilienceExecutor.noop()),
+            server,
+        )
     }
 
     private fun successJson(): String =

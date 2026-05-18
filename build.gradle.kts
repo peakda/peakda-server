@@ -28,6 +28,7 @@ dependencies {
 	implementation(libs.spring.boot.starter.validation)
 	implementation(libs.spring.boot.starter.web)
 	implementation(libs.redisson)
+	implementation(libs.resilience4j.spring.boot3)
 	implementation(libs.jackson.module.kotlin)
 	implementation(libs.jackson.dataformat.xml)
 	implementation(libs.kotlin.reflect)

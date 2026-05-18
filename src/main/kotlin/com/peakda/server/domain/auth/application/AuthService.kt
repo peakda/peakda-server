@@ -80,7 +80,7 @@ class AuthService(
         val tokenResponse = jwtTokenGenerator.generateToken(
             userId = requireNotNull(user.id),
             email = user.email,
-            authorities = listOf(PrincipalDetails.ROLE),
+            authorities = listOf("${PrincipalDetails.ROLE_PREFIX}${user.role.name}"),
         )
         refreshTokenService.saveRefreshToken(user.id!!, tokenResponse.refreshToken)
 
@@ -136,7 +136,7 @@ class AuthService(
         val tokenResponse = jwtTokenGenerator.generateToken(
             userId = user.id!!,
             email = user.email,
-            authorities = listOf(PrincipalDetails.ROLE),
+            authorities = listOf("${PrincipalDetails.ROLE_PREFIX}${user.role.name}"),
         )
 
         // 7. Redis에 새 Refresh Token 저장 (Rotation)

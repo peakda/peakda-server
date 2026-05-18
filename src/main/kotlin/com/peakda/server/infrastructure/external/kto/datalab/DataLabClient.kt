@@ -3,6 +3,7 @@ package com.peakda.server.infrastructure.external.kto.datalab
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.peakda.server.infrastructure.external.common.DataGoKrBody
 import com.peakda.server.infrastructure.external.common.DataGoKrErrorDecoder
+import com.peakda.server.infrastructure.external.common.ExternalApiResilienceExecutor
 import com.peakda.server.infrastructure.external.common.getDataGoKrBody
 import com.peakda.server.infrastructure.external.kto.datalab.response.LocgoVisitrItem
 import com.peakda.server.infrastructure.external.kto.datalab.response.MetcoVisitrItem
@@ -15,10 +16,21 @@ class DataLabClient(
     @param:Qualifier("dataLabRestClient") private val restClient: RestClient,
     private val objectMapper: ObjectMapper,
     private val errorDecoder: DataGoKrErrorDecoder,
+    private val resilience: ExternalApiResilienceExecutor,
 ) {
     fun metcoRegnVisitrDDList(params: Map<String, Any?>): DataGoKrBody<MetcoVisitrItem> =
-        restClient.getDataGoKrBody(objectMapper, errorDecoder, "/metcoRegnVisitrDDList", params)
+        get("/metcoRegnVisitrDDList", params)
 
     fun locgoRegnVisitrDDList(params: Map<String, Any?>): DataGoKrBody<LocgoVisitrItem> =
-        restClient.getDataGoKrBody(objectMapper, errorDecoder, "/locgoRegnVisitrDDList", params)
+        get("/locgoRegnVisitrDDList", params)
+
+    private inline fun <reified T : Any> get(path: String, params: Map<String, Any?>): DataGoKrBody<T> {
+        return resilience.execute(PROVIDER) {
+            restClient.getDataGoKrBody<T>(objectMapper, errorDecoder, path, params)
+        }
+    }
+
+    companion object {
+        private const val PROVIDER = "KTO"
+    }
 }

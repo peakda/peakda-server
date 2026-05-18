@@ -3,6 +3,7 @@ package com.peakda.server.infrastructure.external.kto.durunubi
 import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
 import com.peakda.server.infrastructure.external.common.DataGoKrErrorDecoder
 import com.peakda.server.infrastructure.external.common.ExternalApiLoggingInterceptor
+import com.peakda.server.infrastructure.external.common.ExternalApiResilienceExecutor
 import com.peakda.server.infrastructure.external.common.JsonOnlyInterceptor
 import com.peakda.server.infrastructure.external.common.KtoCommonParamInterceptor
 import com.peakda.server.infrastructure.external.common.ServiceKeyInterceptor
@@ -50,7 +51,10 @@ class DurunubiClientTest {
                 it.add(ExternalApiLoggingInterceptor("KTO", "Durunubi"))
             }
         val server = MockRestServiceServer.bindTo(builder).build()
-        return ClientFixture(DurunubiClient(builder.build(), jacksonObjectMapper(), DataGoKrErrorDecoder()), server)
+        return ClientFixture(
+            DurunubiClient(builder.build(), jacksonObjectMapper(), DataGoKrErrorDecoder(), ExternalApiResilienceExecutor.noop()),
+            server,
+        )
     }
 
     private fun successJson(): String =

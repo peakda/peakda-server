@@ -11,6 +11,7 @@ import com.peakda.server.infrastructure.scheduler.kmaFixture
 import com.peakda.server.infrastructure.scheduler.testErrorDecoder
 import com.peakda.server.infrastructure.scheduler.testJobLogger
 import com.peakda.server.infrastructure.scheduler.testObjectMapper
+import com.peakda.server.infrastructure.scheduler.testResilience
 import org.assertj.core.api.Assertions.assertThat
 import org.hamcrest.Matchers.startsWith
 import org.junit.jupiter.api.Test
@@ -22,7 +23,7 @@ import org.springframework.test.web.client.response.MockRestResponseCreators.wit
 
 class MidFcstSyncJobTest {
     private val fixture = kmaFixture("https://example.test/mid", "MidFcstInfoService") {
-        MidFcstClient(it, testObjectMapper, testErrorDecoder)
+        MidFcstClient(it, testObjectMapper, testErrorDecoder, testResilience)
     }
     private val syncService = RecordingMidSync()
 

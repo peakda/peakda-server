@@ -9,6 +9,7 @@ import com.peakda.server.infrastructure.scheduler.pubdataFixture
 import com.peakda.server.infrastructure.scheduler.testErrorDecoder
 import com.peakda.server.infrastructure.scheduler.testJobLogger
 import com.peakda.server.infrastructure.scheduler.testObjectMapper
+import com.peakda.server.infrastructure.scheduler.testResilience
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Test
 import org.mockito.Mockito
@@ -18,7 +19,7 @@ import org.springframework.test.web.client.response.MockRestResponseCreators.wit
 
 class FestivalSyncJobTest {
     private val fixture = pubdataFixture("https://example.test/festival", "PublicCultureFestival") {
-        FestivalClient(it, testObjectMapper, testErrorDecoder)
+        FestivalClient(it, testObjectMapper, testErrorDecoder, testResilience)
     }
     private val syncService = RecordingFestivalSync()
 

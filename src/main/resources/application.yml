@@ -58,6 +58,56 @@ external:
     mobile-app: peakda
     connect-timeout: 3s
     read-timeout: 5s
+  quota:
+    enabled: ${EXTERNAL_QUOTA_ENABLED:false}
+    services:
+      KTO.KorService2: { daily-limit: 10000 }
+      KTO.TatsCnctrRateService: { daily-limit: 10000 }
+      KTO.DataLabService: { daily-limit: 10000 }
+      KTO.PhotoGalleryService1: { daily-limit: 10000 }
+      KTO.Durunubi: { daily-limit: 10000 }
+      KMA.VilageFcstInfoService: { daily-limit: 10000 }
+      KMA.MidFcstInfoService: { daily-limit: 10000 }
+      PUBDATA.PublicCultureFestival: { daily-limit: 10000 }
+  rate-limit:
+    enabled: ${EXTERNAL_RATE_LIMIT_ENABLED:true}
+    providers:
+      KTO: { permits: 5, period: 1s, timeout: 1s }
+      KMA: { permits: 5, period: 1s, timeout: 1s }
+      PUBDATA: { permits: 5, period: 1s, timeout: 1s }
+  resilience:
+    enabled: ${EXTERNAL_RESILIENCE_ENABLED:true}
+    providers:
+      KTO:
+        retry: { max-attempts: 3, initial-interval: 500ms, multiplier: 2.0, max-interval: 5s, jitter-factor: 0.3 }
+        circuit-breaker:
+          failure-rate-threshold: 50
+          slow-call-rate-threshold: 100
+          slow-call-duration: 10s
+          minimum-number-of-calls: 10
+          sliding-window-size: 20
+          wait-duration-in-open-state: 30s
+          permitted-number-of-calls-in-half-open-state: 3
+      KMA:
+        retry: { max-attempts: 3, initial-interval: 500ms, multiplier: 2.0, max-interval: 5s, jitter-factor: 0.3 }
+        circuit-breaker:
+          failure-rate-threshold: 50
+          slow-call-rate-threshold: 100
+          slow-call-duration: 10s
+          minimum-number-of-calls: 10
+          sliding-window-size: 20
+          wait-duration-in-open-state: 30s
+          permitted-number-of-calls-in-half-open-state: 3
+      PUBDATA:
+        retry: { max-attempts: 3, initial-interval: 500ms, multiplier: 2.0, max-interval: 5s, jitter-factor: 0.3 }
+        circuit-breaker:
+          failure-rate-threshold: 50
+          slow-call-rate-threshold: 100
+          slow-call-duration: 10s
+          minimum-number-of-calls: 10
+          sliding-window-size: 20
+          wait-duration-in-open-state: 30s
+          permitted-number-of-calls-in-half-open-state: 3
   kto:
     service-key: ${KTO_SERVICE_KEY}
     base-url:
@@ -97,3 +147,12 @@ external:
       mid-fcst: { cron: "0 30 6,18 * * *", enabled: true }
     pubdata:
       festival: { cron: "0 0 6 * * MON", enabled: true }
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics
+  endpoint:
+    health:
+      show-details: never
