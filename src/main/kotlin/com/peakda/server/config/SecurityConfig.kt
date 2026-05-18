@@ -65,7 +65,7 @@ class SecurityConfig(
             .authorizeHttpRequests {
                 it.requestMatchers(*PUBLIC_URLS).permitAll()
                     .requestMatchers("/api/auth/signup/nickname/check", "/api/auth/signup/complete").hasRole("SIGNUP")
-                    .requestMatchers("/actuator/health").permitAll()
+                    .requestMatchers("/actuator/health", "/actuator/info").permitAll()
                     .requestMatchers("/actuator/**").hasRole("ADMIN")
                     .anyRequest().hasRole("USER")
             }

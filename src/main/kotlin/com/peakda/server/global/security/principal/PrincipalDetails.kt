@@ -17,7 +17,7 @@ class PrincipalDetails(
     override fun getAttributes(): Map<String, Any> = attributes
 
     override fun getAuthorities(): Collection<GrantedAuthority> =
-        listOf(SimpleGrantedAuthority(ROLE))
+        listOf(SimpleGrantedAuthority("$ROLE_PREFIX${user.role.name}"))
 
     override fun getName(): String = user.id?.toString() ?: ""
 
@@ -34,6 +34,6 @@ class PrincipalDetails(
     override fun isCredentialsNonExpired(): Boolean = true
 
     companion object {
-        const val ROLE = "ROLE_USER"
+        const val ROLE_PREFIX = "ROLE_"
     }
 }

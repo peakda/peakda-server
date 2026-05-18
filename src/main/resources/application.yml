@@ -147,3 +147,12 @@ external:
       mid-fcst: { cron: "0 30 6,18 * * *", enabled: true }
     pubdata:
       festival: { cron: "0 0 6 * * MON", enabled: true }
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics
+  endpoint:
+    health:
+      show-details: never

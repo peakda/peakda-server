@@ -40,6 +40,10 @@ class User(
     @Enumerated(EnumType.STRING)
     @Column(name = "status", nullable = false, columnDefinition = "TEXT")
     var status: UserStatus = UserStatus.ACTIVE,
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "role", nullable = false, columnDefinition = "TEXT")
+    var role: UserRole = UserRole.USER,
 ) : BaseTimeEntity() {
 
     @Id
