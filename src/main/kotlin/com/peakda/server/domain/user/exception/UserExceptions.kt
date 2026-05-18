@@ -1,7 +1,7 @@
 package com.peakda.server.domain.user.exception
 
-import com.peakda.server.global.exception.BusinessException
-import com.peakda.server.global.model.ErrorCode
+import com.peakda.server.common.exception.BusinessException
+import com.peakda.server.common.exception.ErrorCode
 
 class NicknameDuplicatedException : BusinessException(ErrorCode.NICKNAME_DUPLICATED)
 

@@ -1,6 +1,6 @@
 package com.peakda.server.infrastructure.external.common
 
-import com.peakda.server.global.model.ErrorCode
+import com.peakda.server.common.exception.ErrorCode
 import io.micrometer.core.instrument.simple.SimpleMeterRegistry
 import org.assertj.core.api.Assertions.assertThat
 import org.assertj.core.api.Assertions.assertThatThrownBy

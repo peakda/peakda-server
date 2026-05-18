@@ -1,6 +1,6 @@
 package com.peakda.server.infrastructure.scheduler
 
-import com.peakda.server.global.model.ErrorCode
+import com.peakda.server.common.exception.ErrorCode
 import com.peakda.server.infrastructure.external.common.ExternalApiException
 import com.peakda.server.infrastructure.scheduler.history.SchedulerJobRunRecorder
 import io.micrometer.core.instrument.MeterRegistry

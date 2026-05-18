@@ -1,5 +1,6 @@
 package com.peakda.server.infrastructure.external.common
 
+import com.peakda.server.infrastructure.external.datagokr.DataGoKrProperties
 import org.springframework.http.client.ClientHttpRequestFactory
 import org.springframework.http.client.ClientHttpRequestInterceptor
 import org.springframework.http.client.SimpleClientHttpRequestFactory

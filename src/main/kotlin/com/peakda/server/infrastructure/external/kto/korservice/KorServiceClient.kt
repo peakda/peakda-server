@@ -1,10 +1,10 @@
 package com.peakda.server.infrastructure.external.kto.korservice
 
 import com.fasterxml.jackson.databind.ObjectMapper
-import com.peakda.server.infrastructure.external.common.DataGoKrBody
-import com.peakda.server.infrastructure.external.common.DataGoKrErrorDecoder
+import com.peakda.server.infrastructure.external.datagokr.DataGoKrBody
+import com.peakda.server.infrastructure.external.datagokr.DataGoKrErrorDecoder
 import com.peakda.server.infrastructure.external.common.ExternalApiResilienceExecutor
-import com.peakda.server.infrastructure.external.common.getDataGoKrBody
+import com.peakda.server.infrastructure.external.datagokr.getDataGoKrBody
 import com.peakda.server.infrastructure.external.kto.korservice.response.AreaBasedListItem
 import com.peakda.server.infrastructure.external.kto.korservice.response.AreaBasedSyncListItem
 import com.peakda.server.infrastructure.external.kto.korservice.response.DetailCommonItem

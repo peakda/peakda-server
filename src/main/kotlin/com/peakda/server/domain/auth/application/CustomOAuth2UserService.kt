@@ -5,8 +5,8 @@ import com.peakda.server.domain.auth.oauth.model.OAuth2LoginType
 import com.peakda.server.domain.auth.oauth.model.OAuth2UserInfo
 import com.peakda.server.domain.auth.signup.application.SignupSessionService
 import com.peakda.server.domain.user.repository.UserRepository
-import com.peakda.server.global.security.principal.OAuth2SignupPrincipal
-import com.peakda.server.global.security.principal.PrincipalDetails
+import com.peakda.server.common.security.principal.OAuth2SignupPrincipal
+import com.peakda.server.common.security.principal.PrincipalDetails
 import org.slf4j.LoggerFactory
 import org.springframework.security.oauth2.client.userinfo.DefaultOAuth2UserService
 import org.springframework.security.oauth2.client.userinfo.OAuth2UserRequest

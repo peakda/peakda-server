@@ -1,6 +1,6 @@
 package com.peakda.server.infrastructure.scheduler
 
-import com.peakda.server.infrastructure.external.common.DataGoKrBody
+import com.peakda.server.infrastructure.external.datagokr.DataGoKrBody
 
 internal data class PagingResult(val processed: Int, val totalCount: Int)
 

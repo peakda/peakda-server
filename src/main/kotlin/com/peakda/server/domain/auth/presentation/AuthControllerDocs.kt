@@ -1,13 +1,13 @@
 package com.peakda.server.domain.auth.presentation
 
-import com.peakda.server.domain.auth.application.response.UserInfoResponse
+import com.peakda.server.domain.auth.presentation.response.UserInfoResponse
 import com.peakda.server.domain.auth.signup.presentation.request.SignupCompleteRequest
 import com.peakda.server.domain.auth.signup.presentation.response.NicknameCheckResponse
-import com.peakda.server.global.model.ApiResponse
-import com.peakda.server.global.model.ErrorCode
-import com.peakda.server.global.openapi.ApiErrorResponses
-import com.peakda.server.global.security.principal.PrincipalDetails
-import com.peakda.server.global.security.principal.SignupSessionPrincipal
+import com.peakda.server.common.response.ApiResponse
+import com.peakda.server.common.exception.ErrorCode
+import com.peakda.server.common.openapi.ApiErrorResponses
+import com.peakda.server.common.security.principal.PrincipalDetails
+import com.peakda.server.common.security.principal.SignupSessionPrincipal
 import io.swagger.v3.oas.annotations.Operation
 import io.swagger.v3.oas.annotations.Parameter
 import io.swagger.v3.oas.annotations.security.SecurityRequirement
