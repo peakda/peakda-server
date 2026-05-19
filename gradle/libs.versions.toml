@@ -6,6 +6,8 @@ jjwt = "0.12.6"
 springdoc-openapi = "2.8.17"
 redisson = "4.3.1"
 resilience4j = "2.2.0"
+aws-sdk = "2.30.10"
+thumbnailator = "0.4.20"
 
 [libraries]
 # Spring Boot Starters
@@ -45,6 +47,12 @@ springdoc-openapi-starter-webmvc-ui = { module = "org.springdoc:springdoc-openap
 jjwt-api = { module = "io.jsonwebtoken:jjwt-api", version.ref = "jjwt" }
 jjwt-impl = { module = "io.jsonwebtoken:jjwt-impl", version.ref = "jjwt" }
 jjwt-jackson = { module = "io.jsonwebtoken:jjwt-jackson", version.ref = "jjwt" }
+
+# Storage (S3 호환 객체 스토리지)
+aws-sdk-s3 = { module = "software.amazon.awssdk:s3", version.ref = "aws-sdk" }
+
+# Image processing
+thumbnailator = { module = "net.coobird:thumbnailator", version.ref = "thumbnailator" }
 
 [plugins]
 kotlin-jvm = { id = "org.jetbrains.kotlin.jvm", version.ref = "kotlin" }

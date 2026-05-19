@@ -1,26 +1,34 @@
 package com.peakda.server.domain.auth.presentation
 
+import com.peakda.server.common.exception.ErrorCode
+import com.peakda.server.common.openapi.ApiErrorResponses
+import com.peakda.server.common.response.ApiResponse
+import com.peakda.server.common.security.principal.PrincipalDetails
+import com.peakda.server.common.security.principal.SignupSessionPrincipal
 import com.peakda.server.domain.auth.presentation.response.UserInfoResponse
 import com.peakda.server.domain.auth.signup.presentation.request.SignupCompleteRequest
 import com.peakda.server.domain.auth.signup.presentation.response.NicknameCheckResponse
-import com.peakda.server.common.response.ApiResponse
-import com.peakda.server.common.exception.ErrorCode
-import com.peakda.server.common.openapi.ApiErrorResponses
-import com.peakda.server.common.security.principal.PrincipalDetails
-import com.peakda.server.common.security.principal.SignupSessionPrincipal
+import com.peakda.server.domain.user.presentation.response.ProfileImageResponse
 import io.swagger.v3.oas.annotations.Operation
 import io.swagger.v3.oas.annotations.Parameter
+import io.swagger.v3.oas.annotations.media.Content
+import io.swagger.v3.oas.annotations.media.Encoding
+import io.swagger.v3.oas.annotations.media.Schema
 import io.swagger.v3.oas.annotations.security.SecurityRequirement
 import io.swagger.v3.oas.annotations.tags.Tag
 import jakarta.servlet.http.HttpServletRequest
 import jakarta.servlet.http.HttpServletResponse
 import jakarta.validation.Valid
+import org.springframework.http.MediaType
 import org.springframework.http.ResponseEntity
 import org.springframework.security.core.annotation.AuthenticationPrincipal
 import org.springframework.web.bind.annotation.GetMapping
 import org.springframework.web.bind.annotation.PostMapping
 import org.springframework.web.bind.annotation.RequestBody
 import org.springframework.web.bind.annotation.RequestParam
+import org.springframework.web.bind.annotation.RequestPart
+import org.springframework.web.multipart.MultipartFile
+import io.swagger.v3.oas.annotations.parameters.RequestBody as SwaggerRequestBody
 
 @Tag(name = "Auth", description = "로그인, 회원가입, 토큰 관리 API")
 interface AuthControllerDocs {
@@ -50,6 +58,47 @@ interface AuthControllerDocs {
         @Parameter(hidden = true)
         @AuthenticationPrincipal principal: SignupSessionPrincipal,
     ): ResponseEntity<ApiResponse<NicknameCheckResponse>>
+
+    @Operation(
+        summary = "회원가입 임시 프로필 이미지 업로드",
+        description = "signup-token 쿠키로 인증된 사용자가 회원가입 완료 전에 프로필 이미지를 업로드한다. " +
+            "이미지는 temp 영역에 저장되며, 가입 완료 시 정식 영역으로 이관된다. " +
+            "응답으로 받은 main URL을 /signup/complete 의 profileImageUrl 로 전달해야 한다.",
+        security = [SecurityRequirement(name = "signupTokenCookie")],
+        requestBody = SwaggerRequestBody(
+            required = true,
+            content = [
+                Content(
+                    mediaType = MediaType.MULTIPART_FORM_DATA_VALUE,
+                    schema = Schema(implementation = SignupProfileImageUploadForm::class),
+                    encoding = [Encoding(name = "image", contentType = "image/jpeg, image/png, image/webp")],
+                ),
+            ],
+        ),
+    )
+    @ApiErrorResponses(
+        ErrorCode.IMAGE_REQUIRED,
+        ErrorCode.INVALID_IMAGE_FORMAT,
+        ErrorCode.IMAGE_SIZE_EXCEEDED,
+        ErrorCode.IMAGE_PROCESSING_FAILED,
+        ErrorCode.STORAGE_UPLOAD_FAILED,
+        ErrorCode.UNAUTHORIZED,
+    )
+    @PostMapping(
+        "/signup/profile-image",
+        consumes = [MediaType.MULTIPART_FORM_DATA_VALUE],
+    )
+    fun uploadSignupProfileImage(
+        @Parameter(hidden = true)
+        @AuthenticationPrincipal principal: SignupSessionPrincipal,
+        @RequestPart("image") image: MultipartFile,
+    ): ResponseEntity<ApiResponse<ProfileImageResponse>>
+
+    @Schema(description = "회원가입 임시 프로필 이미지 업로드 multipart form")
+    data class SignupProfileImageUploadForm(
+        @field:Schema(type = "string", format = "binary", description = "업로드할 이미지 파일 (jpeg/png/webp, 최대 5MB)")
+        val image: MultipartFile,
+    )
 
     @Operation(
         summary = "소셜 회원가입 완료",

@@ -8,6 +8,12 @@ spring:
   liquibase:
     change-log: classpath:db/changelog/db.changelog-master.yaml
 
+  servlet:
+    multipart:
+      enabled: true
+      max-file-size: 5MB
+      max-request-size: 6MB
+
   security:
     oauth2:
       client:
@@ -52,6 +58,14 @@ app:
     servers:
       local: http://localhost:8080
       dev: ${PEAKDA_SERVER_DEV}
+  storage:
+    bucket: ${STORAGE_BUCKET}
+    endpoint: ${STORAGE_ENDPOINT}
+    region: ${STORAGE_REGION:auto}
+    access-key: ${STORAGE_ACCESS_KEY}
+    secret-key: ${STORAGE_SECRET_KEY}
+    public-base-url: ${STORAGE_PUBLIC_BASE_URL}
+    path-style-access: ${STORAGE_PATH_STYLE_ACCESS:true}
 
 external:
   data-go-kr:
