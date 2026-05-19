@@ -64,8 +64,8 @@ app:
     region: ${STORAGE_REGION:auto}
     access-key: ${STORAGE_ACCESS_KEY}
     secret-key: ${STORAGE_SECRET_KEY}
-    public-base-url: ${STORAGE_PUBLIC_BASE_URL}
     path-style-access: ${STORAGE_PATH_STYLE_ACCESS:true}
+    presigned-url-ttl-seconds: ${STORAGE_PRESIGNED_URL_TTL_SECONDS:604800}
 
 external:
   data-go-kr:

@@ -13,8 +13,8 @@ data class UserInfoResponse(
     @field:Schema(description = "닉네임", example = "peakda", nullable = true)
     val nickname: String?,
     @field:Schema(
-        description = "프로필 이미지 URL",
-        example = "https://k.kakaocdn.net/dn/profile.jpg",
+        description = "프로필 이미지 URL. OAuth2 제공자가 준 외부 URL 그대로이거나, 우리 버킷 객체의 presigned URL (만료 있음)",
+        example = "https://t3.storageapi.dev/peakda-bucket/profile-images/1/main.jpg?X-Amz-Signature=...",
         nullable = true,
     )
     val profileImageUrl: String?,
@@ -22,12 +22,12 @@ data class UserInfoResponse(
     val status: UserStatus,
 ) {
     companion object {
-        fun from(user: User): UserInfoResponse {
+        fun from(user: User, profileImageUrl: String?): UserInfoResponse {
             return UserInfoResponse(
                 id = requireNotNull(user.id),
                 email = user.email,
                 nickname = user.nickname,
-                profileImageUrl = user.profileImageUrl,
+                profileImageUrl = profileImageUrl,
                 status = user.status
             )
         }

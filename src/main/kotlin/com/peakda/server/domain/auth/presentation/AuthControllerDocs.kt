@@ -63,7 +63,7 @@ interface AuthControllerDocs {
         summary = "회원가입 임시 프로필 이미지 업로드",
         description = "signup-token 쿠키로 인증된 사용자가 회원가입 완료 전에 프로필 이미지를 업로드한다. " +
             "이미지는 temp 영역에 저장되며, 가입 완료 시 정식 영역으로 이관된다. " +
-            "응답으로 받은 main URL을 /signup/complete 의 profileImageUrl 로 전달해야 한다.",
+            "응답으로 받은 profileImageKey 를 /signup/complete 의 profileImageUrl 로 전달해야 한다.",
         security = [SecurityRequirement(name = "signupTokenCookie")],
         requestBody = SwaggerRequestBody(
             required = true,

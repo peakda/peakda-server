@@ -8,6 +8,7 @@ import software.amazon.awssdk.auth.credentials.StaticCredentialsProvider
 import software.amazon.awssdk.regions.Region
 import software.amazon.awssdk.services.s3.S3Client
 import software.amazon.awssdk.services.s3.S3Configuration
+import software.amazon.awssdk.services.s3.presigner.S3Presigner
 import java.net.URI
 
 @Configuration
@@ -19,15 +20,26 @@ class StorageConfig {
         S3Client.builder()
             .endpointOverride(URI.create(properties.endpoint))
             .region(Region.of(properties.region))
-            .credentialsProvider(
-                StaticCredentialsProvider.create(
-                    AwsBasicCredentials.create(properties.accessKey, properties.secretKey),
-                ),
-            )
-            .serviceConfiguration(
-                S3Configuration.builder()
-                    .pathStyleAccessEnabled(properties.pathStyleAccess)
-                    .build(),
-            )
+            .credentialsProvider(credentialsProvider(properties))
+            .serviceConfiguration(s3ServiceConfiguration(properties))
+            .build()
+
+    @Bean
+    fun s3Presigner(properties: StorageProperties): S3Presigner =
+        S3Presigner.builder()
+            .endpointOverride(URI.create(properties.endpoint))
+            .region(Region.of(properties.region))
+            .credentialsProvider(credentialsProvider(properties))
+            .serviceConfiguration(s3ServiceConfiguration(properties))
+            .build()
+
+    private fun credentialsProvider(properties: StorageProperties) =
+        StaticCredentialsProvider.create(
+            AwsBasicCredentials.create(properties.accessKey, properties.secretKey),
+        )
+
+    private fun s3ServiceConfiguration(properties: StorageProperties) =
+        S3Configuration.builder()
+            .pathStyleAccessEnabled(properties.pathStyleAccess)
             .build()
 }

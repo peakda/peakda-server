@@ -9,6 +9,6 @@ data class StorageProperties(
     val region: String = "auto",
     val accessKey: String,
     val secretKey: String,
-    val publicBaseUrl: String,
     val pathStyleAccess: Boolean = true,
+    val presignedUrlTtlSeconds: Long = 604800,
 )
