@@ -6,6 +6,7 @@ import software.amazon.awssdk.core.sync.RequestBody
 import software.amazon.awssdk.services.s3.S3Client
 import software.amazon.awssdk.services.s3.model.CopyObjectRequest
 import software.amazon.awssdk.services.s3.model.DeleteObjectRequest
+import software.amazon.awssdk.services.s3.model.ObjectCannedACL
 import software.amazon.awssdk.services.s3.model.PutObjectRequest
 import software.amazon.awssdk.services.s3.model.S3Exception
 
@@ -23,6 +24,7 @@ class S3ObjectStorage(
                     .key(key)
                     .contentType(contentType)
                     .contentLength(bytes.size.toLong())
+                    .acl(ObjectCannedACL.PUBLIC_READ)
                     .build(),
                 RequestBody.fromBytes(bytes),
             )
@@ -40,6 +42,7 @@ class S3ObjectStorage(
                     .sourceKey(sourceKey)
                     .destinationBucket(properties.bucket)
                     .destinationKey(destinationKey)
+                    .acl(ObjectCannedACL.PUBLIC_READ)
                     .build(),
             )
         } catch (e: S3Exception) {
