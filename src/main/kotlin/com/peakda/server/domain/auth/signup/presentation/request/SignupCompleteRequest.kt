@@ -18,8 +18,11 @@ data class SignupCompleteRequest(
     val nickname: String,
 
     @field:Schema(
-        description = "프로필 이미지 URL. 미지정 시 OAuth2 제공자 프로필 이미지가 사용됨",
-        example = "https://k.kakaocdn.net/dn/profile.jpg",
+        description = "프로필 이미지 값. " +
+            "(1) 가입 시 임시 업로드 endpoint 로 받은 key (`temp/signup/{sessionId}/main.jpg`) 또는 " +
+            "(2) OAuth2 제공자가 준 외부 URL. " +
+            "미지정 시 OAuth2 제공자 프로필 이미지가 사용됨.",
+        example = "temp/signup/42/main.jpg",
         nullable = true,
     )
     val profileImageUrl: String? = null,

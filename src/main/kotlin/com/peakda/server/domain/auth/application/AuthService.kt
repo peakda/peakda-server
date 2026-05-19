@@ -12,6 +12,7 @@ import com.peakda.server.common.security.jwt.JwtTokenProvider
 import com.peakda.server.common.security.principal.PrincipalDetails
 import com.peakda.server.common.security.principal.SignupSessionPrincipal
 import com.peakda.server.common.storage.ObjectStorage
+import com.peakda.server.common.storage.ProfileImageUrlResolver
 import com.peakda.server.domain.auth.presentation.response.UserInfoResponse
 import com.peakda.server.domain.auth.signup.application.SignupProfileImagePolicy
 import com.peakda.server.domain.auth.signup.presentation.request.SignupCompleteRequest
@@ -40,6 +41,7 @@ class AuthService(
     private val signupSessionRepository: SignupSessionRepository,
     private val imageResizer: ImageResizer,
     private val objectStorage: ObjectStorage,
+    private val profileImageUrlResolver: ProfileImageUrlResolver,
 ) {
 
     companion object {
@@ -53,7 +55,7 @@ class AuthService(
         val user = userRepository.findById(userId)
             .orElseThrow { AuthorizationException(ErrorCode.RESOURCE_NOT_FOUND) }
 
-        return UserInfoResponse.from(user)
+        return UserInfoResponse.from(user, profileImageUrlResolver.resolve(user.profileImageUrl))
     }
 
     @Transactional(readOnly = true)
@@ -71,14 +73,20 @@ class AuthService(
         val sessionId = requireNotNull(principal.getSignupSession().id) { "signup session id must exist" }
 
         val resized = imageResizer.resize(file.bytes, ProfileImagePolicy.VARIANTS)
-        val variantUrls = resized.associate { result ->
+        val variantKeys = resized.associate { result ->
             val key = SignupProfileImagePolicy.keyOf(sessionId, result.variant)
-            val url = objectStorage.upload(key, result.bytes, result.variant.format.mimeType)
-            result.variant.name to url
+            objectStorage.upload(key, result.bytes, result.variant.format.mimeType)
+            result.variant.name to key
         }
-        val mainUrl = variantUrls[ProfileImagePolicy.MAIN_VARIANT]
+        val mainKey = variantKeys[ProfileImagePolicy.MAIN_VARIANT]
             ?: throw ImageException(ErrorCode.IMAGE_PROCESSING_FAILED)
-        return ProfileImageResponse(profileImageUrl = mainUrl, variants = variantUrls)
+        val variantUrls = variantKeys.mapValues { (_, key) -> objectStorage.presignedGetUrl(key) }
+        val mainUrl = requireNotNull(variantUrls[ProfileImagePolicy.MAIN_VARIANT])
+        return ProfileImageResponse(
+            profileImageUrl = mainUrl,
+            profileImageKey = mainKey,
+            variants = variantUrls,
+        )
     }
 
     @Transactional
@@ -94,7 +102,7 @@ class AuthService(
 
         val signupSession = principal.getSignupSession()
         val sessionId = requireNotNull(signupSession.id) { "signup session id must exist" }
-        val initialImageUrl = request.profileImageUrl ?: signupSession.profileImageUrl
+        val initialImageValue = request.profileImageUrl ?: signupSession.profileImageUrl
 
         val user = userRepository.save(
             User.create(
@@ -102,12 +110,12 @@ class AuthService(
                 providerId = signupSession.providerId,
                 nickname = request.nickname,
                 email = signupSession.email,
-                profileImageUrl = initialImageUrl,
+                profileImageUrl = initialImageValue,
             )
         )
         val userId = requireNotNull(user.id)
 
-        promoteSignupProfileImageIfManaged(sessionId, userId, user, initialImageUrl)
+        promoteSignupProfileImageIfManaged(sessionId, userId, user, initialImageValue)
 
         signupSessionRepository.delete(signupSession)
 
@@ -215,21 +223,21 @@ class AuthService(
         sessionId: Long,
         userId: Long,
         user: User,
-        initialImageUrl: String?,
+        initialImageValue: String?,
     ) {
-        if (initialImageUrl.isNullOrBlank()) return
-        if (!SignupProfileImagePolicy.isManaged(sessionId, initialImageUrl)) return
+        if (initialImageValue.isNullOrBlank()) return
+        if (!SignupProfileImagePolicy.isManaged(sessionId, initialImageValue)) return
 
-        var mainUrl: String? = null
+        var mainKey: String? = null
         ProfileImagePolicy.VARIANTS.forEach { variant ->
             val sourceKey = SignupProfileImagePolicy.keyOf(sessionId, variant)
             val destinationKey = ProfileImagePolicy.keyOf(userId, variant)
-            val url = objectStorage.copy(sourceKey, destinationKey)
+            objectStorage.copy(sourceKey, destinationKey)
             if (variant.name == ProfileImagePolicy.MAIN_VARIANT) {
-                mainUrl = url
+                mainKey = destinationKey
             }
         }
-        user.profileImageUrl = mainUrl
+        user.profileImageUrl = mainKey
 
         ProfileImagePolicy.VARIANTS.forEach { variant ->
             val tempKey = SignupProfileImagePolicy.keyOf(sessionId, variant)
