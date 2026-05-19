@@ -38,6 +38,8 @@ dependencies {
 	implementation(libs.jjwt.api)
 	runtimeOnly(libs.jjwt.impl)
 	runtimeOnly(libs.jjwt.jackson)
+	implementation(libs.aws.sdk.s3)
+	implementation(libs.thumbnailator)
 	annotationProcessor(libs.spring.boot.configuration.processor)
 	runtimeOnly(libs.postgresql)
 	testImplementation(libs.spring.boot.starter.test)
