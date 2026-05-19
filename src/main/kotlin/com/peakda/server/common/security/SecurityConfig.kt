@@ -64,7 +64,11 @@ class SecurityConfig(
             }
             .authorizeHttpRequests {
                 it.requestMatchers(*PUBLIC_URLS).permitAll()
-                    .requestMatchers("/api/auth/signup/nickname/check", "/api/auth/signup/complete").hasRole("SIGNUP")
+                    .requestMatchers(
+                        "/api/auth/signup/nickname/check",
+                        "/api/auth/signup/complete",
+                        "/api/auth/signup/profile-image",
+                    ).hasRole("SIGNUP")
                     .requestMatchers("/actuator/health", "/actuator/info").permitAll()
                     .requestMatchers("/actuator/**").hasRole("ADMIN")
                     .anyRequest().hasRole("USER")
