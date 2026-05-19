@@ -1,13 +1,9 @@
 package com.peakda.server.domain.auth.application
 
-import com.peakda.server.domain.auth.signup.presentation.response.NicknameCheckResponse
-import com.peakda.server.domain.auth.signup.presentation.request.SignupCompleteRequest
-import com.peakda.server.domain.auth.signup.repository.SignupSessionRepository
-import com.peakda.server.domain.user.entity.User
-import com.peakda.server.domain.auth.presentation.response.UserInfoResponse
-import com.peakda.server.domain.user.repository.UserRepository
 import com.peakda.server.common.exception.AuthorizationException
 import com.peakda.server.common.exception.ErrorCode
+import com.peakda.server.common.image.ImageException
+import com.peakda.server.common.image.ImageResizer
 import com.peakda.server.common.security.cookie.CookieProperties
 import com.peakda.server.common.security.cookie.CookieUtils
 import com.peakda.server.common.security.jwt.JwtProperties
@@ -15,12 +11,23 @@ import com.peakda.server.common.security.jwt.JwtTokenGenerator
 import com.peakda.server.common.security.jwt.JwtTokenProvider
 import com.peakda.server.common.security.principal.PrincipalDetails
 import com.peakda.server.common.security.principal.SignupSessionPrincipal
+import com.peakda.server.common.storage.ObjectStorage
+import com.peakda.server.domain.auth.presentation.response.UserInfoResponse
+import com.peakda.server.domain.auth.signup.application.SignupProfileImagePolicy
+import com.peakda.server.domain.auth.signup.presentation.request.SignupCompleteRequest
+import com.peakda.server.domain.auth.signup.presentation.response.NicknameCheckResponse
+import com.peakda.server.domain.auth.signup.repository.SignupSessionRepository
+import com.peakda.server.domain.user.application.ProfileImagePolicy
+import com.peakda.server.domain.user.entity.User
+import com.peakda.server.domain.user.presentation.response.ProfileImageResponse
+import com.peakda.server.domain.user.repository.UserRepository
 import jakarta.servlet.http.HttpServletRequest
 import jakarta.servlet.http.HttpServletResponse
 import org.slf4j.LoggerFactory
 import org.springframework.security.core.context.SecurityContextHolder
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
+import org.springframework.web.multipart.MultipartFile
 
 @Service
 class AuthService(
@@ -31,6 +38,8 @@ class AuthService(
     private val jwtTokenGenerator: JwtTokenGenerator,
     private val refreshTokenService: RefreshTokenService,
     private val signupSessionRepository: SignupSessionRepository,
+    private val imageResizer: ImageResizer,
+    private val objectStorage: ObjectStorage,
 ) {
 
     companion object {
@@ -53,6 +62,25 @@ class AuthService(
         return NicknameCheckResponse(available = !userRepository.existsByNickname(value))
     }
 
+    @Transactional(readOnly = true)
+    fun uploadSignupProfileImage(
+        principal: SignupSessionPrincipal,
+        file: MultipartFile,
+    ): ProfileImageResponse {
+        ProfileImagePolicy.validate(file)
+        val sessionId = requireNotNull(principal.getSignupSession().id) { "signup session id must exist" }
+
+        val resized = imageResizer.resize(file.bytes, ProfileImagePolicy.VARIANTS)
+        val variantUrls = resized.associate { result ->
+            val key = SignupProfileImagePolicy.keyOf(sessionId, result.variant)
+            val url = objectStorage.upload(key, result.bytes, result.variant.format.mimeType)
+            result.variant.name to url
+        }
+        val mainUrl = variantUrls[ProfileImagePolicy.MAIN_VARIANT]
+            ?: throw ImageException(ErrorCode.IMAGE_PROCESSING_FAILED)
+        return ProfileImageResponse(profileImageUrl = mainUrl, variants = variantUrls)
+    }
+
     @Transactional
     fun completeSignup(
         principal: SignupSessionPrincipal,
@@ -65,15 +93,21 @@ class AuthService(
         }
 
         val signupSession = principal.getSignupSession()
+        val sessionId = requireNotNull(signupSession.id) { "signup session id must exist" }
+        val initialImageUrl = request.profileImageUrl ?: signupSession.profileImageUrl
+
         val user = userRepository.save(
             User.create(
                 provider = signupSession.provider,
                 providerId = signupSession.providerId,
                 nickname = request.nickname,
                 email = signupSession.email,
-                profileImageUrl = request.profileImageUrl ?: signupSession.profileImageUrl,
+                profileImageUrl = initialImageUrl,
             )
         )
+        val userId = requireNotNull(user.id)
+
+        promoteSignupProfileImageIfManaged(sessionId, userId, user, initialImageUrl)
 
         signupSessionRepository.delete(signupSession)
 
@@ -174,6 +208,33 @@ class AuthService(
     private fun validateNickname(nickname: String) {
         if (!NICKNAME_REGEX.matches(nickname)) {
             throw AuthException(ErrorCode.NICKNAME_INVALID)
+        }
+    }
+
+    private fun promoteSignupProfileImageIfManaged(
+        sessionId: Long,
+        userId: Long,
+        user: User,
+        initialImageUrl: String?,
+    ) {
+        if (initialImageUrl.isNullOrBlank()) return
+        if (!SignupProfileImagePolicy.isManaged(sessionId, initialImageUrl)) return
+
+        var mainUrl: String? = null
+        ProfileImagePolicy.VARIANTS.forEach { variant ->
+            val sourceKey = SignupProfileImagePolicy.keyOf(sessionId, variant)
+            val destinationKey = ProfileImagePolicy.keyOf(userId, variant)
+            val url = objectStorage.copy(sourceKey, destinationKey)
+            if (variant.name == ProfileImagePolicy.MAIN_VARIANT) {
+                mainUrl = url
+            }
+        }
+        user.profileImageUrl = mainUrl
+
+        ProfileImagePolicy.VARIANTS.forEach { variant ->
+            val tempKey = SignupProfileImagePolicy.keyOf(sessionId, variant)
+            runCatching { objectStorage.delete(tempKey) }
+                .onFailure { log.warn("가입 임시 프로필 이미지 삭제 실패 key={}", tempKey, it) }
         }
     }
 }
