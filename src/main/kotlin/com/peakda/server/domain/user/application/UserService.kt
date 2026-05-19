@@ -23,7 +23,7 @@ class UserService(
 
     @Transactional
     fun uploadProfileImage(userId: Long, file: MultipartFile): ProfileImageResponse {
-        validate(file)
+        ProfileImagePolicy.validate(file)
 
         val user = userRepository.findById(userId).orElseThrow { UserNotFoundException() }
         val previousUrl = user.profileImageUrl
@@ -53,19 +53,6 @@ class UserService(
 
         user.profileImageUrl = null
         deleteManaged(userId, currentUrl)
-    }
-
-    private fun validate(file: MultipartFile) {
-        if (file.isEmpty) {
-            throw ImageException(ErrorCode.IMAGE_REQUIRED)
-        }
-        if (file.size > ProfileImagePolicy.MAX_FILE_SIZE_BYTES) {
-            throw ImageException(ErrorCode.IMAGE_SIZE_EXCEEDED)
-        }
-        val contentType = file.contentType?.lowercase()
-        if (contentType !in ProfileImagePolicy.ALLOWED_MIME_TYPES) {
-            throw ImageException(ErrorCode.INVALID_IMAGE_FORMAT)
-        }
     }
 
     private fun deleteManaged(userId: Long, currentUrl: String) {
