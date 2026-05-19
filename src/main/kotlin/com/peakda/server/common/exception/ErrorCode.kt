@@ -27,4 +27,11 @@ enum class ErrorCode(
     EXTERNAL_API_AUTH_FAILED(HttpStatus.BAD_GATEWAY, "외부 API 인증에 실패했습니다."),
     EXTERNAL_API_INVALID_RESPONSE(HttpStatus.BAD_GATEWAY, "외부 API 응답 형식이 올바르지 않습니다."),
     EXTERNAL_API_BAD_REQUEST(HttpStatus.INTERNAL_SERVER_ERROR, "외부 API 요청 구성이 올바르지 않습니다."),
+
+    IMAGE_REQUIRED(HttpStatus.BAD_REQUEST, "이미지 파일이 필요합니다."),
+    INVALID_IMAGE_FORMAT(HttpStatus.BAD_REQUEST, "지원하지 않는 이미지 형식입니다."),
+    IMAGE_SIZE_EXCEEDED(HttpStatus.PAYLOAD_TOO_LARGE, "이미지 크기가 허용 한도를 초과했습니다."),
+    IMAGE_PROCESSING_FAILED(HttpStatus.INTERNAL_SERVER_ERROR, "이미지 처리에 실패했습니다."),
+    STORAGE_UPLOAD_FAILED(HttpStatus.BAD_GATEWAY, "스토리지 업로드에 실패했습니다."),
+    STORAGE_DELETE_FAILED(HttpStatus.BAD_GATEWAY, "스토리지 삭제에 실패했습니다."),
 }
