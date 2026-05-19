@@ -4,6 +4,7 @@ import com.peakda.server.common.exception.ErrorCode
 import org.springframework.stereotype.Component
 import software.amazon.awssdk.core.sync.RequestBody
 import software.amazon.awssdk.services.s3.S3Client
+import software.amazon.awssdk.services.s3.model.CopyObjectRequest
 import software.amazon.awssdk.services.s3.model.DeleteObjectRequest
 import software.amazon.awssdk.services.s3.model.PutObjectRequest
 import software.amazon.awssdk.services.s3.model.S3Exception
@@ -29,6 +30,22 @@ class S3ObjectStorage(
             throw StorageException(ErrorCode.STORAGE_UPLOAD_FAILED)
         }
         return publicUrlOf(key)
+    }
+
+    override fun copy(sourceKey: String, destinationKey: String): String {
+        try {
+            s3Client.copyObject(
+                CopyObjectRequest.builder()
+                    .sourceBucket(properties.bucket)
+                    .sourceKey(sourceKey)
+                    .destinationBucket(properties.bucket)
+                    .destinationKey(destinationKey)
+                    .build(),
+            )
+        } catch (e: S3Exception) {
+            throw StorageException(ErrorCode.STORAGE_UPLOAD_FAILED)
+        }
+        return publicUrlOf(destinationKey)
     }
 
     override fun delete(key: String) {
