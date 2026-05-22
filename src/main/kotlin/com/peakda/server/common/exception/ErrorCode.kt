@@ -34,4 +34,6 @@ enum class ErrorCode(
     IMAGE_PROCESSING_FAILED(HttpStatus.INTERNAL_SERVER_ERROR, "이미지 처리에 실패했습니다."),
     STORAGE_UPLOAD_FAILED(HttpStatus.BAD_GATEWAY, "스토리지 업로드에 실패했습니다."),
     STORAGE_DELETE_FAILED(HttpStatus.BAD_GATEWAY, "스토리지 삭제에 실패했습니다."),
+
+    SPOT_RECORD_PHOTO_LIMIT(HttpStatus.BAD_REQUEST, "스팟 기록 사진은 1장 이상 5장 이하로 첨부할 수 있습니다."),
 }
