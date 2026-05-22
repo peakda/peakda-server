@@ -10,9 +10,5 @@ interface PlantRepository : JpaRepository<Plant, Long> {
         status: PlantStatus,
         keyword: String,
     ): List<Plant>
-    fun existsByName(name: String): Boolean
-    fun countBySuggestedByUserIdAndCreatedAtAfter(
-        suggestedByUserId: Long,
-        createdAtAfter: java.time.Instant,
-    ): Long
+    fun existsByNameIgnoreCase(name: String): Boolean
 }

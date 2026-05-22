@@ -10,3 +10,5 @@ class SpotRecordForbiddenException : BusinessException(ErrorCode.SPOT_RECORD_FOR
 class SpotRecordInvalidStatusException : BusinessException(ErrorCode.SPOT_RECORD_INVALID_STATUS)
 class PlantNotFoundException : BusinessException(ErrorCode.PLANT_NOT_FOUND)
 class PlantInactiveException : BusinessException(ErrorCode.PLANT_INACTIVE)
+class PlantSuggestionDuplicateException : BusinessException(ErrorCode.PLANT_SUGGESTION_DUPLICATE)
+class PlantSuggestionRateLimitException : BusinessException(ErrorCode.PLANT_SUGGESTION_RATE_LIMIT)
