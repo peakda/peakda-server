@@ -91,4 +91,74 @@ class ExternalApiResilienceExecutorTest {
 
         assertThat(attempts.get()).isEqualTo(1)
     }
+
+    @Test
+    fun `ExternalApiException retryAfter 가 retry 간격으로 사용된다`() {
+        val properties = ExternalResilienceProperties(
+            enabled = true,
+            providers = mapOf(
+                "KMA" to ExternalResilienceProperties.ProviderResilience(
+                    retry = ExternalResilienceProperties.RetryConfig(
+                        maxAttempts = 2,
+                        initialInterval = Duration.ofMillis(1),
+                        multiplier = 1.0,
+                        maxInterval = Duration.ofMillis(500),
+                        jitterFactor = 0.0,
+                    ),
+                ),
+            ),
+        )
+        val executor = ExternalApiResilienceExecutor(ProviderResilienceRegistry(properties))
+        val attempts = AtomicInteger()
+        val started = System.nanoTime()
+
+        assertThatThrownBy {
+            executor.execute<Unit>("KMA") {
+                attempts.incrementAndGet()
+                throw ExternalApiException(
+                    ExternalApiErrorCode.EXTERNAL_API_UNAVAILABLE,
+                    retryAfter = Duration.ofMillis(200),
+                )
+            }
+        }.isInstanceOf(ExternalApiException::class.java)
+
+        val elapsedMs = Duration.ofNanos(System.nanoTime() - started).toMillis()
+        assertThat(attempts.get()).isEqualTo(2)
+        assertThat(elapsedMs).isGreaterThanOrEqualTo(180)
+    }
+
+    @Test
+    fun `retryAfter 가 max-interval 보다 크면 max-interval 로 클램프된다`() {
+        val properties = ExternalResilienceProperties(
+            enabled = true,
+            providers = mapOf(
+                "KMA" to ExternalResilienceProperties.ProviderResilience(
+                    retry = ExternalResilienceProperties.RetryConfig(
+                        maxAttempts = 2,
+                        initialInterval = Duration.ofMillis(1),
+                        multiplier = 1.0,
+                        maxInterval = Duration.ofMillis(100),
+                        jitterFactor = 0.0,
+                    ),
+                ),
+            ),
+        )
+        val executor = ExternalApiResilienceExecutor(ProviderResilienceRegistry(properties))
+        val attempts = AtomicInteger()
+        val started = System.nanoTime()
+
+        assertThatThrownBy {
+            executor.execute<Unit>("KMA") {
+                attempts.incrementAndGet()
+                throw ExternalApiException(
+                    ExternalApiErrorCode.EXTERNAL_API_UNAVAILABLE,
+                    retryAfter = Duration.ofSeconds(10),
+                )
+            }
+        }.isInstanceOf(ExternalApiException::class.java)
+
+        val elapsedMs = Duration.ofNanos(System.nanoTime() - started).toMillis()
+        assertThat(attempts.get()).isEqualTo(2)
+        assertThat(elapsedMs).isLessThan(2_000)
+    }
 }

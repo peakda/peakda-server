@@ -16,6 +16,8 @@ import java.util.concurrent.ConcurrentHashMap
  * provider 단위 [Retry] / [CircuitBreaker] 를 등록하고 캐시한다.
  *
  * - Retry: transient 오류만 재시도. AUTH/QUOTA/BAD_REQUEST 등 permanent 오류는 재시도하지 않는다.
+ *   응답에 Retry-After 가 담겨 있던 경우([ExternalApiException.retryAfter]) 그 값을 우선 사용하고,
+ *   그 외에는 지수 백오프 + jitter 를 적용한다. 어떤 경우든 `max-interval` 을 상한으로 클램프한다.
  * - CircuitBreaker: 동일한 transient 오류 집합과 transport 예외만 실패로 기록한다.
  *   permanent 오류는 외부 시스템 장애가 아니므로 회로 차단 통계에서 제외된다.
  */
@@ -39,16 +41,21 @@ class ProviderResilienceRegistry(
             return retryRegistry.retry("default-noop", RetryConfig.custom<Any>().maxAttempts(1).build())
         }
         val retry = resilience.retry
+        val defaultInterval = IntervalFunction.ofExponentialRandomBackoff(
+            retry.initialInterval,
+            retry.multiplier,
+            retry.jitterFactor,
+            retry.maxInterval,
+        )
+        val maxIntervalMs = retry.maxInterval.toMillis()
         val config = RetryConfig.custom<Any>()
             .maxAttempts(retry.maxAttempts)
-            .intervalFunction(
-                IntervalFunction.ofExponentialRandomBackoff(
-                    retry.initialInterval,
-                    retry.multiplier,
-                    retry.jitterFactor,
-                    retry.maxInterval,
-                ),
-            )
+            .intervalBiFunction { attempt, either ->
+                val throwable = if (either.isLeft) either.left else null
+                val retryAfter = (throwable as? ExternalApiException)?.retryAfter
+                val raw = retryAfter?.toMillis()?.coerceAtLeast(0L) ?: defaultInterval.apply(attempt)
+                raw.coerceAtMost(maxIntervalMs)
+            }
             .retryOnException(::isTransient)
             .build()
         return retryRegistry.retry("provider:$provider", config)

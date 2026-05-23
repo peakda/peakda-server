@@ -93,7 +93,7 @@ external:
     enabled: ${EXTERNAL_RESILIENCE_ENABLED:true}
     providers:
       KTO:
-        retry: { max-attempts: 3, initial-interval: 500ms, multiplier: 2.0, max-interval: 5s, jitter-factor: 0.3 }
+        retry: { max-attempts: 5, initial-interval: 500ms, multiplier: 2.0, max-interval: 30s, jitter-factor: 0.3 }
         circuit-breaker:
           failure-rate-threshold: 50
           slow-call-rate-threshold: 100
@@ -103,7 +103,7 @@ external:
           wait-duration-in-open-state: 30s
           permitted-number-of-calls-in-half-open-state: 3
       KMA:
-        retry: { max-attempts: 3, initial-interval: 500ms, multiplier: 2.0, max-interval: 5s, jitter-factor: 0.3 }
+        retry: { max-attempts: 5, initial-interval: 500ms, multiplier: 2.0, max-interval: 30s, jitter-factor: 0.3 }
         circuit-breaker:
           failure-rate-threshold: 50
           slow-call-rate-threshold: 100
@@ -113,7 +113,7 @@ external:
           wait-duration-in-open-state: 30s
           permitted-number-of-calls-in-half-open-state: 3
       PUBDATA:
-        retry: { max-attempts: 3, initial-interval: 500ms, multiplier: 2.0, max-interval: 5s, jitter-factor: 0.3 }
+        retry: { max-attempts: 5, initial-interval: 500ms, multiplier: 2.0, max-interval: 30s, jitter-factor: 0.3 }
         circuit-breaker:
           failure-rate-threshold: 50
           slow-call-rate-threshold: 100
