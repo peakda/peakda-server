@@ -24,7 +24,7 @@ import org.springframework.web.bind.annotation.RestController
 import org.springframework.web.multipart.MultipartFile
 
 @RestController
-@RequestMapping("/api/spot-records")
+@RequestMapping("/api/spots/records")
 class SpotRecordController(
     private val spotRecordPhotoUploader: SpotRecordPhotoUploader,
     private val spotRecordService: SpotRecordService,
