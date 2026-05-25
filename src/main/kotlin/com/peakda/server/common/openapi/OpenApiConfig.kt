@@ -1,17 +1,17 @@
 package com.peakda.server.common.openapi
 
-import com.peakda.server.common.openapi.OpenApiProperties
 import io.swagger.v3.oas.models.Components
+import io.swagger.v3.oas.models.ExternalDocumentation
 import io.swagger.v3.oas.models.OpenAPI
 import io.swagger.v3.oas.models.Operation
 import io.swagger.v3.oas.models.PathItem
-import io.swagger.v3.oas.models.ExternalDocumentation
 import io.swagger.v3.oas.models.info.Info
 import io.swagger.v3.oas.models.responses.ApiResponse
 import io.swagger.v3.oas.models.responses.ApiResponses
 import io.swagger.v3.oas.models.security.SecurityScheme
 import io.swagger.v3.oas.models.servers.Server
 import org.springdoc.core.customizers.OpenApiCustomizer
+import org.springdoc.core.models.GroupedOpenApi
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
 
@@ -29,8 +29,8 @@ class OpenApiConfig(
         return OpenAPI()
             .servers(
                 listOf(
-                    Server().url(openApiProperties.servers.local).description("Local"),
                     Server().url(openApiProperties.servers.dev).description("Develop"),
+                    Server().url(openApiProperties.servers.local).description("Local"),
                 )
             )
             .info(
@@ -48,10 +48,48 @@ class OpenApiConfig(
     }
 
     @Bean
-    fun oauth2LoginOpenApiCustomizer(): OpenApiCustomizer {
-        return OpenApiCustomizer { openApi ->
+    fun authUserGroupedOpenApi(): GroupedOpenApi =
+        GroupedOpenApi.builder()
+            .group("1-auth-user")
+            .displayName("인증·사용자")
+            .pathsToMatch(
+                "/api/auth/**",
+                "/api/users/**",
+                "/oauth2/**",
+                "/login/oauth2/**",
+            )
+            .addOpenApiCustomizer(oauth2LoginCustomizer())
+            .build()
+
+    @Bean
+    fun spotGroupedOpenApi(): GroupedOpenApi =
+        GroupedOpenApi.builder()
+            .group("2-spot")
+            .displayName("스팟")
+            .pathsToMatch("/api/spots/**")
+            .build()
+
+    @Bean
+    fun plantGroupedOpenApi(): GroupedOpenApi =
+        GroupedOpenApi.builder()
+            .group("3-plant")
+            .displayName("식물")
+            .pathsToMatch("/api/plants/**")
+            .build()
+
+    @Bean
+    fun allGroupedOpenApi(): GroupedOpenApi =
+        GroupedOpenApi.builder()
+            .group("9-all")
+            .displayName("전체")
+            .pathsToMatch("/**")
+            .addOpenApiCustomizer(oauth2LoginCustomizer())
+            .build()
+
+    private fun oauth2LoginCustomizer(): OpenApiCustomizer =
+        OpenApiCustomizer { openApi ->
             openApi.path(
-                "/oauth2/authorization/kakao",
+                KAKAO_LOGIN_PATH,
                 PathItem().get(
                     Operation()
                         .tags(listOf("Auth"))
@@ -74,7 +112,6 @@ class OpenApiConfig(
                 )
             )
         }
-    }
 
     private fun cookieSecurityScheme(name: String): SecurityScheme {
         return SecurityScheme()

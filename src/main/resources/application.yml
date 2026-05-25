@@ -11,8 +11,8 @@ spring:
   servlet:
     multipart:
       enabled: true
-      max-file-size: 5MB
-      max-request-size: 6MB
+      max-file-size: 10MB
+      max-request-size: 55MB
 
   security:
     oauth2:
@@ -58,6 +58,13 @@ app:
     servers:
       local: http://localhost:8080
       dev: ${PEAKDA_SERVER_DEV}
+  spot:
+    matcher:
+      radius-meters: ${SPOT_MATCHER_RADIUS_METERS:50.0}
+    plant-suggestion:
+      rate-limit:
+        max-per-window: ${PLANT_SUGGESTION_RATE_LIMIT_MAX:5}
+        window: ${PLANT_SUGGESTION_RATE_LIMIT_WINDOW:24h}
   storage:
     bucket: ${STORAGE_BUCKET}
     endpoint: ${STORAGE_ENDPOINT}

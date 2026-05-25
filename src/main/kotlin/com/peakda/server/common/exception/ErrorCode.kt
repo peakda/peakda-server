@@ -34,4 +34,18 @@ enum class ErrorCode(
     IMAGE_PROCESSING_FAILED(HttpStatus.INTERNAL_SERVER_ERROR, "이미지 처리에 실패했습니다."),
     STORAGE_UPLOAD_FAILED(HttpStatus.BAD_GATEWAY, "스토리지 업로드에 실패했습니다."),
     STORAGE_DELETE_FAILED(HttpStatus.BAD_GATEWAY, "스토리지 삭제에 실패했습니다."),
+
+    SPOT_RECORD_PHOTO_LIMIT(HttpStatus.BAD_REQUEST, "스팟 기록 사진은 1장 이상 5장 이하로 첨부할 수 있습니다."),
+
+    SPOT_NOT_FOUND(HttpStatus.NOT_FOUND, "스팟을 찾을 수 없습니다."),
+    ATTRACTION_NOT_FOUND(HttpStatus.NOT_FOUND, "명소를 찾을 수 없습니다."),
+
+    SPOT_RECORD_NOT_FOUND(HttpStatus.NOT_FOUND, "스팟 기록을 찾을 수 없습니다."),
+    SPOT_RECORD_FORBIDDEN(HttpStatus.FORBIDDEN, "본인이 작성한 스팟 기록만 수정/삭제할 수 있습니다."),
+    SPOT_RECORD_INVALID_STATUS(HttpStatus.BAD_REQUEST, "게시에 필요한 필수 항목이 누락되었습니다."),
+
+    PLANT_NOT_FOUND(HttpStatus.NOT_FOUND, "식물을 찾을 수 없습니다."),
+    PLANT_INACTIVE(HttpStatus.BAD_REQUEST, "선택한 식물 중 사용할 수 없는 항목이 있습니다."),
+    PLANT_SUGGESTION_DUPLICATE(HttpStatus.CONFLICT, "이미 등록되었거나 검토 중인 식물 이름입니다."),
+    PLANT_SUGGESTION_RATE_LIMIT(HttpStatus.TOO_MANY_REQUESTS, "최근 24시간 식물 제안 한도를 초과했습니다."),
 }
