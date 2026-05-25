@@ -4,6 +4,8 @@ import com.peakda.server.common.security.SecurityExceptionConfig
 import com.peakda.server.common.security.filter.JwtAuthenticationFilter
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
+import org.springframework.security.access.hierarchicalroles.RoleHierarchy
+import org.springframework.security.access.hierarchicalroles.RoleHierarchyImpl
 import org.springframework.security.config.Customizer
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity
 import org.springframework.security.config.annotation.web.builders.HttpSecurity
@@ -38,6 +40,10 @@ class SecurityConfig(
             "/api/auth/refresh"
         )
     }
+
+    @Bean
+    fun roleHierarchy(): RoleHierarchy =
+        RoleHierarchyImpl.fromHierarchy("ROLE_ADMIN > ROLE_USER")
 
     @Bean
     fun filterChain(http: HttpSecurity): SecurityFilterChain {
