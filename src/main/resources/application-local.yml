@@ -44,6 +44,11 @@ external:
     pubdata:
       festival:    { cron: "0/30 * * * * *", enabled: false }
 
+springdoc:
+  swagger-ui:
+    persist-authorization: true
+    groups-order: ASC
+
 logging:
   level:
     org.hibernate.SQL: DEBUG

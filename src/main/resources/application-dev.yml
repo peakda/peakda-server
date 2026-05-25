@@ -42,3 +42,5 @@ logging:
 springdoc:
   swagger-ui:
     with-credentials: true
+    persist-authorization: true
+    groups-order: ASC
