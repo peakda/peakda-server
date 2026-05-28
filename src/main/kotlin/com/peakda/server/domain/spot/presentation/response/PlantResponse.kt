@@ -10,7 +10,7 @@ data class PlantResponse(
     val id: Long,
     @field:Schema(description = "식물 이름", example = "벚꽃")
     val name: String,
-    @field:Schema(description = "식물 상태 (ACTIVE 노출, PENDING 제안 검토 중)", example = "ACTIVE")
+    @field:Schema(description = "식물 상태. 사용자에게 노출되는 식물은 항상 ACTIVE.", example = "ACTIVE")
     val status: PlantStatus,
     @field:Schema(
         description = "주개화 계절 셋. 사용자가 직접 추가한 식물은 비어있을 수 있다.",
