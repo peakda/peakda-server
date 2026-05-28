@@ -48,7 +48,12 @@ class PlantService(
 
     private fun normalize(value: String): String = value.trim().replace(WHITESPACE_REGEX, " ")
 
-    private fun Plant.toResponse() = PlantResponse(id = requireNotNull(id), name = name, status = status)
+    private fun Plant.toResponse() = PlantResponse(
+        id = requireNotNull(id),
+        name = name,
+        status = status,
+        seasons = seasons.sorted(),
+    )
 
     companion object {
         private val WHITESPACE_REGEX = Regex("\\s+")
