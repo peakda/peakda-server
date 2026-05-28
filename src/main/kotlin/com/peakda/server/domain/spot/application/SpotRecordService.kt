@@ -1,5 +1,8 @@
 package com.peakda.server.domain.spot.application
 
+import com.peakda.server.common.page.PageRequest
+import com.peakda.server.common.page.PageResponse
+import com.peakda.server.common.page.toPageResponse
 import com.peakda.server.domain.spot.entity.PlantStatus
 import com.peakda.server.domain.spot.entity.SpotRecord
 import com.peakda.server.domain.spot.entity.SpotRecordPhoto
@@ -17,8 +20,7 @@ import com.peakda.server.domain.spot.repository.PlantRepository
 import com.peakda.server.domain.spot.repository.SpotRecordPhotoRepository
 import com.peakda.server.domain.spot.repository.SpotRecordPlantRepository
 import com.peakda.server.domain.spot.repository.SpotRecordRepository
-import org.springframework.data.domain.Page
-import org.springframework.data.domain.Pageable
+import org.springframework.data.domain.Sort
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 import java.time.Instant
@@ -130,17 +132,19 @@ class SpotRecordService(
     }
 
     @Transactional(readOnly = true)
-    fun listBySpot(spotId: Long, pageable: Pageable): Page<SpotRecordSummaryResponse> {
+    fun listBySpot(spotId: Long, pageRequest: PageRequest): PageResponse<SpotRecordSummaryResponse> {
+        val pageable = pageRequest.toPageable(Sort.by(Sort.Direction.DESC, "createdAt"))
         val page = spotRecordRepository.findBySpotId(spotId, pageable)
         val summariesById = responseAssembler.assembleSummaries(page.content).associateBy { it.id }
-        return page.map { record -> summariesById.getValue(requireNotNull(record.id)) }
+        return page.map { record -> summariesById.getValue(requireNotNull(record.id)) }.toPageResponse()
     }
 
     @Transactional(readOnly = true)
-    fun listMine(userId: Long, status: SpotRecordStatus, pageable: Pageable): Page<SpotRecordSummaryResponse> {
+    fun listMine(userId: Long, status: SpotRecordStatus, pageRequest: PageRequest): PageResponse<SpotRecordSummaryResponse> {
+        val pageable = pageRequest.toPageable()
         val page = spotRecordRepository.findByUserIdAndStatusOrderByCreatedAtDesc(userId, status, pageable)
         val summariesById = responseAssembler.assembleSummaries(page.content).associateBy { it.id }
-        return page.map { record -> summariesById.getValue(requireNotNull(record.id)) }
+        return page.map { record -> summariesById.getValue(requireNotNull(record.id)) }.toPageResponse()
     }
 
     private fun loadOwned(recordId: Long, userId: Long): SpotRecord {
