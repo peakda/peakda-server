@@ -47,9 +47,10 @@ interface PlantControllerDocs {
     ): ResponseEntity<ApiResponse<List<PlantResponse>>>
 
     @Operation(
-        summary = "식물 제안 (PENDING)",
-        description = "검색에서 찾지 못한 식물 이름을 사용자가 제안한다. 동일 이름이 이미 있으면 409, " +
-            "한 사용자가 최근 24시간 내 5건을 초과하면 429. 관리자 승인을 거쳐 ACTIVE 로 전환된다.",
+        summary = "식물 제안",
+        description = "검색에서 찾지 못한 식물 이름을 사용자가 추가한다. 추가 즉시 ACTIVE 상태로 저장되어 " +
+            "스팟 기록 등 후속 흐름에서 바로 사용할 수 있다. 동일 이름이 이미 있으면 409, " +
+            "한 사용자가 최근 24시간 내 5건을 초과하면 429.",
         security = [SecurityRequirement(name = "accessTokenCookie")],
     )
     @ApiErrorResponses(
