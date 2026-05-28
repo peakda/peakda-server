@@ -1,6 +1,7 @@
 package com.peakda.server.domain.spot.presentation.response
 
 import com.peakda.server.domain.spot.entity.PlantStatus
+import com.peakda.server.domain.spot.entity.Season
 import io.swagger.v3.oas.annotations.media.Schema
 
 @Schema(description = "식물 응답 — 마스터 칩, 검색 결과, 제안 응답 공용")
@@ -11,4 +12,9 @@ data class PlantResponse(
     val name: String,
     @field:Schema(description = "식물 상태 (ACTIVE 노출, PENDING 제안 검토 중)", example = "ACTIVE")
     val status: PlantStatus,
+    @field:Schema(
+        description = "주개화 계절 셋. 사용자가 직접 추가한 식물은 비어있을 수 있다.",
+        example = "[\"SPRING\"]",
+    )
+    val seasons: List<Season>,
 )

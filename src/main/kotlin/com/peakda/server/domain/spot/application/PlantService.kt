@@ -8,6 +8,7 @@ import com.peakda.server.domain.spot.presentation.response.PlantResponse
 import com.peakda.server.domain.spot.repository.PlantRepository
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
+import java.time.Instant
 
 @Service
 @Transactional
@@ -39,8 +40,9 @@ class PlantService(
             Plant(
                 name = name,
                 sortOrder = 0,
-                status = PlantStatus.PENDING,
+                status = PlantStatus.ACTIVE,
                 suggestedByUserId = command.userId,
+                approvedAt = Instant.now(),
             )
         )
         return saved.toResponse()
@@ -48,7 +50,12 @@ class PlantService(
 
     private fun normalize(value: String): String = value.trim().replace(WHITESPACE_REGEX, " ")
 
-    private fun Plant.toResponse() = PlantResponse(id = requireNotNull(id), name = name, status = status)
+    private fun Plant.toResponse() = PlantResponse(
+        id = requireNotNull(id),
+        name = name,
+        status = status,
+        seasons = seasons.sorted(),
+    )
 
     companion object {
         private val WHITESPACE_REGEX = Regex("\\s+")
