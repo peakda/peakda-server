@@ -1,5 +1,7 @@
 package com.peakda.server.domain.spot.presentation
 
+import com.peakda.server.common.page.PageRequest
+import com.peakda.server.common.page.PageResponse
 import com.peakda.server.common.response.ApiResponse
 import com.peakda.server.common.security.principal.PrincipalDetails
 import com.peakda.server.domain.spot.application.CreateSpotRecordCommand
@@ -15,8 +17,6 @@ import com.peakda.server.domain.spot.presentation.response.SpotRecordPhotoUpload
 import com.peakda.server.domain.spot.presentation.response.SpotRecordPhotoUploadResponse.UploadedSpotRecordPhoto
 import com.peakda.server.domain.spot.presentation.response.SpotRecordResponse
 import com.peakda.server.domain.spot.presentation.response.SpotRecordSummaryResponse
-import org.springframework.data.domain.Page
-import org.springframework.data.domain.Pageable
 import org.springframework.http.HttpStatus
 import org.springframework.http.ResponseEntity
 import org.springframework.web.bind.annotation.RequestMapping
@@ -109,19 +109,19 @@ class SpotRecordController(
     override fun listBySpot(
         principal: PrincipalDetails,
         spotId: Long,
-        pageable: Pageable,
-    ): ResponseEntity<ApiResponse<Page<SpotRecordSummaryResponse>>> {
-        val response = spotRecordService.listBySpot(spotId, pageable)
+        pageRequest: PageRequest,
+    ): ResponseEntity<ApiResponse<PageResponse<SpotRecordSummaryResponse>>> {
+        val response = spotRecordService.listBySpot(spotId, pageRequest)
         return ResponseEntity.ok(ApiResponse.success(HttpStatus.OK, response))
     }
 
     override fun listMine(
         principal: PrincipalDetails,
         status: SpotRecordStatus,
-        pageable: Pageable,
-    ): ResponseEntity<ApiResponse<Page<SpotRecordSummaryResponse>>> {
+        pageRequest: PageRequest,
+    ): ResponseEntity<ApiResponse<PageResponse<SpotRecordSummaryResponse>>> {
         val userId = requireNotNull(principal.getUser().id)
-        val response = spotRecordService.listMine(userId, status, pageable)
+        val response = spotRecordService.listMine(userId, status, pageRequest)
         return ResponseEntity.ok(ApiResponse.success(HttpStatus.OK, response))
     }
 

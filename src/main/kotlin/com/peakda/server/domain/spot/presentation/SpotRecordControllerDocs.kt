@@ -2,6 +2,8 @@ package com.peakda.server.domain.spot.presentation
 
 import com.peakda.server.common.exception.ErrorCode
 import com.peakda.server.common.openapi.ApiErrorResponses
+import com.peakda.server.common.page.PageRequest
+import com.peakda.server.common.page.PageResponse
 import com.peakda.server.common.response.ApiResponse
 import com.peakda.server.common.security.principal.PrincipalDetails
 import com.peakda.server.domain.spot.entity.SpotRecordStatus
@@ -19,13 +21,12 @@ import io.swagger.v3.oas.annotations.parameters.RequestBody
 import io.swagger.v3.oas.annotations.security.SecurityRequirement
 import io.swagger.v3.oas.annotations.tags.Tag
 import jakarta.validation.Valid
-import org.springframework.data.domain.Page
-import org.springframework.data.domain.Pageable
 import org.springframework.http.MediaType
 import org.springframework.http.ResponseEntity
 import org.springframework.security.core.annotation.AuthenticationPrincipal
 import org.springframework.web.bind.annotation.DeleteMapping
 import org.springframework.web.bind.annotation.GetMapping
+import org.springframework.web.bind.annotation.ModelAttribute
 import org.springframework.web.bind.annotation.PatchMapping
 import org.springframework.web.bind.annotation.PathVariable
 import org.springframework.web.bind.annotation.PostMapping
@@ -174,8 +175,8 @@ interface SpotRecordControllerDocs {
         @Parameter(hidden = true)
         @AuthenticationPrincipal principal: PrincipalDetails,
         @RequestParam("spotId") spotId: Long,
-        @Parameter(hidden = true) pageable: Pageable,
-    ): ResponseEntity<ApiResponse<Page<SpotRecordSummaryResponse>>>
+        @Valid @ModelAttribute pageRequest: PageRequest,
+    ): ResponseEntity<ApiResponse<PageResponse<SpotRecordSummaryResponse>>>
 
     @Operation(
         summary = "본인 기록 리스트",
@@ -188,8 +189,8 @@ interface SpotRecordControllerDocs {
         @Parameter(hidden = true)
         @AuthenticationPrincipal principal: PrincipalDetails,
         @RequestParam("status") status: SpotRecordStatus,
-        @Parameter(hidden = true) pageable: Pageable,
-    ): ResponseEntity<ApiResponse<Page<SpotRecordSummaryResponse>>>
+        @Valid @ModelAttribute pageRequest: PageRequest,
+    ): ResponseEntity<ApiResponse<PageResponse<SpotRecordSummaryResponse>>>
 
     @Schema(description = "스팟 기록 사진 업로드 multipart form")
     data class SpotRecordPhotoUploadForm(
