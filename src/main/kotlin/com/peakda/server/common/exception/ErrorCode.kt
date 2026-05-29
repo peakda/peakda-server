@@ -40,6 +40,8 @@ enum class ErrorCode(
     SPOT_NOT_FOUND(HttpStatus.NOT_FOUND, "스팟을 찾을 수 없습니다."),
     ATTRACTION_NOT_FOUND(HttpStatus.NOT_FOUND, "명소를 찾을 수 없습니다."),
 
+    SPOT_FAVORITE_NOT_FOUND(HttpStatus.NOT_FOUND, "찜한 스팟을 찾을 수 없습니다."),
+
     SPOT_RECORD_NOT_FOUND(HttpStatus.NOT_FOUND, "스팟 기록을 찾을 수 없습니다."),
     SPOT_RECORD_FORBIDDEN(HttpStatus.FORBIDDEN, "본인이 작성한 스팟 기록만 수정/삭제할 수 있습니다."),
     SPOT_RECORD_INVALID_STATUS(HttpStatus.BAD_REQUEST, "게시에 필요한 필수 항목이 누락되었습니다."),
