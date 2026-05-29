@@ -5,6 +5,7 @@ import com.peakda.server.common.exception.ErrorCode
 
 class SpotNotFoundException : BusinessException(ErrorCode.SPOT_NOT_FOUND)
 class AttractionNotFoundException : BusinessException(ErrorCode.ATTRACTION_NOT_FOUND)
+class SpotFavoriteNotFoundException : BusinessException(ErrorCode.SPOT_FAVORITE_NOT_FOUND)
 class SpotRecordNotFoundException : BusinessException(ErrorCode.SPOT_RECORD_NOT_FOUND)
 class SpotRecordForbiddenException : BusinessException(ErrorCode.SPOT_RECORD_FORBIDDEN)
 class SpotRecordInvalidStatusException : BusinessException(ErrorCode.SPOT_RECORD_INVALID_STATUS)
