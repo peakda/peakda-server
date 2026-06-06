@@ -78,6 +78,14 @@ class OpenApiConfig(
             .build()
 
     @Bean
+    fun seasonalGroupedOpenApi(): GroupedOpenApi =
+        GroupedOpenApi.builder()
+            .group("4-seasonal")
+            .displayName("계절 개화")
+            .pathsToMatch("/api/seasonal/**")
+            .build()
+
+    @Bean
     fun allGroupedOpenApi(): GroupedOpenApi =
         GroupedOpenApi.builder()
             .group("9-all")

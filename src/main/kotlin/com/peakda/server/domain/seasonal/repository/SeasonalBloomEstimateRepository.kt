@@ -1,6 +1,7 @@
 package com.peakda.server.domain.seasonal.repository
 
 import com.peakda.server.domain.seasonal.entity.BloomCategory
+import com.peakda.server.domain.seasonal.entity.BloomStatus
 import com.peakda.server.domain.seasonal.entity.SeasonalBloomEstimate
 import org.springframework.data.jpa.repository.JpaRepository
 import org.springframework.data.jpa.repository.Modifying
@@ -37,6 +38,32 @@ interface SeasonalBloomEstimateRepository : JpaRepository<SeasonalBloomEstimate,
         attractionId: Long,
         bloomCategory: BloomCategory,
     ): SeasonalBloomEstimate?
+
+    /** 산출된 가장 최근 base_date. "현재 상태" 조회의 기준일이 된다 (없으면 null). */
+    @Query("SELECT MAX(e.baseDate) FROM SeasonalBloomEstimate e")
+    fun findLatestBaseDate(): LocalDate?
+
+    fun findByBaseDateAndAttractionIdIn(
+        baseDate: LocalDate,
+        attractionIds: Collection<Long>,
+    ): List<SeasonalBloomEstimate>
+
+    fun findByBaseDateAndAttractionIdInAndBloomCategory(
+        baseDate: LocalDate,
+        attractionIds: Collection<Long>,
+        bloomCategory: BloomCategory,
+    ): List<SeasonalBloomEstimate>
+
+    fun findByBaseDateAndStatus(
+        baseDate: LocalDate,
+        status: BloomStatus,
+    ): List<SeasonalBloomEstimate>
+
+    fun findByBaseDateAndStatusAndBloomCategory(
+        baseDate: LocalDate,
+        status: BloomStatus,
+        bloomCategory: BloomCategory,
+    ): List<SeasonalBloomEstimate>
 
     @Modifying
     @Query(value = SEASONAL_BLOOM_ESTIMATE_UPSERT_SQL, nativeQuery = true)

@@ -2,6 +2,8 @@ package com.peakda.server.domain.seasonal.repository
 
 import com.peakda.server.domain.seasonal.entity.AttractionBloom
 import com.peakda.server.domain.seasonal.entity.BloomCategory
+import org.springframework.data.domain.Page
+import org.springframework.data.domain.Pageable
 import org.springframework.data.jpa.repository.JpaRepository
 import org.springframework.data.jpa.repository.Modifying
 import org.springframework.data.jpa.repository.Query
@@ -25,6 +27,13 @@ interface AttractionBloomRepository : JpaRepository<AttractionBloom, Long> {
     fun findByAttractionId(attractionId: Long): List<AttractionBloom>
 
     fun findByBloomCategory(bloomCategory: BloomCategory): List<AttractionBloom>
+
+    /** 카테고리에 태깅된 명소 id 를 출처 중복 없이(distinct) 페이지 단위로 조회. 추정 배치의 순회 단위. */
+    @Query("SELECT DISTINCT ab.attractionId FROM AttractionBloom ab WHERE ab.bloomCategory = :category")
+    fun findDistinctAttractionIdsByBloomCategory(
+        @Param("category") category: BloomCategory,
+        pageable: Pageable,
+    ): Page<Long>
 
     @Modifying
     @Query(value = ATTRACTION_BLOOM_UPSERT_SQL, nativeQuery = true)
