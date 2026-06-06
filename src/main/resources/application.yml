@@ -170,6 +170,7 @@ external:
       festival: { cron: "0 0 6 * * MON", enabled: true }
     seasonal:
       attraction-bloom-tagging: { cron: "0 45 5 * * *", enabled: true }
+      bloom-estimate: { cron: "0 0 7 * * *", enabled: true }
 
 peakda:
   timing:
