@@ -178,6 +178,23 @@ peakda:
       keyword-exact-boost: 0.2
       festival-confidence: 0.9
       festival-proximity-km: 5.0
+    festival:
+      proximity-radius-km: 5.0
+      early-window-days: 3
+      late-window-days: 3
+      peak-confidence: 0.9
+      started-confidence: 0.8
+      ended-confidence: 0.7
+    calendar:
+      base-confidence: 0.4
+      early-window-days: 7
+      late-window-days: 7
+    gdd:
+      enabled: false
+    fusion:
+      agreement-bonus: 0.1
+      agreement-bonus-cap: 1.0
+      tie-break-confidence-margin: 0.1
 
 management:
   endpoints:
