@@ -1,6 +1,8 @@
 package com.peakda.server.domain.attraction.repository
 
 import com.peakda.server.domain.attraction.entity.Attraction
+import org.springframework.data.domain.Page
+import org.springframework.data.domain.Pageable
 import org.springframework.data.jpa.repository.JpaRepository
 import org.springframework.data.jpa.repository.Modifying
 import org.springframework.data.jpa.repository.Query
@@ -42,6 +44,8 @@ private const val ATTRACTION_UPSERT_SQL = """
 
 interface AttractionRepository : JpaRepository<Attraction, Long> {
     fun findByTourApiContentId(tourApiContentId: String): Attraction?
+
+    fun findByVisibleTrue(pageable: Pageable): Page<Attraction>
 
     @Modifying
     @Query(value = ATTRACTION_UPSERT_SQL, nativeQuery = true)

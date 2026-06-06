@@ -168,6 +168,16 @@ external:
       mid-fcst: { cron: "0 30 6,18 * * *", enabled: true }
     pubdata:
       festival: { cron: "0 0 6 * * MON", enabled: true }
+    seasonal:
+      attraction-bloom-tagging: { cron: "0 45 5 * * *", enabled: true }
+
+peakda:
+  timing:
+    tagging:
+      keyword-base-confidence: 0.5
+      keyword-exact-boost: 0.2
+      festival-confidence: 0.9
+      festival-proximity-km: 5.0
 
 management:
   endpoints:
