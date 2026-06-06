@@ -196,6 +196,7 @@ peakda:
       agreement-bonus: 0.1
       agreement-bonus-cap: 1.0
       tie-break-confidence-margin: 0.1
+    calendar-horizon-days: 30
 
 management:
   endpoints:
