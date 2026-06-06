@@ -1,6 +1,7 @@
 package com.peakda.server.domain.spot.entity
 
 import com.peakda.server.common.persistence.BaseTimeEntity
+import com.peakda.server.domain.seasonal.entity.BloomCategory
 import jakarta.persistence.CollectionTable
 import jakarta.persistence.Column
 import jakarta.persistence.ElementCollection
@@ -39,6 +40,10 @@ class Plant(
 
     @Column(name = "approved_at")
     var approvedAt: Instant? = null,
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "bloom_category", columnDefinition = "TEXT")
+    var bloomCategory: BloomCategory? = null,
 
     @ElementCollection(targetClass = Season::class, fetch = FetchType.LAZY)
     @CollectionTable(
