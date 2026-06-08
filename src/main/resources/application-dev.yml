@@ -35,6 +35,9 @@ management:
         enabled: true
 
 logging:
+  structured:
+    format:
+      console: logstash
   level:
     root: INFO
     com.peakda: DEBUG
