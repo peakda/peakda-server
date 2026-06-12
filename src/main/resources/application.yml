@@ -149,11 +149,12 @@ external:
   scheduler:
     enabled: ${EXTERNAL_SCHEDULER_ENABLED:false}
     kto:
-      kor-service: { cron: "0 0 3 * * *", enabled: true }
-      durunubi: { cron: "0 0 4 * * *", enabled: true }
-      tats-cnctr: { cron: "0 30 4 * * *", enabled: true }
-      data-lab: { cron: "0 0 5 * * *", enabled: true }
+      # 공사 콘텐츠 업데이트 시각(국문·관광사진 04:30 / 두루누비·빅데이터·집중률 07:30) 이후로 동기화한다.
+      kor-service: { cron: "0 0 5 * * *", enabled: true }
       photo: { cron: "0 30 5 * * *", enabled: true }
+      durunubi: { cron: "0 0 8 * * *", enabled: true }
+      data-lab: { cron: "0 30 8 * * *", enabled: true }
+      tats-cnctr: { cron: "0 0 9 * * *", enabled: true }
     kma:
       vilage-fcst:
         cron: "0 15 */3 * * *"
