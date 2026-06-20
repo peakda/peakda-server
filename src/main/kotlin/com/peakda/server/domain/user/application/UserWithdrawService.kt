@@ -16,6 +16,7 @@ import org.springframework.transaction.annotation.Transactional
 class UserWithdrawService(
     private val userRepository: UserRepository,
     private val followService: FollowService,
+    private val userFavoriteCategoryService: UserFavoriteCategoryService,
     private val spotRecordService: SpotRecordService,
     private val spotFavoriteService: SpotFavoriteService,
     private val refreshTokenService: RefreshTokenService,
@@ -33,6 +34,7 @@ class UserWithdrawService(
         spotRecordService.deleteAllByUser(userId)
         spotFavoriteService.deleteAllByUser(userId)
         followService.deleteAllByUser(userId)
+        userFavoriteCategoryService.deleteAllByUser(userId)
 
         user.withdraw()
 
