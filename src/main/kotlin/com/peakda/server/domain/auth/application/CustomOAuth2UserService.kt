@@ -1,6 +1,7 @@
 package com.peakda.server.domain.auth.application
 
 import com.peakda.server.domain.auth.oauth.model.KakaoOAuth2UserInfo
+import com.peakda.server.domain.auth.oauth.model.NaverOAuth2UserInfo
 import com.peakda.server.domain.auth.oauth.model.OAuth2LoginType
 import com.peakda.server.domain.auth.oauth.model.OAuth2UserInfo
 import com.peakda.server.domain.auth.signup.application.SignupSessionService
@@ -49,7 +50,8 @@ class CustomOAuth2UserService(
         attributes: Map<String, Any>
     ): OAuth2UserInfo = when (type) {
         OAuth2LoginType.KAKAO -> KakaoOAuth2UserInfo(attributes)
-        OAuth2LoginType.NAVER, OAuth2LoginType.APPLE ->
+        OAuth2LoginType.NAVER -> NaverOAuth2UserInfo(attributes)
+        OAuth2LoginType.APPLE ->
             throw OAuth2AuthenticationException("아직 지원하지 않는 소셜 로그인입니다: ${type.provider}")
     }
 
