@@ -1,5 +1,6 @@
 package com.peakda.server.domain.auth.presentation.response
 
+import com.peakda.server.domain.seasonal.entity.BloomCategory
 import com.peakda.server.domain.user.entity.User
 import com.peakda.server.domain.user.entity.UserStatus
 import io.swagger.v3.oas.annotations.media.Schema
@@ -20,15 +21,22 @@ data class UserInfoResponse(
     val profileImageUrl: String?,
     @field:Schema(description = "사용자 상태", example = "ACTIVE")
     val status: UserStatus,
+    @field:Schema(description = "관심 꽃 카테고리 목록", example = "[\"CHERRY\", \"MAPLE\"]")
+    val favoriteCategories: List<BloomCategory>,
 ) {
     companion object {
-        fun from(user: User, profileImageUrl: String?): UserInfoResponse {
+        fun from(
+            user: User,
+            profileImageUrl: String?,
+            favoriteCategories: Collection<BloomCategory>,
+        ): UserInfoResponse {
             return UserInfoResponse(
                 id = requireNotNull(user.id),
                 email = user.email,
                 nickname = user.nickname,
                 profileImageUrl = profileImageUrl,
-                status = user.status
+                status = user.status,
+                favoriteCategories = favoriteCategories.sortedBy { it.ordinal },
             )
         }
     }

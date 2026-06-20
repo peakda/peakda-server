@@ -1,6 +1,8 @@
 package com.peakda.server.domain.auth.signup.presentation.request
 
+import com.peakda.server.domain.seasonal.entity.BloomCategory
 import io.swagger.v3.oas.annotations.media.Schema
+import jakarta.validation.constraints.NotEmpty
 import jakarta.validation.constraints.Pattern
 import jakarta.validation.constraints.Size
 
@@ -26,4 +28,12 @@ data class SignupCompleteRequest(
         nullable = true,
     )
     val profileImageUrl: String? = null,
+
+    @field:Schema(
+        description = "관심 꽃 카테고리 목록. 최소 1개 이상 선택해야 한다.",
+        example = "[\"CHERRY\", \"MAPLE\"]",
+        requiredMode = Schema.RequiredMode.REQUIRED,
+    )
+    @field:NotEmpty
+    val favoriteCategories: Set<BloomCategory>,
 )

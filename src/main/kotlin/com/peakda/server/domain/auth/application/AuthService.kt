@@ -19,6 +19,7 @@ import com.peakda.server.domain.auth.signup.presentation.request.SignupCompleteR
 import com.peakda.server.domain.auth.signup.presentation.response.NicknameCheckResponse
 import com.peakda.server.domain.auth.signup.repository.SignupSessionRepository
 import com.peakda.server.domain.user.application.ProfileImagePolicy
+import com.peakda.server.domain.user.application.UserFavoriteCategoryService
 import com.peakda.server.domain.user.entity.User
 import com.peakda.server.domain.user.presentation.response.ProfileImageResponse
 import com.peakda.server.domain.user.repository.UserRepository
@@ -42,6 +43,7 @@ class AuthService(
     private val imageResizer: ImageResizer,
     private val objectStorage: ObjectStorage,
     private val profileImageUrlResolver: ProfileImageUrlResolver,
+    private val userFavoriteCategoryService: UserFavoriteCategoryService,
 ) {
 
     companion object {
@@ -55,7 +57,11 @@ class AuthService(
         val user = userRepository.findById(userId)
             .orElseThrow { AuthorizationException(ErrorCode.RESOURCE_NOT_FOUND) }
 
-        return UserInfoResponse.from(user, profileImageUrlResolver.resolve(user.profileImageUrl))
+        return UserInfoResponse.from(
+            user = user,
+            profileImageUrl = profileImageUrlResolver.resolve(user.profileImageUrl),
+            favoriteCategories = userFavoriteCategoryService.findCategories(userId),
+        )
     }
 
     @Transactional(readOnly = true)
@@ -114,6 +120,8 @@ class AuthService(
             )
         )
         val userId = requireNotNull(user.id)
+
+        userFavoriteCategoryService.replace(userId, request.favoriteCategories)
 
         promoteSignupProfileImageIfManaged(sessionId, userId, user, initialImageValue)
 
