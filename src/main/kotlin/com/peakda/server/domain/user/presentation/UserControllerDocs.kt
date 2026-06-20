@@ -13,6 +13,7 @@ import io.swagger.v3.oas.annotations.media.Schema
 import io.swagger.v3.oas.annotations.parameters.RequestBody
 import io.swagger.v3.oas.annotations.security.SecurityRequirement
 import io.swagger.v3.oas.annotations.tags.Tag
+import jakarta.servlet.http.HttpServletResponse
 import org.springframework.http.MediaType
 import org.springframework.http.ResponseEntity
 import org.springframework.security.core.annotation.AuthenticationPrincipal
@@ -69,6 +70,21 @@ interface UserControllerDocs {
     fun deleteProfileImage(
         @Parameter(hidden = true)
         @AuthenticationPrincipal principal: PrincipalDetails,
+    ): ResponseEntity<ApiResponse<Unit>>
+
+    @Operation(
+        summary = "계정 탈퇴",
+        description = "현재 로그인한 사용자의 계정을 탈퇴한다. 본인의 기록·찜·팔로우가 모두 삭제되고 " +
+            "계정은 비활성화·익명화되며 복구할 수 없다. 처리 후 인증 쿠키가 만료된다.",
+        security = [SecurityRequirement(name = "accessTokenCookie")],
+    )
+    @ApiErrorResponses(ErrorCode.UNAUTHORIZED, ErrorCode.RESOURCE_NOT_FOUND)
+    @DeleteMapping("/me")
+    fun withdraw(
+        @Parameter(hidden = true)
+        @AuthenticationPrincipal principal: PrincipalDetails,
+        @Parameter(hidden = true)
+        response: HttpServletResponse,
     ): ResponseEntity<ApiResponse<Unit>>
 
     @Schema(description = "프로필 이미지 업로드 multipart form")
