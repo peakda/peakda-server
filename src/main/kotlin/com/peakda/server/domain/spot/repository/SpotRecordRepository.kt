@@ -10,6 +10,12 @@ interface SpotRecordRepository : JpaRepository<SpotRecord, Long> {
     fun findByUserId(userId: Long): List<SpotRecord>
     fun findByUserIdAndStatus(userId: Long, status: SpotRecordStatus): SpotRecord?
     fun findBySpotId(spotId: Long, pageable: Pageable): Page<SpotRecord>
+    fun countBySpotIdAndStatus(spotId: Long, status: SpotRecordStatus): Long
+    fun findBySpotIdAndStatusOrderByCreatedAtDesc(
+        spotId: Long,
+        status: SpotRecordStatus,
+        pageable: Pageable,
+    ): Page<SpotRecord>
     fun findByUserIdAndStatusOrderByCreatedAtDesc(
         userId: Long,
         status: SpotRecordStatus,
