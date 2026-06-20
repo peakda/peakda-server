@@ -5,6 +5,8 @@ import com.peakda.server.common.openapi.ApiErrorResponses
 import com.peakda.server.common.response.ApiResponse
 import com.peakda.server.common.security.principal.PrincipalDetails
 import com.peakda.server.common.security.principal.SignupSessionPrincipal
+import com.peakda.server.domain.auth.presentation.request.AppleLoginRequest
+import com.peakda.server.domain.auth.presentation.response.AppleLoginResponse
 import com.peakda.server.domain.auth.presentation.response.UserInfoResponse
 import com.peakda.server.domain.auth.signup.presentation.request.SignupCompleteRequest
 import com.peakda.server.domain.auth.signup.presentation.response.NicknameCheckResponse
@@ -32,6 +34,20 @@ import io.swagger.v3.oas.annotations.parameters.RequestBody as SwaggerRequestBod
 
 @Tag(name = "Auth", description = "로그인, 회원가입, 토큰 관리 API")
 interface AuthControllerDocs {
+
+    @Operation(
+        summary = "Apple 네이티브 로그인",
+        description = "iOS Apple 로그인 SDK 가 발급한 identity token 을 검증한다. " +
+            "기존 회원이면 access-token·refresh-token 쿠키를 발급(signupRequired=false)하고, " +
+            "신규 사용자면 signup-token 쿠키를 발급(signupRequired=true)하여 회원가입 완료가 필요함을 알린다.",
+    )
+    @ApiErrorResponses(ErrorCode.INVALID_REQUEST, ErrorCode.APPLE_TOKEN_INVALID)
+    @PostMapping("/oauth/apple")
+    fun appleLogin(
+        @Valid @RequestBody request: AppleLoginRequest,
+        @Parameter(hidden = true)
+        response: HttpServletResponse,
+    ): ResponseEntity<ApiResponse<AppleLoginResponse>>
 
     @Operation(
         summary = "내 정보 조회",
