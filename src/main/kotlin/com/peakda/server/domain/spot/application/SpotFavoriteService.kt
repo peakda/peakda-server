@@ -30,6 +30,11 @@ class SpotFavoriteService(
         spotFavoriteRepository.deleteByUserIdAndSpotId(userId, spotId)
     }
 
+    /** 사용자의 모든 찜을 삭제한다. 계정 탈퇴 시 사용. */
+    fun deleteAllByUser(userId: Long) {
+        spotFavoriteRepository.deleteByUserId(userId)
+    }
+
     fun updateNotify(userId: Long, spotId: Long, enabled: Boolean): SpotFavoriteResponse {
         val favorite = spotFavoriteRepository.findByUserIdAndSpotId(userId, spotId)
             ?: throw SpotFavoriteNotFoundException()

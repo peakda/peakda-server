@@ -33,6 +33,11 @@ class FollowService(
         followRepository.deleteByFollowerIdAndFollowingId(followerId, targetUserId)
     }
 
+    /** 사용자가 맺은 모든 팔로우 관계(양방향)를 삭제한다. 계정 탈퇴 시 사용. */
+    fun deleteAllByUser(userId: Long) {
+        followRepository.deleteAllByUserId(userId)
+    }
+
     @Transactional(readOnly = true)
     fun getFollowers(
         targetUserId: Long,

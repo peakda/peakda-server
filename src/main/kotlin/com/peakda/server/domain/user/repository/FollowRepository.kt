@@ -11,6 +11,11 @@ interface FollowRepository : JpaRepository<Follow, Long> {
     fun existsByFollowerIdAndFollowingId(followerId: Long, followingId: Long): Boolean
     fun deleteByFollowerIdAndFollowingId(followerId: Long, followingId: Long)
 
+    /** 사용자가 맺은 모든 팔로우 관계(팔로워·팔로잉 양방향)를 삭제한다. 계정 탈퇴 시 사용. */
+    @Modifying
+    @Query("delete from Follow f where f.followerId = :userId or f.followingId = :userId")
+    fun deleteAllByUserId(userId: Long)
+
     /** 팔로잉 수: 이 사용자가 팔로우하는 사람 수 */
     fun countByFollowerId(followerId: Long): Long
 

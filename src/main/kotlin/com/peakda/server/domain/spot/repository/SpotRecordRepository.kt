@@ -7,6 +7,7 @@ import org.springframework.data.domain.Pageable
 import org.springframework.data.jpa.repository.JpaRepository
 
 interface SpotRecordRepository : JpaRepository<SpotRecord, Long> {
+    fun findByUserId(userId: Long): List<SpotRecord>
     fun findByUserIdAndStatus(userId: Long, status: SpotRecordStatus): SpotRecord?
     fun findBySpotId(spotId: Long, pageable: Pageable): Page<SpotRecord>
     fun findByUserIdAndStatusOrderByCreatedAtDesc(

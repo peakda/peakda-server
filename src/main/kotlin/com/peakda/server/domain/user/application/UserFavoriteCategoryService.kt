@@ -30,4 +30,10 @@ class UserFavoriteCategoryService(
         userFavoriteCategoryRepository.findByIdUserId(userId)
             .map { it.category }
             .toSet()
+
+    /** 사용자의 모든 관심 꽃을 삭제한다. 계정 탈퇴 시 사용. */
+    @Transactional
+    fun deleteAllByUser(userId: Long) {
+        userFavoriteCategoryRepository.deleteByUserId(userId)
+    }
 }
