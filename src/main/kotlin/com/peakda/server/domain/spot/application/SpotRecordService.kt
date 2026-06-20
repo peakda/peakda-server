@@ -125,6 +125,20 @@ class SpotRecordService(
         photos.forEach { spotRecordPhotoUploader.deleteByMainKey(it.objectKey) }
     }
 
+    /** 사용자의 모든 스팟 기록(사진·식물·스토리지 객체 포함)을 삭제한다. 계정 탈퇴 시 사용. */
+    fun deleteAllByUser(userId: Long) {
+        val records = spotRecordRepository.findByUserId(userId)
+        if (records.isEmpty()) return
+        val recordIds = records.mapNotNull { it.id }
+        val photos = spotRecordPhotoRepository.findBySpotRecordIdIn(recordIds)
+        recordIds.forEach { recordId ->
+            spotRecordPlantRepository.deleteByIdSpotRecordId(recordId)
+            spotRecordPhotoRepository.deleteBySpotRecordId(recordId)
+        }
+        spotRecordRepository.deleteAll(records)
+        photos.forEach { spotRecordPhotoUploader.deleteByMainKey(it.objectKey) }
+    }
+
     @Transactional(readOnly = true)
     fun get(recordId: Long): SpotRecordResponse {
         val record = spotRecordRepository.findById(recordId).orElseThrow { SpotRecordNotFoundException() }

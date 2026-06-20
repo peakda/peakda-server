@@ -10,6 +10,7 @@ interface SpotFavoriteRepository : JpaRepository<SpotFavorite, Long> {
     fun findByUserIdOrderByCreatedAtDesc(userId: Long): List<SpotFavorite>
     fun countByUserId(userId: Long): Long
     fun deleteByUserIdAndSpotId(userId: Long, spotId: Long)
+    fun deleteByUserId(userId: Long)
 
     /**
      * 찜을 멱등하게 추가한다. 이미 같은 (user, spot) 이 있으면 아무 것도 하지 않으므로
