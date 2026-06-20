@@ -16,6 +16,7 @@ enum class ErrorCode(
     REFRESH_TOKEN_INVALID(HttpStatus.UNAUTHORIZED, "리프레시 토큰이 유효하지 않습니다."),
 
     OAUTH2_PROVIDER_NOT_SUPPORTED(HttpStatus.BAD_REQUEST, "지원하지 않는 소셜 로그인입니다."),
+    APPLE_TOKEN_INVALID(HttpStatus.UNAUTHORIZED, "Apple 인증 토큰이 유효하지 않습니다."),
 
     NICKNAME_DUPLICATED(HttpStatus.CONFLICT, "이미 사용 중인 닉네임입니다."),
     NICKNAME_INVALID(HttpStatus.BAD_REQUEST, "닉네임은 특수문자를 제외하고 2~10자로 입력해 주세요."),
