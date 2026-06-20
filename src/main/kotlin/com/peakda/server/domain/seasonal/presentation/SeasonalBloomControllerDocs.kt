@@ -11,17 +11,21 @@ import io.swagger.v3.oas.annotations.Operation
 import io.swagger.v3.oas.annotations.Parameter
 import io.swagger.v3.oas.annotations.security.SecurityRequirement
 import io.swagger.v3.oas.annotations.tags.Tag
+import org.springframework.format.annotation.DateTimeFormat
 import org.springframework.http.ResponseEntity
 import org.springframework.web.bind.annotation.GetMapping
 import org.springframework.web.bind.annotation.RequestParam
+import java.time.LocalDate
 
 @Tag(name = "Seasonal Bloom", description = "계절 개화 상태 조회 API")
 interface SeasonalBloomControllerDocs {
 
     @Operation(
-        summary = "지도 영역 개화 현황",
-        description = "지도 영역(bbox) 내 visible 명소별 현재 개화 상태를 조회한다. " +
-            "핀 3단계(PREPARING/STARTED/PEAK)만 노출하며 ENDED 는 제외된다. category 로 특정 꽃만 필터할 수 있다.",
+        summary = "지도 영역 개화 현황 (Spot 핀)",
+        description = "지도 영역(bbox) 내 Spot 핀별 현재 개화 상태를 조회한다. " +
+            "명소형(개화 추정 상속)과 동네형(사용자 기록 파생) 핀을 함께 반환하며, " +
+            "핀 3단계(PREPARING/STARTED/PEAK)만 노출하고 ENDED 는 제외된다. " +
+            "category 로 특정 꽃만 필터하고, date(방문예정일)로 그날 기준 명소형 상태를 재계산할 수 있다.",
         security = [SecurityRequirement(name = "accessTokenCookie")],
     )
     @ApiErrorResponses(
@@ -40,6 +44,13 @@ interface SeasonalBloomControllerDocs {
         @RequestParam("maxLng") maxLng: Double,
         @Parameter(description = "꽃 카테고리 필터 (생략 시 전체)", example = "CHERRY")
         @RequestParam("category", required = false) category: BloomCategory?,
+        @Parameter(
+            description = "방문예정일 (생략 시 오늘 기준). 명소형 핀 상태를 해당일 기준으로 재계산한다. 동네형은 최근 관측값 유지.",
+            example = "2026-04-01",
+        )
+        @RequestParam("date", required = false)
+        @DateTimeFormat(iso = DateTimeFormat.ISO.DATE)
+        date: LocalDate?,
     ): ResponseEntity<ApiResponse<BloomMapResponse>>
 
     @Operation(
