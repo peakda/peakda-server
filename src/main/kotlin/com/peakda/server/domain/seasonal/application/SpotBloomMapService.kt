@@ -6,6 +6,7 @@ import com.peakda.server.domain.seasonal.entity.BloomCategory
 import com.peakda.server.domain.seasonal.entity.BloomStatus
 import com.peakda.server.domain.seasonal.entity.SeasonalBloomEstimate
 import com.peakda.server.domain.seasonal.presentation.response.BloomMapResponse
+import com.peakda.server.domain.seasonal.presentation.response.BloomMapResponse.BloomMapItem
 import com.peakda.server.domain.seasonal.presentation.response.BloomMapResponse.BloomMapPin
 import com.peakda.server.domain.seasonal.presentation.response.BloomMapResponse.BloomSlot
 import com.peakda.server.domain.seasonal.repository.SeasonalBloomEstimateRepository
@@ -53,7 +54,9 @@ class SpotBloomMapService(
         val baseDate = seasonalBloomEstimateRepository.findLatestBaseDate()
         val pins = buildAttractionPins(minLat, maxLat, minLng, maxLng, category, date, baseDate) +
             buildLocalPins(minLat, maxLat, minLng, maxLng, category)
-        return BloomMapResponse(baseDate = baseDate, count = pins.size, pins = pins)
+        // 하위호환: 명소형 핀만 옛 구조(attractions)로도 함께 제공한다.
+        val legacyAttractions = pins.filter { it.type == SpotType.ATTRACTION }.map { it.toLegacyItem() }
+        return BloomMapResponse(baseDate = baseDate, count = pins.size, pins = pins, attractions = legacyAttractions)
     }
 
     private fun buildAttractionPins(
@@ -196,6 +199,14 @@ class SpotBloomMapService(
         latitude = latitude,
         longitude = longitude,
         blooms = slots,
+    )
+
+    private fun BloomMapPin.toLegacyItem() = BloomMapItem(
+        attractionId = requireNotNull(attractionId),
+        title = name,
+        latitude = latitude,
+        longitude = longitude,
+        blooms = blooms,
     )
 
     companion object {
