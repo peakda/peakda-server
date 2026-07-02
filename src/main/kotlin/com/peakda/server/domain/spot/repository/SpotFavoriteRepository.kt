@@ -1,6 +1,7 @@
 package com.peakda.server.domain.spot.repository
 
 import com.peakda.server.domain.spot.entity.SpotFavorite
+import org.springframework.data.domain.Pageable
 import org.springframework.data.jpa.repository.JpaRepository
 import org.springframework.data.jpa.repository.Modifying
 import org.springframework.data.jpa.repository.Query
@@ -11,6 +12,17 @@ interface SpotFavoriteRepository : JpaRepository<SpotFavorite, Long> {
     fun countByUserId(userId: Long): Long
     fun deleteByUserIdAndSpotId(userId: Long, spotId: Long)
     fun deleteByUserId(userId: Long)
+
+    /** 찜이 많은 순서로 스팟 id·찜 수를 뽑는다 ("인기 스팟"/트렌딩 소스). [pageable] 로 상위 N개만 자른다. */
+    @Query(
+        """
+            SELECT f.spotId AS spotId, COUNT(f) AS favoriteCount
+            FROM SpotFavorite f
+            GROUP BY f.spotId
+            ORDER BY COUNT(f) DESC
+        """,
+    )
+    fun findTrendingSpotIds(pageable: Pageable): List<SpotFavoriteCount>
 
     /**
      * 찜을 멱등하게 추가한다. 이미 같은 (user, spot) 이 있으면 아무 것도 하지 않으므로
@@ -26,4 +38,10 @@ interface SpotFavoriteRepository : JpaRepository<SpotFavorite, Long> {
         nativeQuery = true,
     )
     fun insertIfAbsent(userId: Long, spotId: Long)
+}
+
+/** [SpotFavoriteRepository.findTrendingSpotIds] 프로젝션. */
+interface SpotFavoriteCount {
+    val spotId: Long
+    val favoriteCount: Long
 }
