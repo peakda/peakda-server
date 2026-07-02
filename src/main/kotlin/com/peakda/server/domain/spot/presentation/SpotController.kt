@@ -2,8 +2,10 @@ package com.peakda.server.domain.spot.presentation
 
 import com.peakda.server.common.response.ApiResponse
 import com.peakda.server.common.security.principal.PrincipalDetails
+import com.peakda.server.domain.seasonal.entity.BloomCategory
 import com.peakda.server.domain.spot.application.SpotDetailService
 import com.peakda.server.domain.spot.application.SpotMatcher
+import com.peakda.server.domain.spot.application.SpotPreviewService
 import com.peakda.server.domain.spot.application.SpotService
 import com.peakda.server.domain.spot.entity.Spot
 import com.peakda.server.domain.spot.entity.SpotType
@@ -11,6 +13,7 @@ import com.peakda.server.domain.spot.presentation.request.SpotMatchRequest
 import com.peakda.server.domain.spot.presentation.response.SpotDetailResponse
 import com.peakda.server.domain.spot.presentation.response.SpotMatchResponse
 import com.peakda.server.domain.spot.presentation.response.SpotMatchResponse.MatchedSpot
+import com.peakda.server.domain.spot.presentation.response.SpotPreviewResponse
 import org.springframework.http.HttpStatus
 import org.springframework.http.ResponseEntity
 import org.springframework.web.bind.annotation.RequestMapping
@@ -22,6 +25,7 @@ class SpotController(
     private val spotMatcher: SpotMatcher,
     private val spotService: SpotService,
     private val spotDetailService: SpotDetailService,
+    private val spotPreviewService: SpotPreviewService,
 ) : SpotControllerDocs {
 
     override fun match(
@@ -48,6 +52,16 @@ class SpotController(
     ): ResponseEntity<ApiResponse<SpotDetailResponse>> {
         val userId = requireNotNull(principal.getUser().id)
         val response = spotDetailService.getDetail(id, userId)
+        return ResponseEntity.ok(ApiResponse.success(HttpStatus.OK, response))
+    }
+
+    override fun preview(
+        spotIds: List<Long>,
+        category: BloomCategory?,
+        lat: Double?,
+        lng: Double?,
+    ): ResponseEntity<ApiResponse<SpotPreviewResponse>> {
+        val response = spotPreviewService.preview(spotIds, category, lat, lng)
         return ResponseEntity.ok(ApiResponse.success(HttpStatus.OK, response))
     }
 
