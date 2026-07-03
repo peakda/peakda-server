@@ -35,6 +35,10 @@ interface FollowRepository : JpaRepository<Follow, Long> {
     @Query("select f.followingId from Follow f where f.followerId = :followerId and f.followingId in :targetIds")
     fun findFollowingTargetIds(followerId: Long, targetIds: Collection<Long>): List<Long>
 
+    /** 팔로잉 피드 — 이 사용자가 팔로우하는 모든 대상 id. */
+    @Query("select f.followingId from Follow f where f.followerId = :followerId")
+    fun findFollowingIds(followerId: Long): List<Long>
+
     /**
      * 팔로우를 멱등하게 추가한다. 이미 같은 (follower, following) 이 있으면 무시되므로
      * 동시 요청에서도 유니크 제약 위반 예외 없이 단일 행을 보장한다.

@@ -22,4 +22,13 @@ interface SpotRecordRepository : JpaRepository<SpotRecord, Long> {
         status: SpotRecordStatus,
         pageable: Pageable,
     ): Page<SpotRecord>
+
+    /** 전체 피드(SCR-023 "전체" 탭) — 게시된 모든 기록. */
+    fun findByStatus(status: SpotRecordStatus, pageable: Pageable): Page<SpotRecord>
+
+    /** 팔로잉 피드 — 지정한 작성자(주로 팔로잉 대상) 목록의 게시된 기록. */
+    fun findByUserIdInAndStatus(userIds: Collection<Long>, status: SpotRecordStatus, pageable: Pageable): Page<SpotRecord>
+
+    /** 관심 식물 피드 — 미리 추려둔 기록 id 집합 중 게시된 것. */
+    fun findByIdInAndStatus(ids: Collection<Long>, status: SpotRecordStatus, pageable: Pageable): Page<SpotRecord>
 }
