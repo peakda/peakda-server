@@ -102,7 +102,8 @@ class SpotRecordController(
         principal: PrincipalDetails,
         id: Long,
     ): ResponseEntity<ApiResponse<SpotRecordResponse>> {
-        val response = spotRecordService.get(id)
+        val userId = requireNotNull(principal.getUser().id)
+        val response = spotRecordService.get(id, userId)
         return ResponseEntity.ok(ApiResponse.success(HttpStatus.OK, response))
     }
 
