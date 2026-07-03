@@ -139,9 +139,11 @@ class SpotRecordService(
         photos.forEach { spotRecordPhotoUploader.deleteByMainKey(it.objectKey) }
     }
 
+    /** 본인 기록은 DRAFT/PUBLISHED 상관없이 조회 가능. 타인 기록은 PUBLISHED 만 노출하고, DRAFT 는 404 로 응답해 존재 자체를 숨긴다. */
     @Transactional(readOnly = true)
-    fun get(recordId: Long): SpotRecordResponse {
+    fun get(recordId: Long, userId: Long): SpotRecordResponse {
         val record = spotRecordRepository.findById(recordId).orElseThrow { SpotRecordNotFoundException() }
+        if (record.userId != userId && record.status != SpotRecordStatus.PUBLISHED) throw SpotRecordNotFoundException()
         return responseAssembler.assemble(record)
     }
 
