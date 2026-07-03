@@ -86,6 +86,30 @@ class OpenApiConfig(
             .build()
 
     @Bean
+    fun feedGroupedOpenApi(): GroupedOpenApi =
+        GroupedOpenApi.builder()
+            .group("5-feed")
+            .displayName("피드")
+            .pathsToMatch("/api/feed/**")
+            .build()
+
+    @Bean
+    fun homeGroupedOpenApi(): GroupedOpenApi =
+        GroupedOpenApi.builder()
+            .group("6-home")
+            .displayName("홈")
+            .pathsToMatch("/api/home/**")
+            .build()
+
+    @Bean
+    fun searchGroupedOpenApi(): GroupedOpenApi =
+        GroupedOpenApi.builder()
+            .group("7-search")
+            .displayName("검색")
+            .pathsToMatch("/api/search/**")
+            .build()
+
+    @Bean
     fun allGroupedOpenApi(): GroupedOpenApi =
         GroupedOpenApi.builder()
             .group("9-all")
