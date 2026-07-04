@@ -6,6 +6,7 @@ import com.peakda.server.common.response.ApiResponse
 import com.peakda.server.common.security.principal.PrincipalDetails
 import com.peakda.server.domain.user.presentation.request.FavoriteCategoryUpdateRequest
 import com.peakda.server.domain.user.presentation.response.FavoriteCategoryResponse
+import com.peakda.server.domain.user.presentation.response.MyPageResponse
 import com.peakda.server.domain.user.presentation.response.ProfileImageResponse
 import io.swagger.v3.oas.annotations.Operation
 import io.swagger.v3.oas.annotations.Parameter
@@ -20,6 +21,7 @@ import org.springframework.http.MediaType
 import org.springframework.http.ResponseEntity
 import org.springframework.security.core.annotation.AuthenticationPrincipal
 import org.springframework.web.bind.annotation.DeleteMapping
+import org.springframework.web.bind.annotation.GetMapping
 import org.springframework.web.bind.annotation.PostMapping
 import org.springframework.web.bind.annotation.PutMapping
 import org.springframework.web.bind.annotation.RequestBody
@@ -29,6 +31,19 @@ import io.swagger.v3.oas.annotations.parameters.RequestBody as SwaggerRequestBod
 
 @Tag(name = "User", description = "사용자 프로필 관리 API")
 interface UserControllerDocs {
+
+    @Operation(
+        summary = "마이페이지 집계",
+        description = "현재 로그인한 사용자의 마이페이지 정보를 조회한다. 통계(게시 기록 수·팔로워·팔로잉·찜한 스팟 수), " +
+            "관심 꽃 카테고리, 내 게시 기록 그리드 미리보기(상위 6건)를 함께 반환한다.",
+        security = [SecurityRequirement(name = "accessTokenCookie")],
+    )
+    @ApiErrorResponses(ErrorCode.UNAUTHORIZED, ErrorCode.RESOURCE_NOT_FOUND)
+    @GetMapping("/me")
+    fun getMyPage(
+        @Parameter(hidden = true)
+        @AuthenticationPrincipal principal: PrincipalDetails,
+    ): ResponseEntity<ApiResponse<MyPageResponse>>
 
     @Operation(
         summary = "프로필 이미지 업로드",

@@ -2,11 +2,13 @@ package com.peakda.server.domain.user.presentation
 
 import com.peakda.server.common.response.ApiResponse
 import com.peakda.server.common.security.principal.PrincipalDetails
+import com.peakda.server.domain.user.application.MyPageService
 import com.peakda.server.domain.user.application.UserFavoriteCategoryService
 import com.peakda.server.domain.user.application.UserService
 import com.peakda.server.domain.user.application.UserWithdrawService
 import com.peakda.server.domain.user.presentation.request.FavoriteCategoryUpdateRequest
 import com.peakda.server.domain.user.presentation.response.FavoriteCategoryResponse
+import com.peakda.server.domain.user.presentation.response.MyPageResponse
 import com.peakda.server.domain.user.presentation.response.ProfileImageResponse
 import jakarta.servlet.http.HttpServletResponse
 import org.springframework.http.HttpStatus
@@ -19,9 +21,18 @@ import org.springframework.web.multipart.MultipartFile
 @RequestMapping("/api/users")
 class UserController(
     private val userService: UserService,
+    private val myPageService: MyPageService,
     private val userFavoriteCategoryService: UserFavoriteCategoryService,
     private val userWithdrawService: UserWithdrawService,
 ) : UserControllerDocs {
+
+    override fun getMyPage(
+        principal: PrincipalDetails,
+    ): ResponseEntity<ApiResponse<MyPageResponse>> {
+        val userId = requireNotNull(principal.getUser().id)
+        val response = myPageService.getMyPage(userId)
+        return ResponseEntity.ok(ApiResponse.success(HttpStatus.OK, response))
+    }
 
     override fun uploadProfileImage(
         principal: PrincipalDetails,
