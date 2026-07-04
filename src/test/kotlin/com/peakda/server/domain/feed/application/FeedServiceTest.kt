@@ -19,6 +19,7 @@ import com.peakda.server.domain.spot.repository.SpotRecordPlantRepository
 import com.peakda.server.domain.spot.repository.SpotRecordRepository
 import com.peakda.server.domain.user.entity.UserFavoriteCategory
 import com.peakda.server.domain.user.entity.UserFavoriteCategoryId
+import com.peakda.server.domain.user.repository.BlockRepository
 import com.peakda.server.domain.user.repository.FollowRepository
 import com.peakda.server.domain.user.repository.UserFavoriteCategoryRepository
 import org.assertj.core.api.Assertions.assertThat
@@ -39,6 +40,7 @@ class FeedServiceTest {
     private val spotRecordPlantRepository = mock(SpotRecordPlantRepository::class.java)
     private val plantRepository = mock(PlantRepository::class.java)
     private val followRepository = mock(FollowRepository::class.java)
+    private val blockRepository = mock(BlockRepository::class.java)
     private val userFavoriteCategoryRepository = mock(UserFavoriteCategoryRepository::class.java)
     private val responseAssembler = mock(SpotRecordResponseAssembler::class.java)
 
@@ -47,6 +49,7 @@ class FeedServiceTest {
         spotRecordPlantRepository,
         plantRepository,
         followRepository,
+        blockRepository,
         userFavoriteCategoryRepository,
         responseAssembler,
     )
@@ -118,6 +121,47 @@ class FeedServiceTest {
     }
 
     @Test
+    fun `all 필터는 차단한 사용자의 게시글을 제외한다`() {
+        val record = record(1L)
+        val pageable = SpringPageRequest.of(0, 20, sort)
+        `when`(blockRepository.findBlockedIdsByBlockerId(USER_ID)).thenReturn(listOf(BLOCKED_ID))
+        `when`(spotRecordRepository.findByStatusAndUserIdNotIn(SpotRecordStatus.PUBLISHED, setOf(BLOCKED_ID), pageable))
+            .thenReturn(PageImpl(listOf(record), pageable, 1))
+        `when`(responseAssembler.assembleSummaries(listOf(record))).thenReturn(listOf(summary(1L)))
+
+        val response = service.list(USER_ID, FeedFilter.ALL, PageRequest(page = 0, size = 20))
+
+        assertThat(response.content).extracting<Long> { it.id }.containsExactly(1L)
+    }
+
+    @Test
+    fun `following 필터는 팔로잉 중이어도 차단한 사용자는 제외한다`() {
+        `when`(followRepository.findFollowingIds(USER_ID)).thenReturn(listOf(BLOCKED_ID))
+        `when`(blockRepository.findBlockedIdsByBlockerId(USER_ID)).thenReturn(listOf(BLOCKED_ID))
+
+        val response = service.list(USER_ID, FeedFilter.FOLLOWING, PageRequest(page = 0, size = 20))
+
+        assertThat(response.content).isEmpty()
+    }
+
+    @Test
+    fun `interest 필터는 차단한 사용자가 작성한 기록을 제외한다`() {
+        val pageable = SpringPageRequest.of(0, 20, sort)
+        `when`(blockRepository.findBlockedIdsByBlockerId(USER_ID)).thenReturn(listOf(BLOCKED_ID))
+        `when`(userFavoriteCategoryRepository.findByIdUserId(USER_ID))
+            .thenReturn(listOf(favoriteCategory(USER_ID, BloomCategory.CHERRY)))
+        `when`(plantRepository.findByBloomCategoryIn(setOf(BloomCategory.CHERRY)))
+            .thenReturn(listOf(plant(10L, BloomCategory.CHERRY)))
+        `when`(spotRecordPlantRepository.findByIdPlantIdIn(listOf(10L)))
+            .thenReturn(listOf(SpotRecordPlant(SpotRecordPlantId(3L, 10L))))
+        `when`(spotRecordRepository.findAllById(listOf(3L))).thenReturn(listOf(blockedAuthorRecord(3L)))
+
+        val response = service.list(USER_ID, FeedFilter.INTEREST, PageRequest(page = 0, size = 20))
+
+        assertThat(response.content).isEmpty()
+    }
+
+    @Test
     fun `게시된 기록 상세는 정상 조회된다`() {
         val record = record(1L, status = SpotRecordStatus.PUBLISHED)
         `when`(spotRecordRepository.findById(1L)).thenReturn(Optional.of(record))
@@ -147,6 +191,12 @@ class FeedServiceTest {
 
     private fun record(id: Long, status: SpotRecordStatus = SpotRecordStatus.PUBLISHED): SpotRecord {
         val record = SpotRecord(spotId = 100L, userId = FOLLOWING_ID, status = status)
+        ReflectionTestUtils.setField(record, "id", id)
+        return record
+    }
+
+    private fun blockedAuthorRecord(id: Long): SpotRecord {
+        val record = SpotRecord(spotId = 100L, userId = BLOCKED_ID, status = SpotRecordStatus.PUBLISHED)
         ReflectionTestUtils.setField(record, "id", id)
         return record
     }
@@ -194,5 +244,6 @@ class FeedServiceTest {
     companion object {
         private const val USER_ID = 1L
         private const val FOLLOWING_ID = 2L
+        private const val BLOCKED_ID = 3L
     }
 }

@@ -22,6 +22,8 @@ enum class ErrorCode(
     PROFILE_ALREADY_COMPLETED(HttpStatus.CONFLICT, "이미 가입이 완료된 사용자입니다."),
 
     SELF_FOLLOW_NOT_ALLOWED(HttpStatus.BAD_REQUEST, "자기 자신은 팔로우할 수 없습니다."),
+    SELF_BLOCK_NOT_ALLOWED(HttpStatus.BAD_REQUEST, "자기 자신은 차단할 수 없습니다."),
+    SELF_REPORT_NOT_ALLOWED(HttpStatus.BAD_REQUEST, "본인 게시글은 신고할 수 없습니다."),
 
     EXTERNAL_API_UNAVAILABLE(HttpStatus.BAD_GATEWAY, "외부 API를 사용할 수 없습니다."),
     EXTERNAL_API_TIMEOUT(HttpStatus.GATEWAY_TIMEOUT, "외부 API 응답 시간이 초과되었습니다."),
