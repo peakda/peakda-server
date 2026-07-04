@@ -110,6 +110,14 @@ class OpenApiConfig(
             .build()
 
     @Bean
+    fun reportGroupedOpenApi(): GroupedOpenApi =
+        GroupedOpenApi.builder()
+            .group("8-report")
+            .displayName("신고")
+            .pathsToMatch("/api/reports/**")
+            .build()
+
+    @Bean
     fun allGroupedOpenApi(): GroupedOpenApi =
         GroupedOpenApi.builder()
             .group("9-all")

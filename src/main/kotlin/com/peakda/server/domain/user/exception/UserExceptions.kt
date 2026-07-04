@@ -8,3 +8,5 @@ class NicknameDuplicatedException : BusinessException(ErrorCode.NICKNAME_DUPLICA
 class UserNotFoundException : BusinessException(ErrorCode.RESOURCE_NOT_FOUND)
 
 class SelfFollowNotAllowedException : BusinessException(ErrorCode.SELF_FOLLOW_NOT_ALLOWED)
+
+class SelfBlockNotAllowedException : BusinessException(ErrorCode.SELF_BLOCK_NOT_ALLOWED)

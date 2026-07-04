@@ -16,6 +16,7 @@ import org.springframework.transaction.annotation.Transactional
 class UserWithdrawService(
     private val userRepository: UserRepository,
     private val followService: FollowService,
+    private val blockService: BlockService,
     private val userFavoriteCategoryService: UserFavoriteCategoryService,
     private val spotRecordService: SpotRecordService,
     private val spotFavoriteService: SpotFavoriteService,
@@ -24,7 +25,7 @@ class UserWithdrawService(
 ) {
 
     /**
-     * 계정 탈퇴. 본인 콘텐츠(기록·찜·팔로우)를 삭제하고 사용자를 익명화·비활성화한 뒤
+     * 계정 탈퇴. 본인 콘텐츠(기록·찜·팔로우·차단)를 삭제하고 사용자를 익명화·비활성화한 뒤
      * 토큰·쿠키를 정리한다. 복구는 지원하지 않는다 (결정 G).
      */
     @Transactional
@@ -34,6 +35,7 @@ class UserWithdrawService(
         spotRecordService.deleteAllByUser(userId)
         spotFavoriteService.deleteAllByUser(userId)
         followService.deleteAllByUser(userId)
+        blockService.deleteAllByUser(userId)
         userFavoriteCategoryService.deleteAllByUser(userId)
 
         user.withdraw()
