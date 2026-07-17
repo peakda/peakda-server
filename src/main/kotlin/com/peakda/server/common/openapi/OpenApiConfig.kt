@@ -50,7 +50,7 @@ class OpenApiConfig(
     @Bean
     fun authUserGroupedOpenApi(): GroupedOpenApi =
         GroupedOpenApi.builder()
-            .group("1-auth-user")
+            .group("01-auth-user")
             .displayName("인증·사용자")
             .pathsToMatch(
                 "/api/auth/**",
@@ -64,7 +64,7 @@ class OpenApiConfig(
     @Bean
     fun spotGroupedOpenApi(): GroupedOpenApi =
         GroupedOpenApi.builder()
-            .group("2-spot")
+            .group("02-spot")
             .displayName("스팟")
             .pathsToMatch("/api/spots/**")
             .build()
@@ -72,7 +72,7 @@ class OpenApiConfig(
     @Bean
     fun plantGroupedOpenApi(): GroupedOpenApi =
         GroupedOpenApi.builder()
-            .group("3-plant")
+            .group("03-plant")
             .displayName("식물")
             .pathsToMatch("/api/plants/**")
             .build()
@@ -80,7 +80,7 @@ class OpenApiConfig(
     @Bean
     fun seasonalGroupedOpenApi(): GroupedOpenApi =
         GroupedOpenApi.builder()
-            .group("4-seasonal")
+            .group("04-seasonal")
             .displayName("계절 개화")
             .pathsToMatch("/api/seasonal/**")
             .build()
@@ -88,7 +88,7 @@ class OpenApiConfig(
     @Bean
     fun feedGroupedOpenApi(): GroupedOpenApi =
         GroupedOpenApi.builder()
-            .group("5-feed")
+            .group("05-feed")
             .displayName("피드")
             .pathsToMatch("/api/feed/**")
             .build()
@@ -96,7 +96,7 @@ class OpenApiConfig(
     @Bean
     fun homeGroupedOpenApi(): GroupedOpenApi =
         GroupedOpenApi.builder()
-            .group("6-home")
+            .group("06-home")
             .displayName("홈")
             .pathsToMatch("/api/home/**")
             .build()
@@ -104,7 +104,7 @@ class OpenApiConfig(
     @Bean
     fun searchGroupedOpenApi(): GroupedOpenApi =
         GroupedOpenApi.builder()
-            .group("7-search")
+            .group("07-search")
             .displayName("검색")
             .pathsToMatch("/api/search/**")
             .build()
@@ -112,15 +112,23 @@ class OpenApiConfig(
     @Bean
     fun reportGroupedOpenApi(): GroupedOpenApi =
         GroupedOpenApi.builder()
-            .group("8-report")
+            .group("08-report")
             .displayName("신고")
             .pathsToMatch("/api/reports/**")
             .build()
 
     @Bean
+    fun notificationGroupedOpenApi(): GroupedOpenApi =
+        GroupedOpenApi.builder()
+            .group("09-notification")
+            .displayName("알림")
+            .pathsToMatch("/api/notifications/**")
+            .build()
+
+    @Bean
     fun allGroupedOpenApi(): GroupedOpenApi =
         GroupedOpenApi.builder()
-            .group("9-all")
+            .group("99-all")
             .displayName("전체")
             .pathsToMatch("/**")
             .addOpenApiCustomizer(oauth2LoginCustomizer())

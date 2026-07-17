@@ -54,4 +54,6 @@ enum class ErrorCode(
     PLANT_INACTIVE(HttpStatus.BAD_REQUEST, "선택한 식물 중 사용할 수 없는 항목이 있습니다."),
     PLANT_SUGGESTION_DUPLICATE(HttpStatus.CONFLICT, "이미 등록되었거나 검토 중인 식물 이름입니다."),
     PLANT_SUGGESTION_RATE_LIMIT(HttpStatus.TOO_MANY_REQUESTS, "최근 24시간 식물 제안 한도를 초과했습니다."),
+
+    NOTIFICATION_NOT_FOUND(HttpStatus.NOT_FOUND, "알림을 찾을 수 없습니다."),
 }

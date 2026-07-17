@@ -13,6 +13,7 @@ import org.assertj.core.api.Assertions.assertThatThrownBy
 import org.junit.jupiter.api.Test
 import org.mockito.Mockito.mock
 import org.mockito.Mockito.`when`
+import org.springframework.context.ApplicationEventPublisher
 import org.springframework.test.util.ReflectionTestUtils
 import java.util.Optional
 
@@ -20,8 +21,9 @@ class FeedReactionServiceTest {
 
     private val spotRecordRepository = mock(SpotRecordRepository::class.java)
     private val spotRecordReactionRepository = mock(SpotRecordReactionRepository::class.java)
+    private val eventPublisher = mock(ApplicationEventPublisher::class.java)
 
-    private val service = FeedReactionService(spotRecordRepository, spotRecordReactionRepository)
+    private val service = FeedReactionService(spotRecordRepository, spotRecordReactionRepository, eventPublisher)
 
     @Test
     fun `게시된 기록에 리액션을 추가하고 갱신된 요약을 반환한다`() {

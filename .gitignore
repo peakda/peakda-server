@@ -48,3 +48,5 @@ AGENTS.md
 /graphify-out/
 /.agents/
 /.antigravitycli/
+/.omc/
+/.omx/
