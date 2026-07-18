@@ -22,6 +22,7 @@ import com.peakda.server.infrastructure.external.kto.tatscnctr.response.CnctrRat
 import com.peakda.server.infrastructure.external.pubdata.festival.response.FestivalItem
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Test
+import org.redisson.api.RedissonClient
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.context.SpringBootTest
 import org.springframework.boot.testcontainers.service.connection.ServiceConnection
@@ -38,6 +39,9 @@ class AttractionSyncServiceTest {
 
     @MockitoBean
     lateinit var refreshTokenService: RefreshTokenService
+
+    @MockitoBean
+    lateinit var redissonClient: RedissonClient
 
     @Autowired
     lateinit var syncService: AttractionSyncService
@@ -177,7 +181,7 @@ class AttractionSyncServiceTest {
         @Container
         @ServiceConnection
         @JvmStatic
-        val postgres = PostgreSQLContainer("postgres:18")
+        val postgres = PostgreSQLContainer("postgres:16")
             .withDatabaseName("peakda")
             .withUsername("peakda")
             .withPassword("peakda")
