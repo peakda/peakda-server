@@ -122,7 +122,7 @@ class OpenApiConfig(
         GroupedOpenApi.builder()
             .group("09-notification")
             .displayName("알림")
-            .pathsToMatch("/api/notifications/**")
+            .pathsToMatch("/api/notifications/**", "/api/devices/**")
             .build()
 
     @Bean
