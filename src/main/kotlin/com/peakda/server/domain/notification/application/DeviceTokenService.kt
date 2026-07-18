@@ -13,6 +13,7 @@ class DeviceTokenService(
 
     fun register(userId: Long, token: String, platform: DevicePlatform) {
         deviceTokenRepository.upsert(userId, token, platform.name)
+        deviceTokenRepository.deleteExceeding(userId, MAX_DEVICES_PER_USER)
     }
 
     fun unregister(userId: Long, token: String) {
@@ -21,5 +22,9 @@ class DeviceTokenService(
 
     fun deleteAllByUser(userId: Long) {
         deviceTokenRepository.deleteByUserId(userId)
+    }
+
+    companion object {
+        private const val MAX_DEVICES_PER_USER = 10
     }
 }

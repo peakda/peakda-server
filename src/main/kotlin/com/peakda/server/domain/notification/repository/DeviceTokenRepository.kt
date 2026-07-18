@@ -30,4 +30,24 @@ interface DeviceTokenRepository : JpaRepository<DeviceToken, Long> {
         nativeQuery = true,
     )
     fun upsert(userId: Long, token: String, platform: String)
+
+    /**
+     * 사용자의 활성 토큰을 최근 사용 순으로 [keep]개만 남기고 삭제한다.
+     * 사용자당 토큰 무제한 적재(악의적 등록·기기 교체 누적)를 막는 상한 장치.
+     */
+    @Modifying
+    @Query(
+        value = """
+            DELETE FROM device_tokens
+            WHERE user_id = :userId
+              AND id NOT IN (
+                  SELECT id FROM device_tokens
+                  WHERE user_id = :userId
+                  ORDER BY updated_at DESC
+                  LIMIT :keep
+              )
+        """,
+        nativeQuery = true,
+    )
+    fun deleteExceeding(userId: Long, keep: Int): Int
 }

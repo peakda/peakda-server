@@ -19,6 +19,13 @@ class DeviceTokenServiceTest {
     }
 
     @Test
+    fun `디바이스 토큰 등록 후 사용자별 상한 초과분 정리를 위임한다`() {
+        service.register(USER_ID, TOKEN, DevicePlatform.ANDROID)
+
+        verify(deviceTokenRepository).deleteExceeding(USER_ID, 10)
+    }
+
+    @Test
     fun `디바이스 토큰 해제는 사용자와 토큰을 함께 확인해 삭제한다`() {
         service.unregister(USER_ID, TOKEN)
 
