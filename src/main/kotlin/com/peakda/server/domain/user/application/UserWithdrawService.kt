@@ -3,6 +3,7 @@ package com.peakda.server.domain.user.application
 import com.peakda.server.common.security.cookie.CookieProperties
 import com.peakda.server.common.security.cookie.CookieUtils
 import com.peakda.server.domain.auth.application.RefreshTokenService
+import com.peakda.server.domain.notification.application.DeviceTokenService
 import com.peakda.server.domain.notification.application.NotificationService
 import com.peakda.server.domain.spot.application.SpotFavoriteService
 import com.peakda.server.domain.spot.application.SpotRecordService
@@ -22,6 +23,7 @@ class UserWithdrawService(
     private val spotRecordService: SpotRecordService,
     private val spotFavoriteService: SpotFavoriteService,
     private val notificationService: NotificationService,
+    private val deviceTokenService: DeviceTokenService,
     private val refreshTokenService: RefreshTokenService,
     private val cookieProperties: CookieProperties,
 ) {
@@ -40,6 +42,7 @@ class UserWithdrawService(
         blockService.deleteAllByUser(userId)
         userFavoriteCategoryService.deleteAllByUser(userId)
         notificationService.deleteAllByUser(userId)
+        deviceTokenService.deleteAllByUser(userId)
 
         user.withdraw()
 

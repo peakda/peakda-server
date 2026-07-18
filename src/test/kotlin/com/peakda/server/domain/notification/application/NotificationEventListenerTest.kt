@@ -2,16 +2,23 @@ package com.peakda.server.domain.notification.application
 
 import com.peakda.server.domain.auth.oauth.model.OAuth2LoginType
 import com.peakda.server.domain.feed.application.ReactionAddedEvent
+import com.peakda.server.domain.notification.entity.DevicePlatform
+import com.peakda.server.domain.notification.entity.DeviceToken
+import com.peakda.server.domain.notification.entity.NotificationLinkType
 import com.peakda.server.domain.notification.entity.NotificationType
+import com.peakda.server.domain.notification.repository.DeviceTokenRepository
 import com.peakda.server.domain.spot.entity.ReactionType
 import com.peakda.server.domain.user.application.FollowCreatedEvent
 import com.peakda.server.domain.user.entity.User
 import com.peakda.server.domain.user.repository.UserRepository
+import com.peakda.server.infrastructure.push.PushPayload
+import com.peakda.server.infrastructure.push.PushSender
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Test
 import org.mockito.ArgumentCaptor
 import org.mockito.Mockito.mock
 import org.mockito.Mockito.never
+import org.mockito.Mockito.verifyNoInteractions
 import org.mockito.Mockito.verify
 import org.mockito.Mockito.`when`
 import org.springframework.test.util.ReflectionTestUtils
@@ -21,7 +28,9 @@ class NotificationEventListenerTest {
 
     private val notificationService = mock(NotificationService::class.java)
     private val userRepository = mock(UserRepository::class.java)
-    private val listener = NotificationEventListener(notificationService, userRepository)
+    private val deviceTokenRepository = mock(DeviceTokenRepository::class.java)
+    private val pushSender = mock(PushSender::class.java)
+    private val listener = NotificationEventListener(notificationService, userRepository, deviceTokenRepository, pushSender)
 
     private val captor: ArgumentCaptor<CreateNotificationCommand> =
         ArgumentCaptor.forClass(CreateNotificationCommand::class.java)
@@ -57,6 +66,38 @@ class NotificationEventListenerTest {
         assertThat(captor.value.targetId).isEqualTo(3L)
     }
 
+    @Test
+    fun `알림 수신자 토큰이 있으면 저장 후 푸시를 발송한다`() {
+        val tokens = listOf(deviceToken(userId = 7L, token = "token-1"))
+        `when`(userRepository.findById(3L)).thenReturn(Optional.of(user(3L, "팔로워")))
+        `when`(deviceTokenRepository.findByUserId(7L)).thenReturn(tokens)
+
+        listener.onFollowCreated(FollowCreatedEvent(followerId = 3L, followingId = 7L))
+
+        verify(notificationService).create(capture())
+        verify(pushSender).send(
+            tokens,
+            PushPayload(
+                title = "새 팔로워",
+                body = "팔로워님이 회원님을 팔로우했습니다.",
+                linkType = NotificationLinkType.INTERNAL,
+                linkUrl = null,
+                targetId = 3L,
+            ),
+        )
+    }
+
+    @Test
+    fun `알림 수신자 토큰이 없으면 푸시를 발송하지 않는다`() {
+        `when`(userRepository.findById(3L)).thenReturn(Optional.of(user(3L, "팔로워")))
+        `when`(deviceTokenRepository.findByUserId(7L)).thenReturn(emptyList())
+
+        listener.onFollowCreated(FollowCreatedEvent(followerId = 3L, followingId = 7L))
+
+        verify(notificationService).create(capture())
+        verifyNoInteractions(pushSender)
+    }
+
     /** ArgumentCaptor.capture() 도 null 을 돌려주므로 non-null 더미로 감싼다 (매처는 그대로 등록됨). */
     private fun capture(): CreateNotificationCommand = captor.capture() ?: DUMMY
 
@@ -70,6 +111,9 @@ class NotificationEventListenerTest {
         ReflectionTestUtils.setField(user, "id", id)
         return user
     }
+
+    private fun deviceToken(userId: Long, token: String): DeviceToken =
+        DeviceToken(userId = userId, token = token, platform = DevicePlatform.ANDROID)
 
     companion object {
         private val DUMMY = CreateNotificationCommand(0L, NotificationType.TIMING, "", "")

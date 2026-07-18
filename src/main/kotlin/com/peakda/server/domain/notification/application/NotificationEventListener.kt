@@ -3,8 +3,12 @@ package com.peakda.server.domain.notification.application
 import com.peakda.server.domain.feed.application.ReactionAddedEvent
 import com.peakda.server.domain.notification.entity.NotificationLinkType
 import com.peakda.server.domain.notification.entity.NotificationType
+import com.peakda.server.domain.notification.repository.DeviceTokenRepository
 import com.peakda.server.domain.user.application.FollowCreatedEvent
 import com.peakda.server.domain.user.repository.UserRepository
+import com.peakda.server.infrastructure.push.PushPayload
+import com.peakda.server.infrastructure.push.PushSender
+import org.springframework.scheduling.annotation.Async
 import org.springframework.stereotype.Component
 import org.springframework.transaction.annotation.Propagation
 import org.springframework.transaction.annotation.Transactional
@@ -19,13 +23,16 @@ import org.springframework.transaction.event.TransactionalEventListener
 class NotificationEventListener(
     private val notificationService: NotificationService,
     private val userRepository: UserRepository,
+    private val deviceTokenRepository: DeviceTokenRepository,
+    private val pushSender: PushSender,
 ) {
 
+    @Async
     @Transactional(propagation = Propagation.REQUIRES_NEW)
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
     fun onFollowCreated(event: FollowCreatedEvent) {
         val actor = userRepository.findById(event.followerId).orElse(null) ?: return
-        notificationService.create(
+        createAndPush(
             CreateNotificationCommand(
                 recipientId = event.followingId,
                 type = NotificationType.FOLLOW,
@@ -37,12 +44,13 @@ class NotificationEventListener(
         )
     }
 
+    @Async
     @Transactional(propagation = Propagation.REQUIRES_NEW)
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
     fun onReactionAdded(event: ReactionAddedEvent) {
         if (event.actorId == event.recordOwnerId) return
         val actor = userRepository.findById(event.actorId).orElse(null) ?: return
-        notificationService.create(
+        createAndPush(
             CreateNotificationCommand(
                 recipientId = event.recordOwnerId,
                 type = NotificationType.REACTION,
@@ -50,6 +58,23 @@ class NotificationEventListener(
                 body = "${actor.nickname}님이 회원님의 기록에 반응했습니다.",
                 linkType = NotificationLinkType.INTERNAL,
                 targetId = event.recordId,
+            ),
+        )
+    }
+
+    private fun createAndPush(command: CreateNotificationCommand) {
+        notificationService.create(command)
+        val tokens = deviceTokenRepository.findByUserId(command.recipientId)
+        if (tokens.isEmpty()) return
+
+        pushSender.send(
+            tokens,
+            PushPayload(
+                title = command.title,
+                body = command.body,
+                linkType = command.linkType,
+                linkUrl = command.linkUrl,
+                targetId = command.targetId,
             ),
         )
     }
