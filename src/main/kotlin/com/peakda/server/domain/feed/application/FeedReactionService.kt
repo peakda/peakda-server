@@ -3,10 +3,12 @@ package com.peakda.server.domain.feed.application
 import com.peakda.server.domain.feed.presentation.response.FeedReactionSummaryResponse
 import com.peakda.server.domain.feed.presentation.response.FeedReactionSummaryResponse.ReactionCount
 import com.peakda.server.domain.spot.entity.ReactionType
+import com.peakda.server.domain.spot.entity.SpotRecord
 import com.peakda.server.domain.spot.entity.SpotRecordStatus
 import com.peakda.server.domain.spot.exception.SpotRecordNotFoundException
 import com.peakda.server.domain.spot.repository.SpotRecordReactionRepository
 import com.peakda.server.domain.spot.repository.SpotRecordRepository
+import org.springframework.context.ApplicationEventPublisher
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 
@@ -18,11 +20,14 @@ import org.springframework.transaction.annotation.Transactional
 class FeedReactionService(
     private val spotRecordRepository: SpotRecordRepository,
     private val spotRecordReactionRepository: SpotRecordReactionRepository,
+    private val eventPublisher: ApplicationEventPublisher,
 ) {
 
     fun add(userId: Long, recordId: Long, reactionType: ReactionType): FeedReactionSummaryResponse {
-        requirePublished(recordId)
+        val record = requirePublished(recordId)
         spotRecordReactionRepository.insertIfAbsent(userId, recordId, reactionType.name)
+        // 커밋 후 알림 도메인이 수신해 기록 작성자에게 리액션 알림을 생성한다 (본인 리액션은 리스너에서 생략).
+        eventPublisher.publishEvent(ReactionAddedEvent(userId, recordId, record.userId, reactionType))
         return summary(recordId, userId)
     }
 
@@ -33,9 +38,10 @@ class FeedReactionService(
     }
 
     /** 게시된 기록만 리액션 대상으로 허용 — DRAFT 존재 자체를 숨기려 404 로 통일한다. */
-    private fun requirePublished(recordId: Long) {
+    private fun requirePublished(recordId: Long): SpotRecord {
         val record = spotRecordRepository.findById(recordId).orElseThrow { SpotRecordNotFoundException() }
         if (record.status != SpotRecordStatus.PUBLISHED) throw SpotRecordNotFoundException()
+        return record
     }
 
     @Transactional(readOnly = true)

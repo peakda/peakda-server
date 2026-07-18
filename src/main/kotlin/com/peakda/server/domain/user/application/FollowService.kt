@@ -10,6 +10,7 @@ import com.peakda.server.domain.user.presentation.response.FollowSummaryResponse
 import com.peakda.server.domain.user.presentation.response.FollowUserResponse
 import com.peakda.server.domain.user.repository.FollowRepository
 import com.peakda.server.domain.user.repository.UserRepository
+import org.springframework.context.ApplicationEventPublisher
 import org.springframework.data.domain.Page
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
@@ -20,6 +21,7 @@ class FollowService(
     private val followRepository: FollowRepository,
     private val userRepository: UserRepository,
     private val profileImageUrlResolver: ProfileImageUrlResolver,
+    private val eventPublisher: ApplicationEventPublisher,
 ) {
 
     fun follow(followerId: Long, targetUserId: Long) {
@@ -27,6 +29,8 @@ class FollowService(
         requireUserExists(targetUserId)
         // ON CONFLICT DO NOTHING — 이미 팔로우 중이면 무시되어 동시 요청에서도 단일 행이 보장된다.
         followRepository.insertIfAbsent(followerId, targetUserId)
+        // 커밋 후 알림 도메인이 수신해 팔로우 알림을 생성한다 (AFTER_COMMIT).
+        eventPublisher.publishEvent(FollowCreatedEvent(followerId, targetUserId))
     }
 
     fun unfollow(followerId: Long, targetUserId: Long) {
