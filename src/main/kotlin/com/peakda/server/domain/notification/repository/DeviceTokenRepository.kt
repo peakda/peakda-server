@@ -43,7 +43,7 @@ interface DeviceTokenRepository : JpaRepository<DeviceToken, Long> {
               AND id NOT IN (
                   SELECT id FROM device_tokens
                   WHERE user_id = :userId
-                  ORDER BY updated_at DESC
+                  ORDER BY updated_at DESC, id DESC
                   LIMIT :keep
               )
         """,

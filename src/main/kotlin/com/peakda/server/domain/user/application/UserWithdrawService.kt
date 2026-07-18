@@ -34,7 +34,7 @@ class UserWithdrawService(
      */
     @Transactional
     fun withdraw(userId: Long, response: HttpServletResponse) {
-        val user = userRepository.findById(userId).orElseThrow { UserNotFoundException() }
+        val user = userRepository.findByIdForUpdate(userId) ?: throw UserNotFoundException()
 
         spotRecordService.deleteAllByUser(userId)
         spotFavoriteService.deleteAllByUser(userId)

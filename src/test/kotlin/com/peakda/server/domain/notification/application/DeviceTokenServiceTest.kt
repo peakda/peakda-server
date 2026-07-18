@@ -2,14 +2,34 @@ package com.peakda.server.domain.notification.application
 
 import com.peakda.server.domain.notification.entity.DevicePlatform
 import com.peakda.server.domain.notification.repository.DeviceTokenRepository
+import com.peakda.server.domain.user.entity.User
+import com.peakda.server.domain.user.repository.UserRepository
 import org.junit.jupiter.api.Test
+import org.mockito.Mockito.inOrder
 import org.mockito.Mockito.mock
 import org.mockito.Mockito.verify
+import org.mockito.Mockito.`when`
 
 class DeviceTokenServiceTest {
 
     private val deviceTokenRepository = mock(DeviceTokenRepository::class.java)
-    private val service = DeviceTokenService(deviceTokenRepository)
+    private val userRepository = mock(UserRepository::class.java)
+    private val service = DeviceTokenService(deviceTokenRepository, userRepository)
+
+    init {
+        `when`(userRepository.findByIdForUpdate(USER_ID)).thenReturn(mock(User::class.java))
+    }
+
+    @Test
+    fun `디바이스 토큰 등록은 사용자 행 잠금 후 처리한다`() {
+        service.register(USER_ID, TOKEN, DevicePlatform.ANDROID)
+
+        inOrder(userRepository, deviceTokenRepository).apply {
+            verify(userRepository).findByIdForUpdate(USER_ID)
+            verify(deviceTokenRepository).upsert(USER_ID, TOKEN, DevicePlatform.ANDROID.name)
+            verify(deviceTokenRepository).deleteExceeding(USER_ID, 10)
+        }
+    }
 
     @Test
     fun `디바이스 토큰 등록은 네이티브 upsert에 위임한다`() {
