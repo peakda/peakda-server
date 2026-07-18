@@ -2,6 +2,7 @@ package com.peakda.server
 
 import com.peakda.server.domain.auth.application.RefreshTokenService
 import org.junit.jupiter.api.Test
+import org.redisson.api.RedissonClient
 import org.springframework.boot.test.context.SpringBootTest
 import org.springframework.boot.testcontainers.service.connection.ServiceConnection
 import org.springframework.test.context.ActiveProfiles
@@ -20,6 +21,9 @@ class PeakdaServerApplicationTests {
     @MockitoBean
     lateinit var refreshTokenService: RefreshTokenService
 
+    @MockitoBean
+    lateinit var redissonClient: RedissonClient
+
     @Test
     fun contextLoads() {
     }
@@ -28,7 +32,7 @@ class PeakdaServerApplicationTests {
         @Container
         @ServiceConnection
         @JvmStatic
-        val postgres = PostgreSQLContainer("postgres:18")
+        val postgres = PostgreSQLContainer("postgres:16")
             .withDatabaseName("peakda")
             .withUsername("peakda")
             .withPassword("peakda")

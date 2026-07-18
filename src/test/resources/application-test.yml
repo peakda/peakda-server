@@ -9,6 +9,12 @@ app:
     allowed-origins: http://localhost:3000
   oauth2:
     redirect-uri: http://localhost:3000/auth/callback
+  storage:
+    bucket: peakda-test
+    endpoint: http://localhost:19000
+    region: ap-northeast-2
+    access-key: test-access-key
+    secret-key: test-secret-key
 
 external:
   data-go-kr:
