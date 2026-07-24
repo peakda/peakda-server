@@ -43,6 +43,8 @@ external:
       mid-fcst:    { cron: "0/30 * * * * *", enabled: false }
     pubdata:
       festival:    { cron: "0/30 * * * * *", enabled: false }
+    notification:
+      bloom-timing-alert: { cron: "0/30 * * * * *", enabled: false }
 
 springdoc:
   swagger-ui:
