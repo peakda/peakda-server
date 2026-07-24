@@ -48,6 +48,18 @@ interface SeasonalBloomEstimateRepository : JpaRepository<SeasonalBloomEstimate,
         attractionIds: Collection<Long>,
     ): List<SeasonalBloomEstimate>
 
+    /**
+     * 주어진 명소들의 특정 산출일 추정 중, 진행 중(status≠제외상태)이고 만개 시작일이 [start, end] 창에 드는 것만.
+     * 만개 임박 알림 후보 선별용. peak_start_date 가 null 이면 BETWEEN 에서 자연히 제외된다.
+     */
+    fun findByBaseDateAndAttractionIdInAndStatusNotAndPeakStartDateBetween(
+        baseDate: LocalDate,
+        attractionIds: Collection<Long>,
+        status: BloomStatus,
+        peakStartDateStart: LocalDate,
+        peakStartDateEnd: LocalDate,
+    ): List<SeasonalBloomEstimate>
+
     fun findByBaseDateAndAttractionIdInAndBloomCategory(
         baseDate: LocalDate,
         attractionIds: Collection<Long>,

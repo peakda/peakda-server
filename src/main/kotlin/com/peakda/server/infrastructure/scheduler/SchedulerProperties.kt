@@ -9,6 +9,7 @@ data class SchedulerProperties(
     val kma: KmaSchedulerProps = KmaSchedulerProps(),
     val pubdata: PubdataSchedulerProps = PubdataSchedulerProps(),
     val seasonal: SeasonalSchedulerProps = SeasonalSchedulerProps(),
+    val notification: NotificationSchedulerProps = NotificationSchedulerProps(),
 ) {
     data class JobProps(
         val cron: String = "",
@@ -47,5 +48,9 @@ data class SchedulerProperties(
     data class SeasonalSchedulerProps(
         val attractionBloomTagging: JobProps = JobProps(),
         val bloomEstimate: JobProps = JobProps(),
+    )
+
+    data class NotificationSchedulerProps(
+        val bloomTimingAlert: JobProps = JobProps(),
     )
 }
