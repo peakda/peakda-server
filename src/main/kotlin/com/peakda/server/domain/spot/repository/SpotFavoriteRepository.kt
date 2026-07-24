@@ -1,10 +1,13 @@
 package com.peakda.server.domain.spot.repository
 
 import com.peakda.server.domain.spot.entity.SpotFavorite
+import com.peakda.server.domain.spot.entity.SpotType
 import org.springframework.data.domain.Pageable
+import org.springframework.data.domain.Slice
 import org.springframework.data.jpa.repository.JpaRepository
 import org.springframework.data.jpa.repository.Modifying
 import org.springframework.data.jpa.repository.Query
+import org.springframework.data.repository.query.Param
 
 interface SpotFavoriteRepository : JpaRepository<SpotFavorite, Long> {
     fun findByUserIdAndSpotId(userId: Long, spotId: Long): SpotFavorite?
@@ -23,6 +26,30 @@ interface SpotFavoriteRepository : JpaRepository<SpotFavorite, Long> {
         """,
     )
     fun findTrendingSpotIds(pageable: Pageable): List<SpotFavoriteCount>
+
+    /**
+     * 만개 임박 알림 대상 찜을 조회한다. 알림이 켜졌고(notify_enabled) 노출 중인 명소형 스팟에 걸린 찜만
+     * (수신자·스팟명·명소 id) 로 뽑는다. 실제 "만개 임박" 판정은 호출측(알림 서비스)이 개화 추정과 결합해 수행한다.
+     */
+    @Query(
+        """
+            SELECT f.userId AS userId,
+                   s.id AS spotId,
+                   s.name AS spotName,
+                   s.attractionId AS attractionId
+            FROM SpotFavorite f, Spot s
+            WHERE s.id = f.spotId
+              AND f.notifyEnabled = true
+              AND s.type = :attractionType
+              AND s.visible = true
+              AND s.attractionId IS NOT NULL
+            ORDER BY f.id
+        """,
+    )
+    fun findAlertTargets(
+        @Param("attractionType") attractionType: SpotType,
+        pageable: Pageable,
+    ): Slice<AlertTargetFavorite>
 
     /**
      * 찜을 멱등하게 추가한다. 이미 같은 (user, spot) 이 있으면 아무 것도 하지 않으므로
@@ -44,4 +71,12 @@ interface SpotFavoriteRepository : JpaRepository<SpotFavorite, Long> {
 interface SpotFavoriteCount {
     val spotId: Long
     val favoriteCount: Long
+}
+
+/** [SpotFavoriteRepository.findAlertTargets] 프로젝션. 명소형 찜의 수신자·스팟명·명소 id. */
+interface AlertTargetFavorite {
+    val userId: Long
+    val spotId: Long
+    val spotName: String
+    val attractionId: Long
 }

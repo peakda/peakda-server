@@ -8,6 +8,7 @@ import org.springframework.data.jpa.repository.Query
 interface DeviceTokenRepository : JpaRepository<DeviceToken, Long> {
 
     fun findByUserId(userId: Long): List<DeviceToken>
+    fun findByUserIdIn(userIds: Collection<Long>): List<DeviceToken>
 
     fun deleteByUserIdAndToken(userId: Long, token: String)
 
