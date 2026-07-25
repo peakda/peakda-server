@@ -126,6 +126,22 @@ class OpenApiConfig(
             .build()
 
     @Bean
+    fun exploreGroupedOpenApi(): GroupedOpenApi =
+        GroupedOpenApi.builder()
+            .group("10-explore")
+            .displayName("탐색")
+            .pathsToMatch("/api/explore", "/api/explore/**")
+            .build()
+
+    @Bean
+    fun curationGroupedOpenApi(): GroupedOpenApi =
+        GroupedOpenApi.builder()
+            .group("11-curation")
+            .displayName("큐레이션")
+            .pathsToMatch("/api/curations", "/api/curations/**", "/api/admin/curations", "/api/admin/curations/**")
+            .build()
+
+    @Bean
     fun allGroupedOpenApi(): GroupedOpenApi =
         GroupedOpenApi.builder()
             .group("99-all")
@@ -144,7 +160,8 @@ class OpenApiConfig(
                         .summary("카카오 로그인 시작 - 링크 클릭용")
                         .description(
                             "이 엔드포인트는 API 호출용이 아니라 브라우저 이동용입니다.\n\n" +
-                                "카카오 로그인은 Swagger UI의 Execute 버튼이 아니라 아래 링크를 클릭해서 시작하세요.\n\n" +
+                                "카카오 로그인은 Swagger UI의 Execute 버튼이 아니라 " +
+                                "아래 링크를 클릭해서 시작하세요.\n\n" +
                                 "- [Local 카카오 로그인 시작](${openApiProperties.servers.local}$KAKAO_LOGIN_PATH)\n" +
                                 "- [Develop 카카오 로그인 시작](${openApiProperties.servers.dev}$KAKAO_LOGIN_PATH)"
                         )

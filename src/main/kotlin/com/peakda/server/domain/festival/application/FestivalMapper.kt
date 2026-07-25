@@ -9,6 +9,8 @@ fun FestivalItem.toFestival(): Festival = Festival(
     venue = opar,
     startDate = fstvlStartDate,
     endDate = fstvlEndDate.ifBlank { null },
+    startsOn = FestivalDates.parse(fstvlStartDate),
+    endsOn = FestivalDates.parse(fstvlEndDate),
     hostOrganization = mnnstNm.ifBlank { null },
     organizingInstitution = auspcInsttNm.ifBlank { null },
     supportingInstitution = suprtInsttNm.ifBlank { null },
@@ -25,6 +27,8 @@ fun FestivalItem.toFestival(): Festival = Festival(
 
 fun Festival.applyUpdate(item: FestivalItem) {
     endDate = item.fstvlEndDate.ifBlank { endDate }
+    endsOn = FestivalDates.parse(endDate)
+    startsOn = startsOn ?: FestivalDates.parse(startDate)
     hostOrganization = item.mnnstNm.ifBlank { hostOrganization }
     organizingInstitution = item.auspcInsttNm.ifBlank { organizingInstitution }
     supportingInstitution = item.suprtInsttNm.ifBlank { supportingInstitution }
@@ -44,6 +48,8 @@ fun FestivalItem.toUpsertCommand(): FestivalUpsertCommand = FestivalUpsertComman
     venue = opar,
     startDate = fstvlStartDate,
     endDate = fstvlEndDate.ifBlank { null },
+    startsOn = FestivalDates.parse(fstvlStartDate),
+    endsOn = FestivalDates.parse(fstvlEndDate),
     hostOrganization = mnnstNm.ifBlank { null },
     organizingInstitution = auspcInsttNm.ifBlank { null },
     supportingInstitution = suprtInsttNm.ifBlank { null },

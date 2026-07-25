@@ -192,6 +192,12 @@ external:
       bloom-timing-alert: { cron: "0 0 8 * * *", enabled: true }
 
 peakda:
+  explore:
+    peak-now-size: 10
+    next-week-size: 5
+    festival-size: 10
+    festival-candidate-size: 200
+    curation-size: 5
   timing:
     tagging:
       keyword-base-confidence: 0.5

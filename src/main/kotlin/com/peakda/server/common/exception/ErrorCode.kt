@@ -56,4 +56,5 @@ enum class ErrorCode(
     PLANT_SUGGESTION_RATE_LIMIT(HttpStatus.TOO_MANY_REQUESTS, "최근 24시간 식물 제안 한도를 초과했습니다."),
 
     NOTIFICATION_NOT_FOUND(HttpStatus.NOT_FOUND, "알림을 찾을 수 없습니다."),
+    CURATION_NOT_FOUND(HttpStatus.NOT_FOUND, "큐레이션을 찾을 수 없습니다."),
 }

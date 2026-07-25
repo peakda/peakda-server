@@ -75,6 +75,7 @@ class SecurityConfig(
                         "/api/auth/signup/complete",
                         "/api/auth/signup/profile-image",
                     ).hasRole("SIGNUP")
+                    .requestMatchers("/api/admin/**").hasRole("ADMIN")
                     .requestMatchers("/actuator/health", "/actuator/info").permitAll()
                     .requestMatchers("/actuator/**").hasRole("ADMIN")
                     .anyRequest().hasRole("USER")
