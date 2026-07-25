@@ -57,4 +57,6 @@ enum class ErrorCode(
 
     NOTIFICATION_NOT_FOUND(HttpStatus.NOT_FOUND, "알림을 찾을 수 없습니다."),
     CURATION_NOT_FOUND(HttpStatus.NOT_FOUND, "큐레이션을 찾을 수 없습니다."),
+    FESTIVAL_NOT_FOUND(HttpStatus.NOT_FOUND, "축제를 찾을 수 없습니다."),
+    FESTIVAL_EDITORIAL_NOT_FOUND(HttpStatus.NOT_FOUND, "축제 상세 정보를 찾을 수 없습니다."),
 }
