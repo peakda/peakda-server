@@ -8,8 +8,6 @@ import com.peakda.server.domain.seasonal.entity.BloomStatus
 import com.peakda.server.domain.seasonal.entity.Estimator
 import org.springframework.stereotype.Component
 import java.time.LocalDate
-import java.time.format.DateTimeFormatter
-import java.time.format.DateTimeParseException
 import kotlin.math.atan2
 import kotlin.math.cos
 import kotlin.math.pow
@@ -39,8 +37,8 @@ class FestivalBloomEstimator(
             val fLat = festival.latitude ?: continue
             val fLng = festival.longitude ?: continue
             if (haversine(lat, lng, fLat, fLng) > radiusMeters) continue
-            val start = parseDate(festival.startDate) ?: continue
-            val end = parseDate(festival.endDate) ?: start
+            val start = festival.startsOn ?: continue
+            val end = festival.endsOn ?: start
             val estimation = classify(context.baseDate, start, end, festival) ?: continue
             best = stronger(best, estimation)
         }
@@ -81,17 +79,6 @@ class FestivalBloomEstimator(
     private fun matchesCategory(festivalName: String, category: BloomCategory): Boolean {
         val haystack = festivalName.lowercase()
         return category.festivalHints.any { haystack.contains(it.lowercase()) }
-    }
-
-    private fun parseDate(value: String?): LocalDate? {
-        if (value.isNullOrBlank()) return null
-        val digits = value.filter { it.isDigit() }
-        if (digits.length != 8) return null
-        return try {
-            LocalDate.parse(digits, DateTimeFormatter.BASIC_ISO_DATE)
-        } catch (e: DateTimeParseException) {
-            null
-        }
     }
 
     private fun haversine(lat1: Double, lng1: Double, lat2: Double, lng2: Double): Double {

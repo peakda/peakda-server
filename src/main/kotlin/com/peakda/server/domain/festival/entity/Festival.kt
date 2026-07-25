@@ -8,7 +8,15 @@ import jakarta.persistence.GenerationType
 import jakarta.persistence.Id
 import jakarta.persistence.Table
 import jakarta.persistence.UniqueConstraint
+import java.time.LocalDate
 
+/**
+ * 공공데이터 원천 축제.
+ *
+ * 원천 문자열 [startDate]·[endDate]는 포맷이 혼재하므로 보존만 한다.
+ * 날짜 질의·판정은 동기화 시점에 파싱해 채운 [startsOn]·[endsOn]을 사용한다.
+ * 파싱할 수 없는 값은 null이다.
+ */
 @Entity
 @Table(
     name = "festivals",
@@ -31,6 +39,12 @@ class Festival(
 
     @Column(name = "end_date", columnDefinition = "TEXT")
     var endDate: String? = null,
+
+    @Column(name = "starts_on")
+    var startsOn: LocalDate? = null,
+
+    @Column(name = "ends_on")
+    var endsOn: LocalDate? = null,
 
     @Column(name = "host_organization", columnDefinition = "TEXT")
     var hostOrganization: String? = null,

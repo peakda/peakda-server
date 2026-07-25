@@ -11,8 +11,6 @@ import com.peakda.server.domain.seasonal.repository.AttractionBloomUpsertCommand
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 import java.time.LocalDate
-import java.time.format.DateTimeFormatter
-import java.time.format.DateTimeParseException
 import kotlin.math.atan2
 import kotlin.math.cos
 import kotlin.math.max
@@ -66,7 +64,7 @@ class BloomTaggingService(
             if (!isActive(festival, today)) continue
             val lat = festival.latitude ?: continue
             val lng = festival.longitude ?: continue
-            val category = categoryOf(festival.name) ?: continue
+            val category = BloomCategory.ofFestivalName(festival.name) ?: continue
             for (attraction in findNearbyAttractions(lat, lng, radiusMeters)) {
                 val attractionId = attraction.id ?: continue
                 attractionBloomRepository.upsert(
@@ -92,27 +90,9 @@ class BloomTaggingService(
         return KeywordMatch(confidence = minOf(confidence, 1.0), evidence = "keyword:$hint")
     }
 
-    private fun categoryOf(festivalName: String): BloomCategory? {
-        val haystack = festivalName.lowercase()
-        return BloomCategory.entries.firstOrNull { category ->
-            category.festivalHints.any { haystack.contains(it.lowercase()) }
-        }
-    }
-
     private fun isActive(festival: Festival, today: LocalDate): Boolean {
-        val end = parseDate(festival.endDate) ?: parseDate(festival.startDate) ?: return false
+        val end = festival.endsOn ?: festival.startsOn ?: return false
         return !end.isBefore(today)
-    }
-
-    private fun parseDate(value: String?): LocalDate? {
-        if (value.isNullOrBlank()) return null
-        val digits = value.filter { it.isDigit() }
-        if (digits.length != 8) return null
-        return try {
-            LocalDate.parse(digits, DateTimeFormatter.BASIC_ISO_DATE)
-        } catch (e: DateTimeParseException) {
-            null
-        }
     }
 
     private fun findNearbyAttractions(lat: Double, lng: Double, radiusMeters: Double): List<Attraction> {

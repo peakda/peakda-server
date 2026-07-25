@@ -122,5 +122,14 @@ enum class BloomCategory(
     companion object {
         private val TEMPERATURE_DRIVEN =
             setOf(CHERRY, PLUM, FORSYTHIA, AZALEA_KR, AZALEA, CANOLA, MAPLE)
+
+        /**
+         * 축제명에 [festivalHints]가 포함되는 첫 카테고리.
+         * 자동 태깅과 탐색 큐레이션이 공유하는 꽃축제 판정 규칙이다.
+         */
+        fun ofFestivalName(festivalName: String): BloomCategory? {
+            val haystack = festivalName.lowercase()
+            return entries.firstOrNull { category -> category.festivalHints.any { haystack.contains(it.lowercase()) } }
+        }
     }
 }
