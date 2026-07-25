@@ -3,6 +3,8 @@ package com.peakda.server.domain.seasonal.repository
 import com.peakda.server.domain.seasonal.entity.BloomCategory
 import com.peakda.server.domain.seasonal.entity.BloomStatus
 import com.peakda.server.domain.seasonal.entity.SeasonalBloomEstimate
+import org.springframework.data.domain.Page
+import org.springframework.data.domain.Pageable
 import org.springframework.data.jpa.repository.JpaRepository
 import org.springframework.data.jpa.repository.Modifying
 import org.springframework.data.jpa.repository.Query
@@ -49,7 +51,8 @@ interface SeasonalBloomEstimateRepository : JpaRepository<SeasonalBloomEstimate,
     ): List<SeasonalBloomEstimate>
 
     /**
-     * 주어진 명소들의 특정 산출일 추정 중, 진행 중(status≠제외상태)이고 만개 시작일이 [start, end] 창에 드는 것만.
+     * 주어진 명소들의 특정 산출일 추정 중, 진행 중(status≠제외상태)이고
+     * 만개 시작일이 [start, end] 창에 드는 것만.
      * 만개 임박 알림 후보 선별용. peak_start_date 가 null 이면 BETWEEN 에서 자연히 제외된다.
      */
     fun findByBaseDateAndAttractionIdInAndStatusNotAndPeakStartDateBetween(
@@ -70,6 +73,63 @@ interface SeasonalBloomEstimateRepository : JpaRepository<SeasonalBloomEstimate,
         baseDate: LocalDate,
         status: BloomStatus,
     ): List<SeasonalBloomEstimate>
+
+    /**
+     * 산출일·상태가 일치하는 추정을 가진 명소 id 를 대표 신뢰도 높은 순으로 페이징한다.
+     * 한 명소가 여러 카테고리로 여러 행을 갖기 때문에
+     * 명소 단위로 묶어야 페이지 경계가 어긋나지 않는다.
+     * 어떤 카테고리를 대표로 쓸지는 호출측(application)이 결정한다.
+     *
+     * 명소의 노출 여부는 이 레포가 알 수 없다.
+     * 비노출 명소가 포함되면 실제 응답 건수가 페이지 메타보다 적을 수 있다.
+     */
+    @Query(
+        value = """
+            SELECT e.attractionId FROM SeasonalBloomEstimate e
+            WHERE e.baseDate = :baseDate
+              AND e.status = :status
+            GROUP BY e.attractionId
+            ORDER BY MAX(e.confidence) DESC, e.attractionId ASC
+        """,
+        countQuery = """
+            SELECT COUNT(DISTINCT e.attractionId) FROM SeasonalBloomEstimate e
+            WHERE e.baseDate = :baseDate
+              AND e.status = :status
+        """,
+    )
+    fun findAttractionIdsByBaseDateAndStatus(
+        @Param("baseDate") baseDate: LocalDate,
+        @Param("status") status: BloomStatus,
+        pageable: Pageable,
+    ): Page<Long>
+
+    /**
+     * 산출일·상태·꽃 카테고리가 일치하는 추정을 가진 명소 id 를 대표 신뢰도 높은 순으로 페이징한다.
+     * 명소의 노출 여부는 이 레포가 알 수 없다.
+     * 비노출 명소가 포함되면 실제 응답 건수가 페이지 메타보다 적을 수 있다.
+     */
+    @Query(
+        value = """
+            SELECT e.attractionId FROM SeasonalBloomEstimate e
+            WHERE e.baseDate = :baseDate
+              AND e.status = :status
+              AND e.bloomCategory = :bloomCategory
+            GROUP BY e.attractionId
+            ORDER BY MAX(e.confidence) DESC, e.attractionId ASC
+        """,
+        countQuery = """
+            SELECT COUNT(DISTINCT e.attractionId) FROM SeasonalBloomEstimate e
+            WHERE e.baseDate = :baseDate
+              AND e.status = :status
+              AND e.bloomCategory = :bloomCategory
+        """,
+    )
+    fun findAttractionIdsByBaseDateAndStatusAndBloomCategory(
+        @Param("baseDate") baseDate: LocalDate,
+        @Param("status") status: BloomStatus,
+        @Param("bloomCategory") bloomCategory: BloomCategory,
+        pageable: Pageable,
+    ): Page<Long>
 
     fun findByBaseDateAndStatusAndBloomCategory(
         baseDate: LocalDate,

@@ -11,12 +11,19 @@ import org.springframework.data.repository.query.Param
 
 interface SpotFavoriteRepository : JpaRepository<SpotFavorite, Long> {
     fun findByUserIdAndSpotId(userId: Long, spotId: Long): SpotFavorite?
+
+    /** 한 사용자의 여러 스팟 찜 상태를 한 번에. 카드 목록의 찜·알림 토글 상태 표시용. */
+    fun findByUserIdAndSpotIdIn(userId: Long, spotIds: Collection<Long>): List<SpotFavorite>
+
     fun findByUserIdOrderByCreatedAtDesc(userId: Long): List<SpotFavorite>
     fun countByUserId(userId: Long): Long
     fun deleteByUserIdAndSpotId(userId: Long, spotId: Long)
     fun deleteByUserId(userId: Long)
 
-    /** 찜이 많은 순서로 스팟 id·찜 수를 뽑는다 ("인기 스팟"/트렌딩 소스). [pageable] 로 상위 N개만 자른다. */
+    /**
+     * 찜이 많은 순서로 스팟 id·찜 수를 뽑는다 ("인기 스팟"/트렌딩 소스).
+     * [pageable] 로 상위 N개만 자른다.
+     */
     @Query(
         """
             SELECT f.spotId AS spotId, COUNT(f) AS favoriteCount
@@ -29,7 +36,8 @@ interface SpotFavoriteRepository : JpaRepository<SpotFavorite, Long> {
 
     /**
      * 만개 임박 알림 대상 찜을 조회한다. 알림이 켜졌고(notify_enabled) 노출 중인 명소형 스팟에 걸린 찜만
-     * (수신자·스팟명·명소 id) 로 뽑는다. 실제 "만개 임박" 판정은 호출측(알림 서비스)이 개화 추정과 결합해 수행한다.
+     * (수신자·스팟명·명소 id) 로 뽑는다.
+     * 실제 "만개 임박" 판정은 호출측(알림 서비스)이 개화 추정과 결합해 수행한다.
      */
     @Query(
         """
