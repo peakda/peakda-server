@@ -142,6 +142,14 @@ class OpenApiConfig(
             .build()
 
     @Bean
+    fun festivalGroupedOpenApi(): GroupedOpenApi =
+        GroupedOpenApi.builder()
+            .group("12-festival")
+            .displayName("축제")
+            .pathsToMatch("/api/festivals/**", "/api/admin/festivals/**")
+            .build()
+
+    @Bean
     fun allGroupedOpenApi(): GroupedOpenApi =
         GroupedOpenApi.builder()
             .group("99-all")
