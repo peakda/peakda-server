@@ -138,7 +138,7 @@ class OpenApiConfig(
         GroupedOpenApi.builder()
             .group("11-curation")
             .displayName("큐레이션")
-            .pathsToMatch("/api/curations", "/api/curations/**", "/api/admin/curations", "/api/admin/curations/**")
+            .pathsToMatch("/api/curations", "/api/curations/**")
             .build()
 
     @Bean
@@ -146,7 +146,15 @@ class OpenApiConfig(
         GroupedOpenApi.builder()
             .group("12-festival")
             .displayName("축제")
-            .pathsToMatch("/api/festivals/**", "/api/admin/festivals/**")
+            .pathsToMatch("/api/festivals/**")
+            .build()
+
+    @Bean
+    fun adminGroupedOpenApi(): GroupedOpenApi =
+        GroupedOpenApi.builder()
+            .group("13-admin")
+            .displayName("백오피스")
+            .pathsToMatch("/api/admin", "/api/admin/**")
             .build()
 
     @Bean

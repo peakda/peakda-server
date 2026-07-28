@@ -59,4 +59,19 @@ enum class ErrorCode(
     CURATION_NOT_FOUND(HttpStatus.NOT_FOUND, "큐레이션을 찾을 수 없습니다."),
     FESTIVAL_NOT_FOUND(HttpStatus.NOT_FOUND, "축제를 찾을 수 없습니다."),
     FESTIVAL_EDITORIAL_NOT_FOUND(HttpStatus.NOT_FOUND, "축제 상세 정보를 찾을 수 없습니다."),
+
+    REPORT_NOT_FOUND(HttpStatus.NOT_FOUND, "신고 내역을 찾을 수 없습니다."),
+    REPORT_ALREADY_REVIEWED(HttpStatus.CONFLICT, "이미 심사가 끝난 신고입니다."),
+    REPORT_ACTION_NOT_SUPPORTED(HttpStatus.BAD_REQUEST, "해당 신고 대상에 적용할 수 없는 조치입니다."),
+
+    NOTICE_NOT_FOUND(HttpStatus.NOT_FOUND, "공지를 찾을 수 없습니다."),
+    NOTICE_NOT_EDITABLE(HttpStatus.CONFLICT, "발송이 시작된 공지는 수정할 수 없습니다."),
+    NOTICE_ALREADY_DISPATCHED(HttpStatus.CONFLICT, "이미 발송된 공지입니다."),
+
+    USER_NOT_FOUND(HttpStatus.NOT_FOUND, "사용자를 찾을 수 없습니다."),
+    USER_STATUS_NOT_CHANGEABLE(HttpStatus.CONFLICT, "현재 상태에서는 변경할 수 없습니다."),
+    ADMIN_SELF_ACTION_NOT_ALLOWED(HttpStatus.BAD_REQUEST, "관리자 본인 계정에는 적용할 수 없습니다."),
+
+    SCHEDULER_JOB_NOT_FOUND(HttpStatus.NOT_FOUND, "스케줄러 잡을 찾을 수 없습니다."),
+    SCHEDULER_JOB_ALREADY_RUNNING(HttpStatus.CONFLICT, "이미 실행 중인 스케줄러 잡입니다."),
 }

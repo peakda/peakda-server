@@ -35,6 +35,8 @@ class SecurityConfig(
             "/v3/api-docs",
             "/v3/api-docs/**",
             "/v3/api-docs.yaml",
+            "/admin",
+            "/admin/**",
             "/oauth2/**",
             "/login/oauth2/**",
             "/api/auth/refresh"
@@ -59,7 +61,7 @@ class SecurityConfig(
                     .contentTypeOptions(Customizer.withDefaults())
                     .cacheControl { it.disable() }
                     .contentSecurityPolicy {
-                        it.policyDirectives("default-src 'self'; frame-ancestors 'self'")
+                        it.policyDirectives("default-src 'self'; img-src 'self' data: https:; frame-ancestors 'self'")
                     }
                     .referrerPolicy {
                         it.policy(ReferrerPolicyHeaderWriter.ReferrerPolicy.NO_REFERRER)
