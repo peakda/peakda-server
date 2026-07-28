@@ -45,6 +45,7 @@ external:
       festival:    { cron: "0/30 * * * * *", enabled: false }
     notification:
       bloom-timing-alert: { cron: "0/30 * * * * *", enabled: false }
+      notice-dispatch: { fixed-delay: 30s, enabled: false }
 
 springdoc:
   swagger-ui:

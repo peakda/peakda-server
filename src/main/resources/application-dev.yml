@@ -24,6 +24,11 @@ app:
     secure: true
     same-site: None
 
+external:
+  scheduler:
+    notification:
+      notice-dispatch: { fixed-delay: 30s, enabled: true }
+
 management:
   endpoints:
     web:

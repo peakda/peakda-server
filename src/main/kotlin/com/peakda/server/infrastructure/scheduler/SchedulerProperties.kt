@@ -16,6 +16,11 @@ data class SchedulerProperties(
         val enabled: Boolean = true,
     )
 
+    data class FixedDelayJobProps(
+        val fixedDelay: String = "30s",
+        val enabled: Boolean = true,
+    )
+
     data class VilageFcstJobProps(
         val cron: String = "",
         val enabled: Boolean = true,
@@ -52,5 +57,6 @@ data class SchedulerProperties(
 
     data class NotificationSchedulerProps(
         val bloomTimingAlert: JobProps = JobProps(),
+        val noticeDispatch: FixedDelayJobProps = FixedDelayJobProps(),
     )
 }
