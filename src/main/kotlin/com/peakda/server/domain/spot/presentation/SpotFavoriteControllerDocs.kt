@@ -27,7 +27,7 @@ interface SpotFavoriteControllerDocs {
     @Operation(
         summary = "스팟 찜 추가",
         description = "스팟을 찜한다. 이미 찜한 스팟이면 기존 찜을 그대로 반환한다 (멱등). " +
-            "찜 시 만개 알림이 기본 활성화된다.",
+            "찜 시 만개 알림이 기본 활성화된다. 응답은 찜 목록 카드와 같은 개화·사진·기록 정보를 포함한다.",
         security = [SecurityRequirement(name = "accessTokenCookie")],
     )
     @ApiErrorResponses(
@@ -56,7 +56,8 @@ interface SpotFavoriteControllerDocs {
 
     @Operation(
         summary = "찜한 스팟 만개 알림 설정 변경",
-        description = "찜한 스팟의 만개 알림 수신 여부를 변경한다. 찜하지 않은 스팟이면 404.",
+        description = "찜한 스팟의 만개 알림 수신 여부를 변경한다. 찜하지 않은 스팟이면 404. " +
+            "응답은 찜 목록 카드와 같은 개화·사진·기록 정보를 포함한다.",
         security = [SecurityRequirement(name = "accessTokenCookie")],
     )
     @ApiErrorResponses(
@@ -74,7 +75,9 @@ interface SpotFavoriteControllerDocs {
 
     @Operation(
         summary = "찜한 스팟 목록",
-        description = "본인이 찜한 스팟을 최근 찜한 순으로 조회한다.",
+        description = "본인이 찜한 스팟을 최근 찜한 순으로 조회한다. 목록 상단 만개 임박·절정 배너는 최대 1건이며, " +
+            "각 카드는 대표 개화 상태, 꽃 카테고리 칩, 게시된 방문 기록 수, 최근 사진 최대 4장을 포함한다. " +
+            "동네형 스팟은 개화 정보와 꽃 카테고리 칩이 없다.",
         security = [SecurityRequirement(name = "accessTokenCookie")],
     )
     @ApiErrorResponses(ErrorCode.UNAUTHORIZED)

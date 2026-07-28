@@ -10,6 +10,8 @@ import org.springframework.http.HttpStatus
 import org.springframework.http.ResponseEntity
 import org.springframework.web.bind.annotation.RequestMapping
 import org.springframework.web.bind.annotation.RestController
+import java.time.LocalDate
+import java.time.ZoneId
 
 @RestController
 @RequestMapping("/api/spots/favorites")
@@ -22,7 +24,7 @@ class SpotFavoriteController(
         spotId: Long,
     ): ResponseEntity<ApiResponse<SpotFavoriteResponse>> {
         val userId = requireNotNull(principal.getUser().id)
-        val response = spotFavoriteService.add(userId, spotId)
+        val response = spotFavoriteService.add(userId, spotId, LocalDate.now(KST))
         return ResponseEntity.ok(ApiResponse.success(HttpStatus.OK, response))
     }
 
@@ -41,7 +43,7 @@ class SpotFavoriteController(
         request: UpdateFavoriteNotifyRequest,
     ): ResponseEntity<ApiResponse<SpotFavoriteResponse>> {
         val userId = requireNotNull(principal.getUser().id)
-        val response = spotFavoriteService.updateNotify(userId, spotId, request.enabled)
+        val response = spotFavoriteService.updateNotify(userId, spotId, request.enabled, LocalDate.now(KST))
         return ResponseEntity.ok(ApiResponse.success(HttpStatus.OK, response))
     }
 
@@ -49,7 +51,11 @@ class SpotFavoriteController(
         principal: PrincipalDetails,
     ): ResponseEntity<ApiResponse<SpotFavoriteListResponse>> {
         val userId = requireNotNull(principal.getUser().id)
-        val response = spotFavoriteService.list(userId)
+        val response = spotFavoriteService.list(userId, LocalDate.now(KST))
         return ResponseEntity.ok(ApiResponse.success(HttpStatus.OK, response))
+    }
+
+    companion object {
+        private val KST = ZoneId.of("Asia/Seoul")
     }
 }

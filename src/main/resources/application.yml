@@ -193,6 +193,10 @@ external:
 
 peakda:
   festival: { ending-soon-days: 7 }
+  spot:
+    favorite:
+      banner-lead-days: 7
+      photo-limit: 4
   explore:
     peak-now-size: 10
     next-week-size: 5
