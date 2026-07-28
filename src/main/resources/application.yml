@@ -192,6 +192,7 @@ external:
       bloom-timing-alert: { cron: "0 0 8 * * *", enabled: true }
 
 peakda:
+  festival: { ending-soon-days: 7 }
   explore:
     peak-now-size: 10
     next-week-size: 5
