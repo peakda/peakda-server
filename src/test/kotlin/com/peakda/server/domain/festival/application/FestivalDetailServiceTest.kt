@@ -1,5 +1,6 @@
 package com.peakda.server.domain.festival.application
 
+import com.peakda.server.common.storage.ObjectKeyUrlResolver
 import com.peakda.server.domain.festival.entity.Festival
 import com.peakda.server.domain.festival.entity.FestivalEditorial
 import com.peakda.server.domain.festival.entity.FestivalEditorialStatus
@@ -25,11 +26,13 @@ class FestivalDetailServiceTest {
     private val festivalRepository = mock(FestivalRepository::class.java)
     private val festivalEditorialRepository = mock(FestivalEditorialRepository::class.java)
     private val festivalHighlightRepository = mock(FestivalHighlightRepository::class.java)
+    private val objectKeyUrlResolver = mock(ObjectKeyUrlResolver::class.java)
     private val service = FestivalDetailService(
         festivalRepository,
         festivalEditorialRepository,
         festivalHighlightRepository,
         FestivalDetailProperties(endingSoonDays = 7),
+        objectKeyUrlResolver,
     )
 
     @Test

@@ -1,7 +1,7 @@
 package com.peakda.server.domain.search.application
 
 import com.peakda.server.common.page.PageRequest
-import com.peakda.server.common.storage.ProfileImageUrlResolver
+import com.peakda.server.common.storage.ObjectKeyUrlResolver
 import com.peakda.server.domain.auth.oauth.model.OAuth2LoginType
 import com.peakda.server.domain.spot.entity.Spot
 import com.peakda.server.domain.spot.entity.SpotType
@@ -25,9 +25,9 @@ class SearchServiceTest {
     private val spotRepository = mock(SpotRepository::class.java)
     private val userRepository = mock(UserRepository::class.java)
     private val spotFavoriteRepository = mock(SpotFavoriteRepository::class.java)
-    private val profileImageUrlResolver = mock(ProfileImageUrlResolver::class.java)
+    private val objectKeyUrlResolver = mock(ObjectKeyUrlResolver::class.java)
 
-    private val service = SearchService(spotRepository, userRepository, spotFavoriteRepository, profileImageUrlResolver)
+    private val service = SearchService(spotRepository, userRepository, spotFavoriteRepository, objectKeyUrlResolver)
 
     @Test
     fun `공백 검색어는 조회 없이 빈 페이지를 반환한다`() {
@@ -58,7 +58,7 @@ class SearchServiceTest {
         val pageable = SpringPageRequest.of(0, 20, Sort.by(Sort.Direction.ASC, "nickname"))
         `when`(userRepository.findByStatusAndNicknameContainingIgnoreCase(UserStatus.ACTIVE, "피크", pageable))
             .thenReturn(PageImpl(listOf(user), pageable, 1))
-        `when`(profileImageUrlResolver.resolve(null)).thenReturn(null)
+        `when`(objectKeyUrlResolver.resolve(null)).thenReturn(null)
 
         val response = service.searchUsers("피크", PageRequest(page = 0, size = 20))
 

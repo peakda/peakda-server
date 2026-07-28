@@ -1,6 +1,6 @@
 package com.peakda.server.domain.user.application
 
-import com.peakda.server.common.storage.ProfileImageUrlResolver
+import com.peakda.server.common.storage.ObjectKeyUrlResolver
 import com.peakda.server.domain.spot.application.SpotRecordResponseAssembler
 import com.peakda.server.domain.spot.entity.SpotRecordStatus
 import com.peakda.server.domain.spot.repository.SpotRecordRepository
@@ -25,7 +25,7 @@ class UserProfileService(
     private val userFavoriteCategoryRepository: UserFavoriteCategoryRepository,
     private val spotRecordRepository: SpotRecordRepository,
     private val spotRecordResponseAssembler: SpotRecordResponseAssembler,
-    private val profileImageUrlResolver: ProfileImageUrlResolver,
+    private val objectKeyUrlResolver: ObjectKeyUrlResolver,
 ) {
 
     @Transactional(readOnly = true)
@@ -42,7 +42,7 @@ class UserProfileService(
         return UserProfileResponse(
             userId = targetUserId,
             nickname = user.nickname,
-            profileImageUrl = profileImageUrlResolver.resolve(user.profileImageUrl),
+            profileImageUrl = objectKeyUrlResolver.resolve(user.profileImageUrl),
             stats = UserProfileResponse.Stats(
                 recordCount = recordsPage.totalElements,
                 followerCount = followRepository.countByFollowingId(targetUserId),

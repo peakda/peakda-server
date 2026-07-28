@@ -12,7 +12,7 @@ import com.peakda.server.common.security.jwt.JwtTokenProvider
 import com.peakda.server.common.security.principal.PrincipalDetails
 import com.peakda.server.common.security.principal.SignupSessionPrincipal
 import com.peakda.server.common.storage.ObjectStorage
-import com.peakda.server.common.storage.ProfileImageUrlResolver
+import com.peakda.server.common.storage.ObjectKeyUrlResolver
 import com.peakda.server.domain.auth.presentation.response.UserInfoResponse
 import com.peakda.server.domain.auth.signup.application.SignupProfileImagePolicy
 import com.peakda.server.domain.auth.signup.presentation.request.SignupCompleteRequest
@@ -42,7 +42,7 @@ class AuthService(
     private val signupSessionRepository: SignupSessionRepository,
     private val imageResizer: ImageResizer,
     private val objectStorage: ObjectStorage,
-    private val profileImageUrlResolver: ProfileImageUrlResolver,
+    private val objectKeyUrlResolver: ObjectKeyUrlResolver,
     private val userFavoriteCategoryService: UserFavoriteCategoryService,
 ) {
 
@@ -59,7 +59,7 @@ class AuthService(
 
         return UserInfoResponse.from(
             user = user,
-            profileImageUrl = profileImageUrlResolver.resolve(user.profileImageUrl),
+            profileImageUrl = objectKeyUrlResolver.resolve(user.profileImageUrl),
             favoriteCategories = userFavoriteCategoryService.findCategories(userId),
         )
     }

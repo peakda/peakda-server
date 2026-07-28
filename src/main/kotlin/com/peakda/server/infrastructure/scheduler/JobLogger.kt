@@ -14,12 +14,28 @@ class JobLogger(
     private val meterRegistry: MeterRegistry,
     private val lock: SchedulerJobLock,
 ) {
-    /** [enabled] 가 false 면 아무 일도 하지 않고 종료한다. 모든 SyncJob 의 표준 진입점. */
+    /** [enabled] 가 false 면 아무 일도 하지 않고 종료한다. 모든 SyncJob 의 크론 진입점. */
     fun runIfEnabled(jobName: String, enabled: Boolean, block: () -> Map<String, Any?>) {
         if (!enabled) {
             log.debug("[scheduler] job={} status=DISABLED", jobName)
             return
         }
+        runWithLock(jobName, block)
+    }
+
+    /**
+     * 관리자 수동 실행 진입점. [runIfEnabled] 와 달리 enabled 플래그를 검사하지 않는다.
+     *
+     * 플래그의 의미는 "크론이 자동으로 돌지 말라"이지 "운영자가 수동으로도 못 돌린다"가 아니다.
+     * 락 획득과 실행 이력 적재는 크론 경로와 동일하게 동작하므로, 꺼진 잡을 수동 실행해도
+     * `scheduler_job_runs` 에 결과가 남는다.
+     */
+    fun runManually(jobName: String, block: () -> Map<String, Any?>) {
+        log.info("[scheduler] job={} trigger=MANUAL", jobName)
+        runWithLock(jobName, block)
+    }
+
+    private fun runWithLock(jobName: String, block: () -> Map<String, Any?>) {
         when (lock.withLock(jobName) { run(jobName, block) }) {
             is SchedulerJobLockResult.Acquired -> Unit
             SchedulerJobLockResult.Locked -> skip(jobName, SKIP_LOCKED)

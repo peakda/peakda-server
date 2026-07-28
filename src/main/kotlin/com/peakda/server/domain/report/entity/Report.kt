@@ -1,6 +1,7 @@
 package com.peakda.server.domain.report.entity
 
 import com.peakda.server.common.persistence.BaseTimeEntity
+import com.peakda.server.domain.report.exception.ReportAlreadyReviewedException
 import jakarta.persistence.Column
 import jakarta.persistence.Entity
 import jakarta.persistence.EnumType
@@ -11,9 +12,10 @@ import jakarta.persistence.Id
 import jakarta.persistence.Index
 import jakarta.persistence.Table
 import jakarta.persistence.UniqueConstraint
+import java.time.Instant
 
 /**
- * UGC 신고(P2-4). 운영 심사 대상 원천 데이터로만 적재하며, 관리자 처리 API는 V1 범위 밖이다.
+ * UGC 신고(P2-4). 같은 대상의 대기 신고들은 관리자 심사에서 한 번에 처리된다.
  */
 @Entity
 @Table(
@@ -26,6 +28,7 @@ import jakarta.persistence.UniqueConstraint
     ],
     indexes = [
         Index(name = "ix_reports_target", columnList = "target_type,target_id"),
+        Index(name = "ix_reports_status_created_at", columnList = "status,created_at DESC"),
     ],
 )
 class Report(
@@ -45,6 +48,19 @@ class Report(
 
     @Column(name = "detail", columnDefinition = "TEXT")
     val detail: String? = null,
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "status", nullable = false, columnDefinition = "TEXT")
+    var status: ReportStatus = ReportStatus.PENDING,
+
+    @Column(name = "reviewed_by")
+    var reviewedBy: Long? = null,
+
+    @Column(name = "reviewed_at")
+    var reviewedAt: Instant? = null,
+
+    @Column(name = "review_memo", columnDefinition = "TEXT")
+    var reviewMemo: String? = null,
 ) : BaseTimeEntity() {
 
     @Id
@@ -52,4 +68,20 @@ class Report(
     @Column(name = "id")
     var id: Long? = null
         protected set
+
+    fun resolve(reviewedBy: Long, reviewedAt: Instant, reviewMemo: String?) {
+        review(ReportStatus.RESOLVED, reviewedBy, reviewedAt, reviewMemo)
+    }
+
+    fun dismiss(reviewedBy: Long, reviewedAt: Instant, reviewMemo: String?) {
+        review(ReportStatus.DISMISSED, reviewedBy, reviewedAt, reviewMemo)
+    }
+
+    private fun review(status: ReportStatus, reviewedBy: Long, reviewedAt: Instant, reviewMemo: String?) {
+        if (this.status != ReportStatus.PENDING) throw ReportAlreadyReviewedException()
+        this.status = status
+        this.reviewedBy = reviewedBy
+        this.reviewedAt = reviewedAt
+        this.reviewMemo = reviewMemo
+    }
 }

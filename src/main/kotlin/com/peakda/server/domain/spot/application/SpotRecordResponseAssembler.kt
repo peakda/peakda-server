@@ -1,6 +1,6 @@
 package com.peakda.server.domain.spot.application
 
-import com.peakda.server.common.storage.ProfileImageUrlResolver
+import com.peakda.server.common.storage.ObjectKeyUrlResolver
 import com.peakda.server.domain.spot.entity.Plant
 import com.peakda.server.domain.spot.entity.Spot
 import com.peakda.server.domain.spot.entity.SpotRecord
@@ -27,7 +27,7 @@ class SpotRecordResponseAssembler(
     private val spotRecordPhotoRepository: SpotRecordPhotoRepository,
     private val spotRecordPlantRepository: SpotRecordPlantRepository,
     private val spotRecordPhotoUploader: SpotRecordPhotoUploader,
-    private val profileImageUrlResolver: ProfileImageUrlResolver,
+    private val objectKeyUrlResolver: ObjectKeyUrlResolver,
 ) {
 
     fun assemble(record: SpotRecord): SpotRecordResponse {
@@ -118,7 +118,7 @@ class SpotRecordResponseAssembler(
     private fun User.toSummary() = UserSummary(
         id = requireNotNull(id),
         nickname = nickname,
-        profileImageUrl = profileImageUrlResolver.resolve(profileImageUrl),
+        profileImageUrl = objectKeyUrlResolver.resolve(profileImageUrl),
     )
 
     private fun Plant.toSummary() = PlantSummary(id = requireNotNull(id), name = name)

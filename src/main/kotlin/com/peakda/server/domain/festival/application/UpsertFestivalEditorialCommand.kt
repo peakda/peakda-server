@@ -14,7 +14,7 @@ data class UpsertFestivalEditorialCommand(
     val cautionNote: String?,
     val directionsTransit: String?,
     val directionsCar: String?,
-    val heroImageUrl: String?,
+    val heroImageKey: String?,
     val status: FestivalEditorialStatus,
     val highlights: List<UpsertFestivalHighlightCommand>,
 )

@@ -4,6 +4,7 @@ import com.peakda.server.domain.weather.application.WeatherMidForecastSyncServic
 import com.peakda.server.infrastructure.external.kma.midfcst.MidFcstClient
 import com.peakda.server.infrastructure.external.kma.midfcst.MidRegionCode
 import com.peakda.server.infrastructure.scheduler.JobLogger
+import com.peakda.server.infrastructure.scheduler.ManualTriggerableJob
 import com.peakda.server.infrastructure.scheduler.SchedulerProperties
 import com.peakda.server.infrastructure.scheduler.SchedulerTime.KST
 import com.peakda.server.infrastructure.scheduler.SchedulerTime.YMD
@@ -17,21 +18,30 @@ class MidFcstSyncJob(
     private val syncService: WeatherMidForecastSyncService,
     private val props: SchedulerProperties,
     private val jobLogger: JobLogger,
-) {
+) : ManualTriggerableJob {
+    override val jobName: String
+        get() = JOB_NAME
+
     @Scheduled(cron = "\${external.scheduler.kma.mid-fcst.cron}", zone = "Asia/Seoul")
     fun run() {
-        jobLogger.runIfEnabled(JOB_NAME, props.enabled && props.kma.midFcst.enabled) {
-            val announcementTime = latestAnnouncementTime()
-            var processed = 0
-            for (region in MidRegionCode.entries) {
-                processed += syncRegion(region, announcementTime)
-            }
-            mapOf(
-                JobLogger.KEY_PROCESSED to processed,
-                "regions" to MidRegionCode.entries.size,
-                "tmFc" to announcementTime,
-            )
+        jobLogger.runIfEnabled(JOB_NAME, props.enabled && props.kma.midFcst.enabled) { execute() }
+    }
+
+    override fun runNow() {
+        jobLogger.runManually(JOB_NAME) { execute() }
+    }
+
+    private fun execute(): Map<String, Any?> {
+        val announcementTime = latestAnnouncementTime()
+        var processed = 0
+        for (region in MidRegionCode.entries) {
+            processed += syncRegion(region, announcementTime)
         }
+        return mapOf(
+            JobLogger.KEY_PROCESSED to processed,
+            "regions" to MidRegionCode.entries.size,
+            "tmFc" to announcementTime,
+        )
     }
 
     private fun syncRegion(region: MidRegionCode, announcementTime: String): Int {

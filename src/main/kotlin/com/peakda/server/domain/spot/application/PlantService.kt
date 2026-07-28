@@ -23,7 +23,7 @@ class PlantService(
 
     @Transactional(readOnly = true)
     fun search(keyword: String): List<PlantResponse> {
-        val normalized = normalize(keyword)
+        val normalized = PlantNameNormalizer.normalize(keyword)
         if (normalized.isEmpty()) return emptyList()
         return plantRepository
             .findAllByStatusAndNameContainingIgnoreCaseOrderBySortOrderAscIdAsc(PlantStatus.ACTIVE, normalized)
@@ -31,7 +31,7 @@ class PlantService(
     }
 
     fun suggest(command: SuggestPlantCommand): PlantResponse {
-        val name = normalize(command.name)
+        val name = PlantNameNormalizer.normalize(command.name)
         if (name.isEmpty()) throw PlantSuggestionDuplicateException()
         if (!plantSuggestionRateLimiter.tryAcquire(command.userId)) throw PlantSuggestionRateLimitException()
         if (plantRepository.existsByNameIgnoreCase(name)) throw PlantSuggestionDuplicateException()
@@ -48,8 +48,6 @@ class PlantService(
         return saved.toResponse()
     }
 
-    private fun normalize(value: String): String = value.trim().replace(WHITESPACE_REGEX, " ")
-
     private fun Plant.toResponse() = PlantResponse(
         id = requireNotNull(id),
         name = name,
@@ -57,7 +55,4 @@ class PlantService(
         seasons = seasons.sorted(),
     )
 
-    companion object {
-        private val WHITESPACE_REGEX = Regex("\\s+")
-    }
 }

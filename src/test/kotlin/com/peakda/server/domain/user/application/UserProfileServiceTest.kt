@@ -1,6 +1,6 @@
 package com.peakda.server.domain.user.application
 
-import com.peakda.server.common.storage.ProfileImageUrlResolver
+import com.peakda.server.common.storage.ObjectKeyUrlResolver
 import com.peakda.server.domain.auth.oauth.model.OAuth2LoginType
 import com.peakda.server.domain.seasonal.entity.BloomCategory
 import com.peakda.server.domain.spot.application.SpotRecordResponseAssembler
@@ -34,7 +34,7 @@ class UserProfileServiceTest {
     private val userFavoriteCategoryRepository = mock(UserFavoriteCategoryRepository::class.java)
     private val spotRecordRepository = mock(SpotRecordRepository::class.java)
     private val spotRecordResponseAssembler = mock(SpotRecordResponseAssembler::class.java)
-    private val profileImageUrlResolver = mock(ProfileImageUrlResolver::class.java)
+    private val objectKeyUrlResolver = mock(ObjectKeyUrlResolver::class.java)
 
     private val service = UserProfileService(
         userRepository,
@@ -42,7 +42,7 @@ class UserProfileServiceTest {
         userFavoriteCategoryRepository,
         spotRecordRepository,
         spotRecordResponseAssembler,
-        profileImageUrlResolver,
+        objectKeyUrlResolver,
     )
 
     @Test
@@ -57,7 +57,7 @@ class UserProfileServiceTest {
     fun `통계·관심꽃·기록그리드·팔로우 상태를 조합한다`() {
         val user = user(TARGET_ID, "벚꽃러버", "profile-images/42/main.jpg")
         `when`(userRepository.findById(TARGET_ID)).thenReturn(Optional.of(user))
-        `when`(profileImageUrlResolver.resolve("profile-images/42/main.jpg")).thenReturn("https://cdn/main.jpg")
+        `when`(objectKeyUrlResolver.resolve("profile-images/42/main.jpg")).thenReturn("https://cdn/main.jpg")
 
         val pageable = PageRequest.of(0, 6)
         val record = record(1L)
@@ -90,7 +90,7 @@ class UserProfileServiceTest {
     fun `본인 프로필을 조회하면 following 은 항상 false 다`() {
         val user = user(TARGET_ID, "나", null)
         `when`(userRepository.findById(TARGET_ID)).thenReturn(Optional.of(user))
-        `when`(profileImageUrlResolver.resolve(null)).thenReturn(null)
+        `when`(objectKeyUrlResolver.resolve(null)).thenReturn(null)
         val pageable = PageRequest.of(0, 6)
         `when`(spotRecordRepository.findByUserIdAndStatusOrderByCreatedAtDesc(TARGET_ID, SpotRecordStatus.PUBLISHED, pageable))
             .thenReturn(PageImpl(emptyList(), pageable, 0))

@@ -1,5 +1,6 @@
 package com.peakda.server.domain.festival.presentation.request
 
+import com.fasterxml.jackson.annotation.JsonAlias
 import com.peakda.server.domain.festival.entity.FestivalEditorialStatus
 import io.swagger.v3.oas.annotations.media.Schema
 import jakarta.validation.Valid
@@ -69,8 +70,12 @@ data class UpsertFestivalEditorialRequest(
     val directionsCar: String? = null,
 
     @field:Size(max = 2000)
-    @field:Schema(description = "히어로 이미지 URL. 없으면 null", example = "https://img.peakda.kr/festivals/101/hero.jpg")
-    val heroImageUrl: String? = null,
+    @field:Schema(
+        description = "히어로 이미지 object key 또는 외부 URL. 없으면 null",
+        example = "curations/2026-07/550e8400-e29b-41d4-a716-446655440000/main.webp",
+    )
+    @JsonAlias("heroImageUrl")
+    val heroImageKey: String? = null,
 
     @field:NotNull
     @field:Schema(description = "축제 에디토리얼 상태", example = "PUBLISHED")

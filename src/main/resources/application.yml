@@ -190,6 +190,7 @@ external:
       bloom-estimate: { cron: "0 0 7 * * *", enabled: true }
     notification:
       bloom-timing-alert: { cron: "0 0 8 * * *", enabled: true }
+      notice-dispatch: { fixed-delay: 30s, enabled: true }
 
 peakda:
   festival: { ending-soon-days: 7 }

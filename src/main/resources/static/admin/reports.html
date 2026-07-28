@@ -1,0 +1,72 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link rel="stylesheet" href="css/app.css">
+  <title>신고 심사 | PEAKDA Admin</title>
+</head>
+<body data-page="reports">
+  <div id="app-shell" class="app-shell">
+    <aside id="app-sidebar" class="app-sidebar" aria-label="관리자 메뉴"></aside>
+    <div class="app-workspace">
+      <header id="app-header" class="app-header"></header>
+      <main id="page-content" class="page-content" tabindex="-1">
+        <section class="page-section" aria-labelledby="reports-title">
+          <div class="page-toolbar">
+            <div>
+              <h1 id="reports-title">신고 심사</h1>
+              <p class="page-description">신고 대상을 상태별로 확인하고 일괄 처리합니다.</p>
+            </div>
+            <label class="field field-inline">
+              <span>페이지 크기</span>
+              <select id="reports-size" name="size">
+                <option value="10">10개</option>
+                <option value="20" selected>20개</option>
+                <option value="50">50개</option>
+              </select>
+            </label>
+          </div>
+
+          <div id="reports-tabs" class="segmented-control" role="tablist" aria-label="신고 상태">
+            <button type="button" class="tab-button is-active" role="tab" aria-selected="true" data-status="PENDING">대기</button>
+            <button type="button" class="tab-button" role="tab" aria-selected="false" data-status="RESOLVED">처리 완료</button>
+            <button type="button" class="tab-button" role="tab" aria-selected="false" data-status="DISMISSED">기각</button>
+          </div>
+
+          <div class="split-view">
+            <section class="panel" aria-labelledby="reports-list-title">
+              <h2 id="reports-list-title">신고 대상 목록</h2>
+              <div id="reports-table-region" class="table-region" aria-live="polite">
+                <table class="data-table">
+                  <caption>신고 대상별 집계 목록</caption>
+                  <thead>
+                    <tr>
+                      <th scope="col">대상</th>
+                      <th scope="col">요약</th>
+                      <th scope="col">작성자</th>
+                      <th scope="col">신고</th>
+                      <th scope="col">최근 신고</th>
+                      <th scope="col">상태</th>
+                    </tr>
+                  </thead>
+                  <tbody id="reports-tbody"></tbody>
+                </table>
+              </div>
+              <nav id="reports-pagination" class="pagination" aria-label="신고 목록 페이지"></nav>
+            </section>
+
+            <aside class="panel detail-panel" aria-labelledby="report-detail-title">
+              <h2 id="report-detail-title">상세</h2>
+              <div id="report-detail" class="detail-empty" aria-live="polite">목록에서 신고 대상을 선택하세요.</div>
+            </aside>
+          </div>
+        </section>
+      </main>
+    </div>
+  </div>
+  <div id="toast-region" class="toast-region" aria-live="polite" aria-atomic="true"></div>
+  <div id="modal-root"></div>
+  <script type="module" src="js/reports.js"></script>
+</body>
+</html>

@@ -41,11 +41,11 @@ class JwtAuthenticationFilter(
         if (token != null && jwtTokenProvider.validateToken(token)) {
             val userId = jwtTokenProvider.getUserIdFromToken(token)
             if (userId != null) {
-                userRepository.findById(userId).ifPresent { user ->
-                    val principal = PrincipalDetails(user)
-                    val auth = UsernamePasswordAuthenticationToken(principal, null, principal.authorities)
-                    SecurityContextHolder.getContext().authentication = auth
-                }
+                val user = userRepository.findById(userId).orElse(null) ?: return
+                val principal = PrincipalDetails(user)
+                if (!principal.isEnabled) return
+                val auth = UsernamePasswordAuthenticationToken(principal, null, principal.authorities)
+                SecurityContextHolder.getContext().authentication = auth
             }
         }
     }
