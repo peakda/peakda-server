@@ -1,5 +1,6 @@
 package com.peakda.server.domain.festival.application
 
+import com.peakda.server.common.storage.ObjectKeyUrlResolver
 import com.peakda.server.domain.festival.entity.FestivalEditorial
 import com.peakda.server.domain.festival.entity.FestivalEditorialStatus
 import com.peakda.server.domain.festival.entity.FestivalHighlight
@@ -22,6 +23,7 @@ class FestivalDetailService(
     private val festivalEditorialRepository: FestivalEditorialRepository,
     private val festivalHighlightRepository: FestivalHighlightRepository,
     private val properties: FestivalDetailProperties,
+    private val objectKeyUrlResolver: ObjectKeyUrlResolver,
 ) {
 
     @Transactional(readOnly = true)
@@ -84,7 +86,7 @@ class FestivalDetailService(
         highlights: List<FestivalHighlight>,
     ): FestivalEditorialResponse = FestivalEditorialResponse(
         hook = hook,
-        heroImageUrl = heroImageUrl,
+        heroImageUrl = objectKeyUrlResolver.resolve(heroImageUrl),
         periodNote = periodNote,
         placeNote = placeNote,
         admissionFee = admissionFee,

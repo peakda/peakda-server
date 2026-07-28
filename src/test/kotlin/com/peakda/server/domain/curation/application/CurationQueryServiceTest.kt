@@ -1,5 +1,6 @@
 package com.peakda.server.domain.curation.application
 
+import com.peakda.server.common.storage.ObjectKeyUrlResolver
 import com.peakda.server.domain.curation.entity.Curation
 import com.peakda.server.domain.curation.entity.CurationChapter
 import com.peakda.server.domain.curation.entity.CurationLayout
@@ -34,11 +35,13 @@ class CurationQueryServiceTest {
     private val curationChapterRepository = mock(CurationChapterRepository::class.java)
     private val curationRecommendationRepository = mock(CurationRecommendationRepository::class.java)
     private val spotPreviewService = mock(SpotPreviewService::class.java)
+    private val objectKeyUrlResolver = mock(ObjectKeyUrlResolver::class.java)
     private val service = CurationQueryService(
         curationRepository,
         curationChapterRepository,
         curationRecommendationRepository,
         spotPreviewService,
+        objectKeyUrlResolver,
     )
 
     @Test

@@ -3,7 +3,7 @@ package com.peakda.server.domain.search.application
 import com.peakda.server.common.page.PageRequest
 import com.peakda.server.common.page.PageResponse
 import com.peakda.server.common.page.toPageResponse
-import com.peakda.server.common.storage.ProfileImageUrlResolver
+import com.peakda.server.common.storage.ObjectKeyUrlResolver
 import com.peakda.server.domain.search.presentation.response.SpotSearchItem
 import com.peakda.server.domain.search.presentation.response.TrendingSpotsResponse
 import com.peakda.server.domain.search.presentation.response.TrendingSpotsResponse.TrendingSpotItem
@@ -30,7 +30,7 @@ class SearchService(
     private val spotRepository: SpotRepository,
     private val userRepository: UserRepository,
     private val spotFavoriteRepository: SpotFavoriteRepository,
-    private val profileImageUrlResolver: ProfileImageUrlResolver,
+    private val objectKeyUrlResolver: ObjectKeyUrlResolver,
 ) {
 
     @Transactional(readOnly = true)
@@ -91,7 +91,7 @@ class SearchService(
     private fun User.toSearchItem() = UserSearchItem(
         userId = requireNotNull(id),
         nickname = nickname,
-        profileImageUrl = profileImageUrlResolver.resolve(profileImageUrl),
+        profileImageUrl = objectKeyUrlResolver.resolve(profileImageUrl),
     )
 
     companion object {

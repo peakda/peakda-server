@@ -4,7 +4,7 @@ import com.peakda.server.common.exception.ErrorCode
 import com.peakda.server.common.image.ImageException
 import com.peakda.server.common.image.ImageResizer
 import com.peakda.server.common.storage.ObjectStorage
-import com.peakda.server.common.storage.ProfileImageUrlResolver
+import com.peakda.server.common.storage.ObjectKeyUrlResolver
 import com.peakda.server.domain.user.exception.UserNotFoundException
 import com.peakda.server.domain.user.presentation.response.ProfileImageResponse
 import com.peakda.server.domain.user.repository.UserRepository
@@ -18,7 +18,7 @@ class UserService(
     private val userRepository: UserRepository,
     private val imageResizer: ImageResizer,
     private val objectStorage: ObjectStorage,
-    private val profileImageUrlResolver: ProfileImageUrlResolver,
+    private val objectKeyUrlResolver: ObjectKeyUrlResolver,
 ) {
 
     private val log = LoggerFactory.getLogger(this::class.java)

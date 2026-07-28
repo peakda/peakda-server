@@ -1,5 +1,6 @@
 package com.peakda.server.domain.curation.application
 
+import com.peakda.server.common.storage.ObjectKeyUrlResolver
 import com.peakda.server.domain.curation.entity.Curation
 import com.peakda.server.domain.curation.entity.CurationChapter
 import com.peakda.server.domain.curation.entity.CurationRecommendation
@@ -25,6 +26,7 @@ class CurationQueryService(
     private val curationChapterRepository: CurationChapterRepository,
     private val curationRecommendationRepository: CurationRecommendationRepository,
     private val spotPreviewService: SpotPreviewService,
+    private val objectKeyUrlResolver: ObjectKeyUrlResolver,
 ) {
 
     /** 발행된 큐레이션 카드 목록 (최신 주차순). */
@@ -52,7 +54,7 @@ class CurationQueryService(
             weekEndDate = curation.weekEndDate,
             title = curation.title,
             subtitle = curation.subtitle,
-            heroImageUrl = curation.heroImageUrl,
+            heroImageUrl = objectKeyUrlResolver.resolve(curation.heroImageUrl),
             intro = curation.intro,
             nextTeaserOverline = curation.nextTeaserOverline,
             nextTeaserBody = curation.nextTeaserBody,
@@ -70,7 +72,7 @@ class CurationQueryService(
         weekEndDate = weekEndDate,
         title = title,
         subtitle = subtitle,
-        heroImageUrl = heroImageUrl,
+        heroImageUrl = objectKeyUrlResolver.resolve(heroImageUrl),
     )
 
     private fun CurationChapter.toResponse(preview: SpotPreviewItem?): CurationChapterResponse =
@@ -82,7 +84,7 @@ class CurationQueryService(
             placeName = placeName,
             latitude = latitude,
             longitude = longitude,
-            photoUrl = photoUrl ?: preview?.thumbnailUrl,
+            photoUrl = photoUrl?.let(objectKeyUrlResolver::resolve) ?: preview?.thumbnailUrl,
             pullQuote = pullQuote,
             leadText = leadText,
             body = body,
@@ -99,7 +101,7 @@ class CurationQueryService(
             placeName = placeName,
             latitude = latitude,
             longitude = longitude,
-            photoUrl = photoUrl ?: preview?.thumbnailUrl,
+            photoUrl = photoUrl?.let(objectKeyUrlResolver::resolve) ?: preview?.thumbnailUrl,
             body = body,
             distanceMeters = preview?.distanceMeters,
         )

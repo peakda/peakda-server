@@ -1,6 +1,6 @@
 package com.peakda.server.domain.user.application
 
-import com.peakda.server.common.storage.ProfileImageUrlResolver
+import com.peakda.server.common.storage.ObjectKeyUrlResolver
 import com.peakda.server.domain.auth.oauth.model.OAuth2LoginType
 import com.peakda.server.domain.seasonal.entity.BloomCategory
 import com.peakda.server.domain.spot.application.SpotRecordResponseAssembler
@@ -36,7 +36,7 @@ class MyPageServiceTest {
     private val spotRecordRepository = mock(SpotRecordRepository::class.java)
     private val spotRecordResponseAssembler = mock(SpotRecordResponseAssembler::class.java)
     private val spotFavoriteRepository = mock(SpotFavoriteRepository::class.java)
-    private val profileImageUrlResolver = mock(ProfileImageUrlResolver::class.java)
+    private val objectKeyUrlResolver = mock(ObjectKeyUrlResolver::class.java)
 
     private val service = MyPageService(
         userRepository,
@@ -45,7 +45,7 @@ class MyPageServiceTest {
         spotRecordRepository,
         spotRecordResponseAssembler,
         spotFavoriteRepository,
-        profileImageUrlResolver,
+        objectKeyUrlResolver,
     )
 
     @Test
@@ -59,7 +59,7 @@ class MyPageServiceTest {
     fun `통계·관심꽃·기록그리드를 조합한다`() {
         val user = user(USER_ID, "벚꽃러버", "profile-images/1/main.jpg")
         `when`(userRepository.findById(USER_ID)).thenReturn(Optional.of(user))
-        `when`(profileImageUrlResolver.resolve("profile-images/1/main.jpg")).thenReturn("https://cdn/main.jpg")
+        `when`(objectKeyUrlResolver.resolve("profile-images/1/main.jpg")).thenReturn("https://cdn/main.jpg")
 
         val pageable = PageRequest.of(0, 6)
         val record = record(1L)
