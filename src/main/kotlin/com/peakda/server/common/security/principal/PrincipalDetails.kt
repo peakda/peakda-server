@@ -25,11 +25,11 @@ class PrincipalDetails(
 
     override fun getPassword(): String = ""
 
-    override fun isEnabled(): Boolean = user.status != UserStatus.DEACTIVATED
+    override fun isEnabled(): Boolean = user.status == UserStatus.ACTIVE
 
     override fun isAccountNonExpired(): Boolean = true
 
-    override fun isAccountNonLocked(): Boolean = user.status != UserStatus.DEACTIVATED
+    override fun isAccountNonLocked(): Boolean = user.status != UserStatus.SUSPENDED
 
     override fun isCredentialsNonExpired(): Boolean = true
 

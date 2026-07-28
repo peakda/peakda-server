@@ -11,8 +11,10 @@ import jakarta.servlet.http.HttpServletRequest
 import jakarta.servlet.http.HttpServletResponse
 import org.slf4j.LoggerFactory
 import org.springframework.beans.factory.annotation.Value
+import org.springframework.security.authentication.DisabledException
 import org.springframework.security.core.Authentication
 import org.springframework.security.core.GrantedAuthority
+import org.springframework.security.core.context.SecurityContextHolder
 import org.springframework.security.web.authentication.AuthenticationSuccessHandler
 import org.springframework.stereotype.Component
 
@@ -21,7 +23,8 @@ class OAuth2AuthenticationSuccessHandler(
     private val jwtTokenGenerator: JwtTokenGenerator,
     private val cookieProperties: CookieProperties,
     private val jwtProperties: JwtProperties,
-    private val refreshTokenService: RefreshTokenService
+    private val refreshTokenService: RefreshTokenService,
+    private val oAuth2AuthenticationFailureHandler: OAuth2AuthenticationFailureHandler,
 ) : AuthenticationSuccessHandler {
 
     private val log = LoggerFactory.getLogger(this::class.java)
@@ -50,6 +53,15 @@ class OAuth2AuthenticationSuccessHandler(
         }
 
         principal as PrincipalDetails
+        if (!principal.isEnabled) {
+            SecurityContextHolder.clearContext()
+            oAuth2AuthenticationFailureHandler.onAuthenticationFailure(
+                request,
+                response,
+                DisabledException("로그인할 수 없는 사용자 상태입니다."),
+            )
+            return
+        }
         val user = principal.getUser()
         val userId = requireNotNull(user.id)
 
