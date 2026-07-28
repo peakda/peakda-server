@@ -5,6 +5,7 @@ import com.peakda.server.domain.seasonal.application.BloomEstimateService
 import com.peakda.server.domain.seasonal.entity.BloomCategory
 import com.peakda.server.domain.seasonal.repository.AttractionBloomRepository
 import com.peakda.server.infrastructure.scheduler.JobLogger
+import com.peakda.server.infrastructure.scheduler.ManualTriggerableJob
 import com.peakda.server.infrastructure.scheduler.SchedulerProperties
 import org.springframework.data.domain.PageRequest
 import org.springframework.scheduling.annotation.Scheduled
@@ -24,29 +25,38 @@ class BloomEstimateJob(
     private val estimateService: BloomEstimateService,
     private val props: SchedulerProperties,
     private val jobLogger: JobLogger,
-) {
+) : ManualTriggerableJob {
+    override val jobName: String
+        get() = JOB_NAME
+
     @Scheduled(cron = "\${external.scheduler.seasonal.bloom-estimate.cron}", zone = "Asia/Seoul")
     fun run() {
-        jobLogger.runIfEnabled(JOB_NAME, props.enabled && props.seasonal.bloomEstimate.enabled) {
-            val today = LocalDate.now(KST)
-            val festivals = festivalRepository.findByLatitudeIsNotNullAndLongitudeIsNotNull()
-            var estimates = 0
-            for (category in BloomCategory.entries) {
-                var page = 0
-                while (true) {
-                    val slice = attractionBloomRepository
-                        .findDistinctAttractionIdsByBloomCategory(category, PageRequest.of(page, PAGE_SIZE))
-                    if (slice.isEmpty) break
-                    estimates += estimateService.estimatePage(slice.content, category, today, festivals)
-                    if (!slice.hasNext()) break
-                    page++
-                }
+        jobLogger.runIfEnabled(JOB_NAME, props.enabled && props.seasonal.bloomEstimate.enabled) { execute() }
+    }
+
+    override fun runNow() {
+        jobLogger.runManually(JOB_NAME) { execute() }
+    }
+
+    private fun execute(): Map<String, Any?> {
+        val today = LocalDate.now(KST)
+        val festivals = festivalRepository.findByLatitudeIsNotNullAndLongitudeIsNotNull()
+        var estimates = 0
+        for (category in BloomCategory.entries) {
+            var page = 0
+            while (true) {
+                val slice = attractionBloomRepository
+                    .findDistinctAttractionIdsByBloomCategory(category, PageRequest.of(page, PAGE_SIZE))
+                if (slice.isEmpty) break
+                estimates += estimateService.estimatePage(slice.content, category, today, festivals)
+                if (!slice.hasNext()) break
+                page++
             }
-            mapOf(
-                JobLogger.KEY_PROCESSED to estimates,
-                "festivals" to festivals.size,
-            )
         }
+        return mapOf(
+            JobLogger.KEY_PROCESSED to estimates,
+            "festivals" to festivals.size,
+        )
     }
 
     companion object {

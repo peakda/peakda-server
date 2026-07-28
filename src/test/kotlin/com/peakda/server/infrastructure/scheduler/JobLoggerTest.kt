@@ -58,6 +58,62 @@ class JobLoggerTest {
         assertThat(registry.find("scheduler.job.skip_total").counter()).isNull()
     }
 
+    /**
+     * `enabled` 는 크론 자동 실행만 제어한다. 관리자가 백오피스에서 누른 수동 실행까지 막으면
+     * 202 만 돌아오고 아무 일도 일어나지 않아 운영자가 원인을 알 수 없다.
+     */
+    @Test
+    fun `수동 실행은 비활성 잡도 실행하고 이력을 남긴다`() {
+        val recorder = RecordingRecorder()
+        val registry = SimpleMeterRegistry()
+        val logger = JobLogger(recorder, registry, AcquiringLock)
+        var executed = false
+
+        logger.runManually("disabledJob") {
+            executed = true
+            mapOf(JobLogger.KEY_PROCESSED to 3)
+        }
+
+        assertThat(executed).isTrue()
+        assertThat(recorder.events).containsExactly(
+            "start:disabledJob",
+            "complete:1:3:null",
+        )
+        assertThat(registry.counter("scheduler.job.success_total", "job", "disabledJob").count()).isEqualTo(1.0)
+    }
+
+    @Test
+    fun `수동 실행도 락 획득 실패 시 skipped locked로 기록한다`() {
+        val recorder = RecordingRecorder()
+        val registry = SimpleMeterRegistry()
+        val logger = JobLogger(recorder, registry, LockedLock)
+
+        logger.runManually("lockedJob") {
+            error("should not run")
+        }
+
+        assertThat(recorder.events).containsExactly("skip:lockedJob:locked")
+        assertThat(registry.counter("scheduler.job.skip_total", "job", "lockedJob", "reason", "locked").count())
+            .isEqualTo(1.0)
+    }
+
+    @Test
+    fun `수동 실행 중 예외는 fail로 기록하고 호출자에게 전파하지 않는다`() {
+        val recorder = RecordingRecorder()
+        val registry = SimpleMeterRegistry()
+        val logger = JobLogger(recorder, registry, AcquiringLock)
+
+        logger.runManually("boomJob") {
+            throw IllegalStateException("boom")
+        }
+
+        assertThat(recorder.events).containsExactly(
+            "start:boomJob",
+            "fail:1:IllegalStateException:boom",
+        )
+        assertThat(registry.counter("scheduler.job.failure_total", "job", "boomJob").count()).isEqualTo(1.0)
+    }
+
     @Test
     fun `QUOTA_EXCEEDED 예외는 실행 row를 skip quota_exhausted로 전환한다`() {
         val recorder = RecordingRecorder()
