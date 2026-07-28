@@ -1,0 +1,106 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link rel="stylesheet" href="css/app.css">
+  <title>공지 관리 | PEAKDA Admin</title>
+  <script type="module" src="./js/notices.js"></script>
+</head>
+<body data-page="notices">
+  <div id="app-shell" class="app-shell">
+    <aside id="app-sidebar" class="app-sidebar" aria-label="관리자 메뉴"></aside>
+    <div class="app-workspace">
+      <header id="app-header" class="app-header"></header>
+      <main id="page-content" class="page-content" tabindex="-1">
+        <section class="page-section" aria-labelledby="notices-title">
+          <div class="page-heading">
+            <div>
+              <p class="eyebrow">운영</p>
+              <h1 id="notices-title">공지 관리</h1>
+            </div>
+            <button type="button" class="button button-primary" id="notice-new-button">새 공지</button>
+          </div>
+
+          <form id="notice-filter-form" class="toolbar" aria-label="공지 필터">
+            <label class="field field-inline" for="notice-status-filter">
+              <span>상태</span>
+              <select id="notice-status-filter" name="status">
+                <option value="">전체</option>
+                <option value="DRAFT">작성중</option>
+                <option value="DISPATCHING">발송중</option>
+                <option value="DISPATCHED">발송완료</option>
+                <option value="CANCELED">취소됨</option>
+              </select>
+            </label>
+            <label class="field field-inline" for="notice-size">
+              <span>표시 수</span>
+              <input id="notice-size" name="size" type="number" min="1" max="50" value="20" inputmode="numeric">
+            </label>
+            <button type="submit" class="button">조회</button>
+          </form>
+
+          <div class="table-wrap" aria-live="polite" aria-busy="false" id="notice-table-wrap">
+            <table class="data-table">
+              <caption>공지 목록</caption>
+              <thead>
+                <tr>
+                  <th scope="col">ID</th>
+                  <th scope="col">제목</th>
+                  <th scope="col">상태</th>
+                  <th scope="col">발송 수</th>
+                  <th scope="col">이동</th>
+                  <th scope="col">작성자</th>
+                  <th scope="col">수정일</th>
+                  <th scope="col">작업</th>
+                </tr>
+              </thead>
+              <tbody id="notice-table-body"></tbody>
+            </table>
+          </div>
+          <nav id="notice-pagination" class="pagination" aria-label="공지 페이지"></nav>
+        </section>
+
+        <section class="page-section" aria-labelledby="notice-form-title">
+          <div class="section-heading">
+            <h2 id="notice-form-title">공지 작성</h2>
+            <p id="notice-form-mode" class="muted">DRAFT 상태의 공지만 수정할 수 있습니다.</p>
+          </div>
+          <form id="notice-form" class="form-grid">
+            <input type="hidden" id="notice-id" name="id">
+            <label class="field" for="notice-title">
+              <span>제목</span>
+              <input id="notice-title" name="title" type="text" maxlength="100" required>
+            </label>
+            <label class="field" for="notice-body">
+              <span>본문</span>
+              <textarea id="notice-body" name="body" maxlength="2000" rows="8" required></textarea>
+            </label>
+            <label class="field" for="notice-link-type">
+              <span>이동 방식</span>
+              <select id="notice-link-type" name="linkType" required>
+                <option value="EXTERNAL">외부 링크</option>
+                <option value="INTERNAL">앱 내부 대상</option>
+              </select>
+            </label>
+            <label class="field" for="notice-link-url">
+              <span>외부 URL</span>
+              <input id="notice-link-url" name="linkUrl" type="url" maxlength="2048" placeholder="https://example.com">
+            </label>
+            <label class="field" for="notice-target-id">
+              <span>내부 대상 ID</span>
+              <input id="notice-target-id" name="targetId" type="number" min="1" inputmode="numeric">
+            </label>
+            <div class="form-actions">
+              <button type="submit" class="button button-primary" id="notice-save-button">저장</button>
+              <button type="button" class="button" id="notice-reset-button">초기화</button>
+            </div>
+          </form>
+        </section>
+      </main>
+    </div>
+  </div>
+  <div id="toast-region" class="toast-region" aria-live="polite" aria-atomic="true"></div>
+  <div id="modal-root"></div>
+</body>
+</html>
