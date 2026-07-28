@@ -15,7 +15,7 @@ fun UpsertFestivalEditorialRequest.toCommand(): UpsertFestivalEditorialCommand =
         cautionNote = cautionNote,
         directionsTransit = directionsTransit,
         directionsCar = directionsCar,
-        heroImageUrl = heroImageUrl,
+        heroImageKey = heroImageKey,
         status = status,
         highlights = highlights.map { highlight ->
             UpsertFestivalHighlightCommand(

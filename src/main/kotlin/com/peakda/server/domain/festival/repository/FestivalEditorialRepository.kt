@@ -7,6 +7,8 @@ import org.springframework.data.jpa.repository.JpaRepository
 interface FestivalEditorialRepository : JpaRepository<FestivalEditorial, Long> {
     fun findByFestivalId(festivalId: Long): FestivalEditorial?
 
+    fun findByFestivalIdIn(festivalIds: Collection<Long>): List<FestivalEditorial>
+
     fun findByFestivalIdAndStatus(
         festivalId: Long,
         status: FestivalEditorialStatus,

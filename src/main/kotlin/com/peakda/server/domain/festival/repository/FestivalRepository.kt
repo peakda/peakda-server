@@ -1,6 +1,7 @@
 package com.peakda.server.domain.festival.repository
 
 import com.peakda.server.domain.festival.entity.Festival
+import org.springframework.data.domain.Page
 import org.springframework.data.domain.Pageable
 import org.springframework.data.jpa.repository.JpaRepository
 import org.springframework.data.jpa.repository.Modifying
@@ -44,6 +45,10 @@ private const val FESTIVAL_UPSERT_SQL = """
 
 interface FestivalRepository : JpaRepository<Festival, Long> {
     fun findByNameAndVenueAndStartDate(name: String, venue: String, startDate: String): Festival?
+
+    fun findAllByOrderByIdDesc(pageable: Pageable): Page<Festival>
+
+    fun findByNameContainingIgnoreCaseOrderByIdDesc(name: String, pageable: Pageable): Page<Festival>
 
     /** 좌표가 있는 축제 (꽃 태깅 매칭 대상). */
     fun findByLatitudeIsNotNullAndLongitudeIsNotNull(): List<Festival>
