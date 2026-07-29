@@ -183,22 +183,44 @@ loki.source.docker "containers" {
 loki.process "containers" {
 	forward_to = [loki.write.grafana_cloud.receiver]
 
-	// 앱은 logstash 포맷 JSON 한 줄로 찍는다. level 만 라벨로 올려
-	// 에러 로그를 라벨로 바로 거를 수 있게 한다.
+	// 앱은 logstash 포맷 JSON 한 줄로 찍는다.
 	// 다른 컨테이너 로그에 JSON 파싱을 걸면 매 줄 파싱 실패가 쌓이므로 앱에만 적용한다.
 	stage.match {
 		selector = "{container=\"peakda-app\"}"
 
 		stage.json {
 			expressions = {
-				level = "level",
+				level  = "level",
+				logger = "logger_name",
+				thread = "thread_name",
+				msg    = "message",
 			}
 		}
 
+		// level 만 라벨로 올린다. 에러 로그를 인덱스로 바로 거를 수 있어야 한다.
 		stage.labels {
 			values = {
 				level = "",
 			}
+		}
+
+		// logger·thread 는 structured metadata 로 둔다. 라벨로 올리면 값마다 스트림이
+		// 쪼개져 카디널리티가 폭증하지만, metadata 는 인덱스에 들어가지 않아
+		// 비용 없이 `| logger=~"..."` 로 필터할 수 있다.
+		stage.structured_metadata {
+			values = {
+				logger = "",
+				thread = "",
+			}
+		}
+
+		// 본문을 message 로 바꾼다. JSON 구두점과 중복 타임스탬프가 빠져 전송량이 줄고,
+		// Explore 에서 파서를 붙이지 않아도 읽힌다.
+		//
+		// 추출에 실패한 줄(기동 배너 등 JSON 이 아닌 로그)은 msg 키가 없어
+		// 이 단계가 건너뛰어지므로 원문 그대로 남는다.
+		stage.output {
+			source = "msg"
 		}
 	}
 }
