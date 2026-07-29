@@ -48,4 +48,22 @@ interface SchedulerJobRunRepository : JpaRepository<SchedulerJobRun, Long> {
         nativeQuery = true,
     )
     fun findLatestRunPerJob(): List<SchedulerJobRun>
+
+    /**
+     * 잡별 마지막 **성공** 이력. 기동 시 마지막 성공 시각 게이지를 되살리는 데 쓴다.
+     * [findLatestRunPerJob] 는 상태를 가리지 않으므로 실패한 잡의 시각을 성공으로 오해하게 된다.
+     *
+     * 기동당 1회만 실행된다. 잡 수만큼(현재 12행)만 돌려주지만 `DISTINCT ON` 이
+     * 정렬을 요구하므로 이력이 쌓이면 비용이 함께 는다. 상시 호출 경로에 두지 않는다.
+     */
+    @Query(
+        value = """
+            SELECT DISTINCT ON (job_name) *
+            FROM scheduler_job_runs
+            WHERE status = 'COMPLETED'
+            ORDER BY job_name, id DESC
+        """,
+        nativeQuery = true,
+    )
+    fun findLastSuccessRunPerJob(): List<SchedulerJobRun>
 }

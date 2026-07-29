@@ -7,12 +7,14 @@ import io.micrometer.core.instrument.MeterRegistry
 import io.micrometer.core.instrument.Timer
 import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Component
+import java.time.Instant
 
 @Component
 class JobLogger(
     private val recorder: SchedulerJobRunRecorder,
     private val meterRegistry: MeterRegistry,
     private val lock: SchedulerJobLock,
+    private val successGauge: SchedulerJobSuccessGauge,
 ) {
     /** [enabled] 가 false 면 아무 일도 하지 않고 종료한다. 모든 SyncJob 의 크론 진입점. */
     fun runIfEnabled(jobName: String, enabled: Boolean, block: () -> Map<String, Any?>) {
@@ -55,6 +57,7 @@ class JobLogger(
             val total = (result[KEY_TOTAL] as? Number)?.toInt()
             recorder.complete(runId, processed, total)
             meterRegistry.counter("scheduler.job.success_total", "job", jobName).increment()
+            successGauge.record(jobName, Instant.now())
             val extras = result.entries.joinToString(" ") { "${it.key}=${it.value}" }
             if (extras.isNotEmpty()) {
                 log.info("[scheduler] job={} status=COMPLETED ms={} {}", jobName, elapsed, extras)
