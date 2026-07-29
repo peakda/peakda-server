@@ -19,8 +19,11 @@ jobs:
     # Graviton(t4g) 대상이므로 arm64 러너에서 네이티브 빌드한다.
     # public 저장소라 이 러너를 무료로 쓸 수 있다.
     runs-on: ubuntu-24.04-arm
-    environment: dev
     timeout-minutes: 30
+
+    # environment 를 지정하지 않는다.
+    # 지정하면 OIDC 토큰의 sub 가 repo:OWNER/REPO:environment:NAME 으로 바뀌어
+    # 브랜치 정보가 사라지고, IAM 신뢰 정책에서 브랜치를 제한할 수 없게 된다.
 
     steps:
       - name: Checkout
