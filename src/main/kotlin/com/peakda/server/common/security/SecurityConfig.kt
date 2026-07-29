@@ -78,7 +78,9 @@ class SecurityConfig(
                         "/api/auth/signup/profile-image",
                     ).hasRole("SIGNUP")
                     .requestMatchers("/api/admin/**").hasRole("ADMIN")
-                    .requestMatchers("/actuator/health", "/actuator/info").permitAll()
+                    // health/readiness·health/liveness 는 컨테이너 헬스체크와 외부 감시가
+                    // 인증 없이 호출한다. show-details 가 never 라 상태값만 노출된다.
+                    .requestMatchers("/actuator/health", "/actuator/health/**", "/actuator/info").permitAll()
                     .requestMatchers("/actuator/**").hasRole("ADMIN")
                     .anyRequest().hasRole("USER")
             }
