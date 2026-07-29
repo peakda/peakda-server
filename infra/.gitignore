@@ -15,3 +15,6 @@ override.tf.json
 .terraformrc
 terraform.rc
 .terraform.lock.hcl.bak
+
+# 운영 메모. 인스턴스 ID·IP 같은 환경 고유 값이 들어가 로컬에만 둔다.
+README.md
