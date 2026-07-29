@@ -21,6 +21,7 @@ locals {
   # 다음 배포에서 deploy.sh 가 s3 sync 로 가져간다.
   server_assets = {
     "docker-compose.yml" = "${path.module}/../../server/docker-compose.yml"
+    "alloy-config.alloy" = "${path.module}/../../server/alloy-config.alloy"
     "Caddyfile"          = "${path.module}/../../server/Caddyfile"
     "deploy.sh"          = "${path.module}/../../server/deploy.sh"
     "backup.sh"          = "${path.module}/../../server/backup.sh"

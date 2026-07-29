@@ -45,6 +45,13 @@ app_parameters = {
   CORS_ALLOWED_ORIGINS = "https://peakda.com,https://www.peakda.com"
   OAUTH2_REDIRECT_URI  = "https://peakda.com/oauth/callback"
 
+  # TODO: Grafana Cloud 스택 생성 후 실제 endpoint 와 사용자 ID 로 교체한다.
+  # 이 값들은 시크릿이 아니므로 tfvars 에 확정값을 기록하고 terraform apply 로 관리한다.
+  GRAFANA_CLOUD_PROM_URL  = "TODO_GRAFANA_CLOUD_PROM_URL"
+  GRAFANA_CLOUD_PROM_USER = "TODO_GRAFANA_CLOUD_PROM_USER"
+  GRAFANA_CLOUD_LOKI_URL  = "TODO_GRAFANA_CLOUD_LOKI_URL"
+  GRAFANA_CLOUD_LOKI_USER = "TODO_GRAFANA_CLOUD_LOKI_USER"
+
   # STORAGE_BUCKET·ENDPOINT·REGION·PATH_STYLE_ACCESS 는 main.tf 가 media 모듈에서
   # 산출한다. 여기에 다시 쓰면 그 값을 덮어쓰게 되므로 두지 않는다.
   #
@@ -72,6 +79,7 @@ app_secret_names = [
   "KTO_SERVICE_KEY",
   "KMA_SERVICE_KEY",
   "PUBDATA_FESTIVAL_SERVICE_KEY",
+  "GRAFANA_CLOUD_API_KEY",
 
   # S3 IAM 사용자 액세스 키. apply 후 CLI 로 발급해 주입한다.
   # Terraform 으로 만들면 state 에 평문으로 남는다.
