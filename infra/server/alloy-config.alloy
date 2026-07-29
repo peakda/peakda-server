@@ -118,6 +118,11 @@ prometheus.exporter.cadvisor "containers" {
 	// 도커 컨테이너만 본다. 시스템 cgroup 까지 훑으면 시계열이 몇 배로 는다.
 	docker_only = true
 
+	// 도커 라벨을 메트릭 라벨로 옮기지 않는다. 기본값(true)이면 compose 가 붙인 설정 해시와
+	// 이미지 설명문까지 모든 시계열에 실려 전송량을 크게 낭비한다.
+	// 대시보드가 쓰는 name·image·id 는 cadvisor 기본 라벨이라 영향이 없다.
+	store_container_labels = false
+
 	// 기본 5분치를 메모리에 들고 있는다. 스크레이프 주기가 60초라 그 이상은 낭비다.
 	storage_duration = "5m"
 

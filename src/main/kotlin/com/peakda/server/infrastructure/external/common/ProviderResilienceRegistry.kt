@@ -25,8 +25,12 @@ import java.util.concurrent.ConcurrentHashMap
 class ProviderResilienceRegistry(
     private val properties: ExternalResilienceProperties,
 ) {
-    private val retryRegistry: RetryRegistry = RetryRegistry.ofDefaults()
-    private val circuitBreakerRegistry: CircuitBreakerRegistry = CircuitBreakerRegistry.ofDefaults()
+    /**
+     * 레지스트리를 직접 만들어 쓰므로 resilience4j 의 Spring Boot 자동설정이 개입하지 않는다.
+     * 메트릭도 자동으로 붙지 않아 [ExternalResilienceMetrics] 가 바인딩한다. 그래서 공개한다.
+     */
+    val retryRegistry: RetryRegistry = RetryRegistry.ofDefaults()
+    val circuitBreakerRegistry: CircuitBreakerRegistry = CircuitBreakerRegistry.ofDefaults()
     private val retryCache = ConcurrentHashMap<String, Retry>()
     private val cbCache = ConcurrentHashMap<String, CircuitBreaker>()
 

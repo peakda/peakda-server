@@ -253,3 +253,13 @@ management:
       # 모든 메트릭에 붙는 공통 라벨. env 는 같은 Grafana 스택에서 dev/prod 를 가른다.
       application: ${spring.application.name}
       env: ${SPRING_PROFILES_ACTIVE:local}
+    distribution:
+      # 기본값은 count·sum·max 뿐이라 분위수를 볼 수 없다.
+      #
+      # percentiles-histogram(버킷 발행) 대신 percentiles 를 쓴다. 버킷은 태그 조합마다
+      # 수십 개 시계열을 만들어 무료 한도(10k)를 잠식하지만, 이 방식은 분위수당 1개만 는다.
+      # 대신 인스턴스 간 재집계가 불가능하다. 인스턴스가 1대라 문제되지 않으며,
+      # 여러 대로 늘리면 그때 버킷 방식으로 바꿔야 한다.
+      percentiles:
+        http.server.requests: 0.95, 0.99
+        scheduler.job.duration: 0.95
