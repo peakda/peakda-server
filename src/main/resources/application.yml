@@ -1,3 +1,9 @@
+server:
+  # 리버스 프록시(Caddy) 뒤에서 동작한다. X-Forwarded-* 를 반영하지 않으면
+  # 리다이렉트 URL 과 OAuth {baseUrl} 이 http 로 생성되어,
+  # HTTPS 페이지에서 mixed content 로 차단되고 소셜 로그인도 깨진다.
+  forward-headers-strategy: framework
+
 spring:
   application:
     name: peakda-server
