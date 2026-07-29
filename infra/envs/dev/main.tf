@@ -21,6 +21,7 @@ locals {
   # 다음 배포에서 deploy.sh 가 s3 sync 로 가져간다.
   server_assets = {
     "docker-compose.yml" = "${path.module}/../../server/docker-compose.yml"
+    "alloy-config.alloy" = "${path.module}/../../server/alloy-config.alloy"
     "Caddyfile"          = "${path.module}/../../server/Caddyfile"
     "deploy.sh"          = "${path.module}/../../server/deploy.sh"
     "backup.sh"          = "${path.module}/../../server/backup.sh"
@@ -206,4 +207,67 @@ resource "aws_budgets_budget" "monthly" {
     notification_type          = "FORECASTED"
     subscriber_email_addresses = [var.alert_email]
   }
+}
+
+# ---------------------------------------------------------------------------
+# CloudWatch 안전망
+#
+# 호스트가 죽으면 Alloy 도 함께 멈추므로 AWS 기본 지표로 독립적인 장애 경로를 둔다.
+# 디스크·메모리는 커스텀 메트릭 과금을 피하려고 Grafana 알림에서만 감시한다.
+# ---------------------------------------------------------------------------
+
+resource "aws_sns_topic" "infrastructure_alerts" {
+  name = "${local.name_prefix}-infrastructure-alerts"
+}
+
+resource "aws_sns_topic_subscription" "infrastructure_alerts_email" {
+  topic_arn = aws_sns_topic.infrastructure_alerts.arn
+  protocol  = "email"
+  endpoint  = var.alert_email
+
+  # 구독 확인 메일의 링크를 사람이 눌러야 실제 알림 수신이 시작된다.
+}
+
+resource "aws_cloudwatch_metric_alarm" "instance_status_check_failed" {
+  alarm_name          = "${local.name_prefix}-instance-status-check-failed"
+  alarm_description   = "EC2 인스턴스 또는 시스템 상태 검사가 2분 연속 실패했습니다."
+  namespace           = "AWS/EC2"
+  metric_name         = "StatusCheckFailed"
+  statistic           = "Maximum"
+  period              = 60
+  evaluation_periods  = 2
+  threshold           = 1
+  comparison_operator = "GreaterThanOrEqualToThreshold"
+  treat_missing_data  = "breaching"
+
+  dimensions = {
+    InstanceId = module.app_server.instance_id
+  }
+
+  alarm_actions = [aws_sns_topic.infrastructure_alerts.arn]
+  ok_actions    = [aws_sns_topic.infrastructure_alerts.arn]
+}
+
+resource "aws_cloudwatch_metric_alarm" "instance_cpu_high" {
+  alarm_name          = "${local.name_prefix}-instance-cpu-high"
+  alarm_description   = "EC2 CPU 사용률이 15분 동안 90%를 초과해 버스트 크레딧 소진 위험이 있습니다."
+  namespace           = "AWS/EC2"
+  metric_name         = "CPUUtilization"
+  statistic           = "Average"
+  period              = 300
+  evaluation_periods  = 3
+  threshold           = 90
+  comparison_operator = "GreaterThanThreshold"
+
+  # 지표가 끊긴 경우는 인스턴스가 멈춘 것이고, 그건 위의 상태 검사 알람이 정확한 제목으로
+  # 알린다. 여기서 breaching 으로 두면 같은 사건에 "CPU 90% 초과" 라는 틀린 메일이 한 통
+  # 더 간다. 이메일이 유일한 알림 경로라 중복·오해를 줄이는 쪽을 택한다.
+  treat_missing_data = "missing"
+
+  dimensions = {
+    InstanceId = module.app_server.instance_id
+  }
+
+  alarm_actions = [aws_sns_topic.infrastructure_alerts.arn]
+  ok_actions    = [aws_sns_topic.infrastructure_alerts.arn]
 }

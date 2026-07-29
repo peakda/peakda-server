@@ -83,4 +83,12 @@ internal object NoOpSchedulerJobLock : SchedulerJobLock {
         SchedulerJobLockResult.Acquired(block())
 }
 
-internal fun testJobLogger(): JobLogger = JobLogger(NoOpSchedulerJobRunRecorder(), SimpleMeterRegistry(), NoOpSchedulerJobLock)
+internal fun testJobLogger(): JobLogger {
+    val registry = SimpleMeterRegistry()
+    return JobLogger(
+        NoOpSchedulerJobRunRecorder(),
+        registry,
+        NoOpSchedulerJobLock,
+        SchedulerJobSuccessGauge(registry),
+    )
+}

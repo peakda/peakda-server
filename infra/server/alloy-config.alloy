@@ -1,0 +1,199 @@
+// peakda develop 관측 수집기.
+//
+// 앱·호스트·컨테이너 지표와 모든 컨테이너의 stdout 로그를 모아 Grafana Cloud 로 push 한다.
+// 자체 호스팅 관측 스택(Prometheus+Loki+Grafana)은 합계 450MB+ 라 2GB 인스턴스에 올릴 수
+// 없다. 수집기만 얹고 저장·조회·알림은 Grafana Cloud 무료 티어에 맡기는 구조다.
+//
+// 자격증명은 deploy.sh 가 SSM Parameter Store 에서 만들어 준 .env 로 주입된다.
+// docker compose 가 .env 를 읽어 이 컨테이너의 환경변수로 넘긴다.
+
+logging {
+	// info 로 두면 스크레이프마다 줄이 쌓여 자기 로그로 Loki 한도를 갉아먹는다.
+	level  = "warn"
+	format = "logfmt"
+}
+
+// ---------------------------------------------------------------------------
+// 원격 저장소 (Grafana Cloud)
+//
+// 메트릭은 Mimir, 로그는 Loki 로 간다. 둘 다 같은 Access Policy Token 을 쓰지만
+// 사용자 이름(인스턴스 ID)은 서로 다르다.
+// ---------------------------------------------------------------------------
+
+prometheus.remote_write "grafana_cloud" {
+	endpoint {
+		url = sys.env("GRAFANA_CLOUD_PROM_URL")
+
+		basic_auth {
+			username = sys.env("GRAFANA_CLOUD_PROM_USER")
+			password = sys.env("GRAFANA_CLOUD_API_KEY")
+		}
+	}
+
+	// 호스트·컨테이너 지표에는 env 라벨이 없다. 여기서 일괄로 붙여
+	// 나중에 prod 를 같은 스택에 넣어도 라벨로 갈라 볼 수 있게 한다.
+	external_labels = {
+		env = sys.env("PEAKDA_ENV"),
+	}
+}
+
+loki.write "grafana_cloud" {
+	endpoint {
+		url = sys.env("GRAFANA_CLOUD_LOKI_URL")
+
+		basic_auth {
+			username = sys.env("GRAFANA_CLOUD_LOKI_USER")
+			password = sys.env("GRAFANA_CLOUD_API_KEY")
+		}
+	}
+
+	external_labels = {
+		env = sys.env("PEAKDA_ENV"),
+	}
+}
+
+// ---------------------------------------------------------------------------
+// 애플리케이션 지표
+//
+// 배치 잡·외부 API 쿼터·서킷브레이커·JVM·HikariCP·HTTP 가 전부 여기로 나온다.
+// Caddy 가 /actuator/* 를 외부에서 404 로 막으므로 컨테이너 네트워크로 직접 붙는다.
+// ---------------------------------------------------------------------------
+
+prometheus.scrape "app" {
+	targets = [
+		{
+			__address__      = "app:8080",
+			__metrics_path__ = "/actuator/prometheus",
+			instance         = "peakda-server",
+		},
+	]
+
+	job_name        = "peakda-server"
+	scrape_interval = "30s"
+	scrape_timeout  = "10s"
+	forward_to      = [prometheus.remote_write.grafana_cloud.receiver]
+}
+
+// ---------------------------------------------------------------------------
+// 호스트 지표
+//
+// 2GB 메모리와 30GB 디스크가 이 구성의 실질적인 장애 원인이다. 메모리 포화와
+// 디스크 사용률 감시가 이 exporter 를 두는 이유다.
+// ---------------------------------------------------------------------------
+
+prometheus.exporter.unix "host" {
+	rootfs_path = "/rootfs"
+	procfs_path = "/host/proc"
+	sysfs_path  = "/host/sys"
+
+	// 기본 컬렉터를 전부 켜면 시계열이 수천 개로 불어나 무료 한도(10k)를 잠식한다.
+	// 알림·대시보드에서 실제로 쓰는 것만 남긴다.
+	set_collectors = ["cpu", "diskstats", "filesystem", "loadavg", "meminfo", "netdev", "vmstat"]
+
+	filesystem {
+		// 컨테이너 오버레이 파일시스템은 호스트 디스크와 같은 장치를 중복 보고한다.
+		mount_points_exclude = "^/(dev|proc|sys|run|var/lib/docker/.+|rootfs/var/lib/docker/.+)($|/)"
+		fs_types_exclude     = "^(autofs|binfmt_misc|cgroup2?|configfs|debugfs|devpts|devtmpfs|fusectl|hugetlbfs|mqueue|nsfs|overlay|proc|procfs|pstore|securityfs|selinuxfs|squashfs|sysfs|tracefs)$"
+	}
+}
+
+prometheus.scrape "host" {
+	targets         = prometheus.exporter.unix.host.targets
+	job_name        = "host"
+	scrape_interval = "60s"
+	forward_to      = [prometheus.remote_write.grafana_cloud.receiver]
+}
+
+// ---------------------------------------------------------------------------
+// 컨테이너 지표
+//
+// 컨테이너별 메모리와 재시작 횟수를 본다. 앱이 OOM 으로 죽었는지, 어느 컨테이너가
+// 메모리를 밀어냈는지는 호스트 지표만으로 구분되지 않는다.
+// 메모리가 빠듯해지면 이 블록과 아래 scrape 를 먼저 걷어낸다.
+// ---------------------------------------------------------------------------
+
+prometheus.exporter.cadvisor "containers" {
+	docker_host = "unix:///var/run/docker.sock"
+
+	// 도커 컨테이너만 본다. 시스템 cgroup 까지 훑으면 시계열이 몇 배로 는다.
+	docker_only = true
+
+	// 기본 5분치를 메모리에 들고 있는다. 스크레이프 주기가 60초라 그 이상은 낭비다.
+	storage_duration = "5m"
+
+	// 코어별·소켓별로 쪼개지는 지표는 t4g.small 에서 볼 일이 없다.
+	disabled_metrics = [
+		"advtcp",
+		"cpu_topology",
+		"cpuset",
+		"hugetlb",
+		"memory_numa",
+		"percpu",
+		"process",
+		"referenced_memory",
+		"resctrl",
+		"sched",
+		"tcp",
+		"udp",
+	]
+}
+
+prometheus.scrape "containers" {
+	targets         = prometheus.exporter.cadvisor.containers.targets
+	job_name        = "containers"
+	scrape_interval = "60s"
+	forward_to      = [prometheus.remote_write.grafana_cloud.receiver]
+}
+
+// ---------------------------------------------------------------------------
+// 컨테이너 로그
+//
+// 라벨은 container 하나만 둔다(앱 로그는 level 추가). traceId·userId 같은 고카디널리티
+// 값을 라벨로 올리면 Loki 인덱스가 폭증해 무료 한도를 빠르게 태운다. 그런 값은
+// 로그 본문에 남겨 두고 쿼리 시점에 필터한다.
+// ---------------------------------------------------------------------------
+
+discovery.docker "containers" {
+	host             = "unix:///var/run/docker.sock"
+	refresh_interval = "30s"
+}
+
+discovery.relabel "containers" {
+	targets = discovery.docker.containers.targets
+
+	// 도커가 주는 이름은 "/peakda-app" 처럼 슬래시가 붙어 있다.
+	rule {
+		source_labels = ["__meta_docker_container_name"]
+		regex         = "/(.*)"
+		target_label  = "container"
+	}
+}
+
+loki.source.docker "containers" {
+	host       = "unix:///var/run/docker.sock"
+	targets    = discovery.relabel.containers.output
+	forward_to = [loki.process.containers.receiver]
+}
+
+loki.process "containers" {
+	forward_to = [loki.write.grafana_cloud.receiver]
+
+	// 앱은 logstash 포맷 JSON 한 줄로 찍는다. level 만 라벨로 올려
+	// 에러 로그를 라벨로 바로 거를 수 있게 한다.
+	// 다른 컨테이너 로그에 JSON 파싱을 걸면 매 줄 파싱 실패가 쌓이므로 앱에만 적용한다.
+	stage.match {
+		selector = "{container=\"peakda-app\"}"
+
+		stage.json {
+			expressions = {
+				level = "level",
+			}
+		}
+
+		stage.labels {
+			values = {
+				level = "",
+			}
+		}
+	}
+}

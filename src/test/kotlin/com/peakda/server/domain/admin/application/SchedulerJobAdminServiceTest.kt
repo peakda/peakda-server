@@ -78,7 +78,7 @@ class SchedulerJobAdminServiceTest {
     private fun job(name: String) = object : ManualTriggerableJob {
         override val jobName = name
 
-        override fun run() = Unit
+        override fun runNow() = Unit
     }
 
     private fun schedulerRun(

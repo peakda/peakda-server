@@ -6,6 +6,7 @@ import com.peakda.server.infrastructure.scheduler.history.SchedulerJobRunRecorde
 import io.micrometer.core.instrument.simple.SimpleMeterRegistry
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Test
+import java.time.Instant
 
 class JobLoggerTest {
 
@@ -13,7 +14,7 @@ class JobLoggerTest {
     fun `정상 실행 시 start와 complete를 순서대로 기록한다`() {
         val recorder = RecordingRecorder()
         val registry = SimpleMeterRegistry()
-        val logger = JobLogger(recorder, registry, AcquiringLock)
+        val logger = JobLogger(recorder, registry, AcquiringLock, SchedulerJobSuccessGauge(registry))
 
         logger.run("testJob") {
             mapOf(JobLogger.KEY_PROCESSED to 7, JobLogger.KEY_TOTAL to 42)
@@ -27,11 +28,39 @@ class JobLoggerTest {
         assertThat(registry.timer("scheduler.job.duration", "job", "testJob").count()).isEqualTo(1L)
     }
 
+    /**
+     * 미실행 감시(잡이 실패도 안 하고 아예 돌지 않는 경우)의 기준값이라 성공 때마다 갱신되어야 한다.
+     */
+    @Test
+    fun `성공하면 마지막 성공 시각 게이지를 갱신한다`() {
+        val registry = SimpleMeterRegistry()
+        val logger = JobLogger(RecordingRecorder(), registry, AcquiringLock, SchedulerJobSuccessGauge(registry))
+        val before = Instant.now().epochSecond
+
+        logger.run("timedJob") { emptyMap() }
+
+        val recorded = registry.get(SchedulerJobSuccessGauge.METRIC_NAME).tag("job", "timedJob").gauge().value()
+        assertThat(recorded).isGreaterThanOrEqualTo(before.toDouble())
+    }
+
+    /**
+     * 실패한 잡의 게이지가 올라가면 "최근에 성공했다"로 읽혀 미실행 알림이 영구히 침묵한다.
+     */
+    @Test
+    fun `실패한 잡은 마지막 성공 시각 게이지를 만들지 않는다`() {
+        val registry = SimpleMeterRegistry()
+        val logger = JobLogger(RecordingRecorder(), registry, AcquiringLock, SchedulerJobSuccessGauge(registry))
+
+        logger.run("boomJob") { throw IllegalStateException("boom") }
+
+        assertThat(registry.find(SchedulerJobSuccessGauge.METRIC_NAME).gauge()).isNull()
+    }
+
     @Test
     fun `예외 발생 시 fail을 기록하고 호출자에게 전파하지 않는다`() {
         val recorder = RecordingRecorder()
         val registry = SimpleMeterRegistry()
-        val logger = JobLogger(recorder, registry, AcquiringLock)
+        val logger = JobLogger(recorder, registry, AcquiringLock, SchedulerJobSuccessGauge(registry))
 
         logger.run("boomJob") {
             throw IllegalStateException("boom")
@@ -48,7 +77,7 @@ class JobLoggerTest {
     fun `비활성 잡은 실행 이력을 남기지 않는다`() {
         val recorder = RecordingRecorder()
         val registry = SimpleMeterRegistry()
-        val logger = JobLogger(recorder, registry, AcquiringLock)
+        val logger = JobLogger(recorder, registry, AcquiringLock, SchedulerJobSuccessGauge(registry))
 
         logger.runIfEnabled("disabledJob", false) {
             error("should not run")
@@ -66,7 +95,7 @@ class JobLoggerTest {
     fun `수동 실행은 비활성 잡도 실행하고 이력을 남긴다`() {
         val recorder = RecordingRecorder()
         val registry = SimpleMeterRegistry()
-        val logger = JobLogger(recorder, registry, AcquiringLock)
+        val logger = JobLogger(recorder, registry, AcquiringLock, SchedulerJobSuccessGauge(registry))
         var executed = false
 
         logger.runManually("disabledJob") {
@@ -86,7 +115,7 @@ class JobLoggerTest {
     fun `수동 실행도 락 획득 실패 시 skipped locked로 기록한다`() {
         val recorder = RecordingRecorder()
         val registry = SimpleMeterRegistry()
-        val logger = JobLogger(recorder, registry, LockedLock)
+        val logger = JobLogger(recorder, registry, LockedLock, SchedulerJobSuccessGauge(registry))
 
         logger.runManually("lockedJob") {
             error("should not run")
@@ -101,7 +130,7 @@ class JobLoggerTest {
     fun `수동 실행 중 예외는 fail로 기록하고 호출자에게 전파하지 않는다`() {
         val recorder = RecordingRecorder()
         val registry = SimpleMeterRegistry()
-        val logger = JobLogger(recorder, registry, AcquiringLock)
+        val logger = JobLogger(recorder, registry, AcquiringLock, SchedulerJobSuccessGauge(registry))
 
         logger.runManually("boomJob") {
             throw IllegalStateException("boom")
@@ -118,7 +147,7 @@ class JobLoggerTest {
     fun `QUOTA_EXCEEDED 예외는 실행 row를 skip quota_exhausted로 전환한다`() {
         val recorder = RecordingRecorder()
         val registry = SimpleMeterRegistry()
-        val logger = JobLogger(recorder, registry, AcquiringLock)
+        val logger = JobLogger(recorder, registry, AcquiringLock, SchedulerJobSuccessGauge(registry))
 
         logger.run("quotaJob") {
             throw ExternalApiException(ExternalApiErrorCode.EXTERNAL_API_QUOTA_EXCEEDED, "exhausted")
@@ -142,7 +171,7 @@ class JobLoggerTest {
     fun `quota 외 ExternalApiException 은 failure 로 기록한다`() {
         val recorder = RecordingRecorder()
         val registry = SimpleMeterRegistry()
-        val logger = JobLogger(recorder, registry, AcquiringLock)
+        val logger = JobLogger(recorder, registry, AcquiringLock, SchedulerJobSuccessGauge(registry))
 
         logger.run("authJob") {
             throw ExternalApiException(ExternalApiErrorCode.EXTERNAL_API_AUTH_FAILED, "auth")
@@ -157,7 +186,7 @@ class JobLoggerTest {
     fun `락 획득 실패는 실행 이력을 skipped locked로 기록한다`() {
         val recorder = RecordingRecorder()
         val registry = SimpleMeterRegistry()
-        val logger = JobLogger(recorder, registry, LockedLock)
+        val logger = JobLogger(recorder, registry, LockedLock, SchedulerJobSuccessGauge(registry))
 
         logger.runIfEnabled("lockedJob", true) {
             error("should not run")

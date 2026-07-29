@@ -45,6 +45,17 @@ app_parameters = {
   CORS_ALLOWED_ORIGINS = "https://peakda.com,https://www.peakda.com"
   OAUTH2_REDIRECT_URI  = "https://peakda.com/oauth/callback"
 
+  # Grafana Cloud 수집 엔드포인트. 시크릿이 아니라 계정 식별자라 여기에 값을 둔다.
+  # 토큰만 SecureString 으로 분리한다.
+  #
+  # URL 은 push 경로까지 포함해야 한다. 호스트만 넣으면 Alloy 가 뜨기는 하고
+  # 전송만 실패해서 "컨테이너는 정상인데 데이터가 안 온다" 로 나타난다.
+  # 스택 리전은 도쿄(ap-northeast-0)로, 서울 EC2 에서 가장 가깝다.
+  GRAFANA_CLOUD_PROM_URL  = "https://prometheus-prod-49-prod-ap-northeast-0.grafana.net/api/prom/push"
+  GRAFANA_CLOUD_PROM_USER = "3408100"
+  GRAFANA_CLOUD_LOKI_URL  = "https://logs-prod-030.grafana.net/loki/api/v1/push"
+  GRAFANA_CLOUD_LOKI_USER = "1699725"
+
   # STORAGE_BUCKET·ENDPOINT·REGION·PATH_STYLE_ACCESS 는 main.tf 가 media 모듈에서
   # 산출한다. 여기에 다시 쓰면 그 값을 덮어쓰게 되므로 두지 않는다.
   #
@@ -72,6 +83,7 @@ app_secret_names = [
   "KTO_SERVICE_KEY",
   "KMA_SERVICE_KEY",
   "PUBDATA_FESTIVAL_SERVICE_KEY",
+  "GRAFANA_CLOUD_API_KEY",
 
   # S3 IAM 사용자 액세스 키. apply 후 CLI 로 발급해 주입한다.
   # Terraform 으로 만들면 state 에 평문으로 남는다.
