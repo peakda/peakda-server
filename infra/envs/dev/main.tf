@@ -24,6 +24,7 @@ locals {
     "Caddyfile"          = "${path.module}/../../server/Caddyfile"
     "deploy.sh"          = "${path.module}/../../server/deploy.sh"
     "backup.sh"          = "${path.module}/../../server/backup.sh"
+    "restore.sh"         = "${path.module}/../../server/restore.sh"
   }
 }
 
