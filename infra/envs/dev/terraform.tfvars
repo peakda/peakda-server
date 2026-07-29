@@ -22,9 +22,6 @@ create_oidc_provider = true
 
 github_allowed_subjects = [
   "repo:peakda/peakda-server:ref:refs/heads/develop",
-  # 마이그레이션 검증 동안 작업 브랜치에서도 배포를 돌린다.
-  # 컷오버가 끝나면 이 줄을 지운다.
-  "repo:peakda/peakda-server:ref:refs/heads/feature/59",
 ]
 
 # ---------------------------------------------------------------------------
