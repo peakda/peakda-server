@@ -1,0 +1,93 @@
+# peakda develop 서버 구성.
+#
+# PostgreSQL·Redis 포트를 호스트에 노출하지 않는다. 컨테이너 네트워크 안에서만
+# 접근하고, 외부로 열리는 것은 Caddy 의 80/443 뿐이다.
+# 데이터는 ./data 이며 별도 EBS 볼륨이 마운트된 경로다.
+
+services:
+  caddy:
+    image: caddy:2-alpine
+    container_name: peakda-caddy
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy-data:/data # 발급받은 인증서. 재시작마다 재발급하면 LE 한도에 걸린다
+      - caddy-config:/config
+    environment:
+      APP_DOMAIN: ${APP_DOMAIN}
+    depends_on:
+      - app
+    restart: unless-stopped
+
+  app:
+    image: ${ECR_IMAGE}
+    container_name: peakda-app
+    env_file: .env
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_started
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://localhost:8080/actuator/health/readiness"]
+      interval: 10s
+      timeout: 3s
+      retries: 12
+      start_period: 90s
+    # 2GB 호스트에서 다른 컨테이너를 밀어내지 않도록 상한을 둔다.
+    mem_limit: 1200m
+    restart: unless-stopped
+
+  postgres:
+    image: postgres:18
+    container_name: peakda-postgres
+    environment:
+      POSTGRES_DB: peakda
+      POSTGRES_USER: peakda
+      POSTGRES_PASSWORD: ${SPRING_DATASOURCE_PASSWORD}
+      PGDATA: /var/lib/postgresql/data/pgdata
+    command:
+      - postgres
+      - -c
+      - shared_buffers=256MB
+      - -c
+      - max_connections=30
+      - -c
+      - log_min_duration_statement=1000
+    volumes:
+      - ./data/postgres:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U peakda -d peakda"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    mem_limit: 400m
+    restart: unless-stopped
+
+  redis:
+    image: redis:8.2.1-alpine
+    container_name: peakda-redis
+    command:
+      - redis-server
+      - --appendonly
+      - "yes"
+      - --maxmemory
+      - 128mb
+      - --maxmemory-policy
+      - allkeys-lru
+    volumes:
+      - ./data/redis:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+    mem_limit: 200m
+    restart: unless-stopped
+
+volumes:
+  caddy-data:
+  caddy-config:
