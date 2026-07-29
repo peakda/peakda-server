@@ -1,29 +1,32 @@
 #!/bin/bash
-# Railway PostgreSQL 데이터를 AWS EC2 의 PostgreSQL 로 옮긴다.
+# 기존 PostgreSQL(Supabase) 데이터를 AWS EC2 의 PostgreSQL 로 옮긴다.
 #
 #   사용법:
-#     export RAILWAY_DATABASE_URL='postgresql://user:pass@host:port/railway'
+#     export SOURCE_DATABASE_URL='postgresql://user:pass@host:5432/postgres'
 #     ./migrate-db.sh [dev] [--wipe]
 #
 #   --wipe  복원 전 대상 DB 의 기존 데이터를 지운다.
 #           새 환경이라 이미 스케줄러가 수집한 데이터와 테스트 로그인 계정이
 #           들어 있으므로, 첫 이관에는 이 옵션을 쓰는 편이 깔끔하다.
 #
-# 흐름: Railway 덤프 → S3 업로드 → SSM 으로 EC2 안에서 복원.
+# 흐름: 원본 덤프 → S3 업로드 → SSM 으로 EC2 안에서 복원.
 # 터널을 유지하지 않아 대용량에도 안정적이고, 복원이 서버 안에서 일어난다.
 #
-# 값은 Railway 대시보드 → Postgres → Variables 의 DATABASE_PUBLIC_URL 을 쓴다
-# (내부 URL 은 Railway 네트워크 밖에서 접속되지 않는다).
+# Supabase 접속 URL 은 대시보드 → Project Settings → Database → Connection string
+# 의 **Session pooler**(5432) 또는 Direct connection 을 쓴다.
+# Transaction pooler(6543)는 prepared statement 를 지원하지 않아 pg_dump 가 실패한다.
 set -euo pipefail
 
-: "${RAILWAY_DATABASE_URL:?RAILWAY_DATABASE_URL 을 설정하세요}"
+# 이전 변수명(RAILWAY_DATABASE_URL)도 받아준다.
+SOURCE_DATABASE_URL="${SOURCE_DATABASE_URL:-${RAILWAY_DATABASE_URL:-}}"
+: "${SOURCE_DATABASE_URL:?SOURCE_DATABASE_URL 을 설정하세요}"
 
 ENV="${1:-dev}"
 WIPE="${2:-}"
 REGION="${AWS_REGION:-ap-northeast-2}"
 STAMP="$(date -u +%Y%m%d-%H%M%S)"
-DUMP="/tmp/railway-$STAMP.dump"
-S3_KEY="migration/railway-$STAMP.dump"
+DUMP="/tmp/source-$STAMP.dump"
+S3_KEY="migration/source-$STAMP.dump"
 
 trap 'rm -f "$DUMP"' EXIT
 
@@ -38,30 +41,35 @@ log "대상 인스턴스: $INSTANCE_ID"
 log "경유 버킷: $BUCKET"
 
 # ---------------------------------------------------------------------------
-# 1. Railway 덤프
+# 1. 원본 덤프
 #    로컬에 pg_dump 가 없으면 docker 로 대체한다. 서버보다 낮은 버전의
 #    pg_dump 는 실패하므로 postgres:18 이미지를 쓴다.
 # ---------------------------------------------------------------------------
+# --schema=public 이 중요하다. Supabase 는 auth·storage·realtime·extensions 등
+# 자체 스키마를 갖고 있어 통째로 덤프하면 그것들까지 딸려온다.
+# 우리 테이블은 Liquibase 가 public 에만 만든다.
+#
 # Liquibase 관리 테이블은 덤프에서 뺀다. 대상 DB 에는 이미 적용 이력이 있고,
 # 덮어쓰면 changelog 재적용이 일어나 스키마가 깨진다.
 # scheduler_job_runs 는 실행 이력이라 새 환경에서 새로 쌓으면 된다.
-DUMP_EXCLUDES=(
+DUMP_OPTS=(
+  --schema=public
   --exclude-table=databasechangelog
   --exclude-table=databasechangeloglock
   --exclude-table=scheduler_job_runs
 )
 
-log "Railway 덤프 시작"
+log "원본 덤프 시작"
 if command -v pg_dump >/dev/null 2>&1; then
-  pg_dump -Fc --no-owner --no-acl "${DUMP_EXCLUDES[@]}" "$RAILWAY_DATABASE_URL" > "$DUMP"
+  pg_dump -Fc --no-owner --no-acl "${DUMP_OPTS[@]}" "$SOURCE_DATABASE_URL" > "$DUMP"
 else
   log "pg_dump 가 없어 docker(postgres:18)로 실행한다"
   docker run --rm -i postgres:18 \
-    pg_dump -Fc --no-owner --no-acl "${DUMP_EXCLUDES[@]}" "$RAILWAY_DATABASE_URL" > "$DUMP"
+    pg_dump -Fc --no-owner --no-acl "${DUMP_OPTS[@]}" "$SOURCE_DATABASE_URL" > "$DUMP"
 fi
 
 if [ ! -s "$DUMP" ]; then
-  log "ERROR: 덤프가 비어 있다. RAILWAY_DATABASE_URL 을 확인하세요."
+  log "ERROR: 덤프가 비어 있다. SOURCE_DATABASE_URL 을 확인하세요."
   exit 1
 fi
 log "덤프 완료: $(du -h "$DUMP" | cut -f1)"
