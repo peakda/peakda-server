@@ -89,10 +89,16 @@ data "aws_iam_policy_document" "instance" {
   }
 
   statement {
-    sid       = "ReadServerAssets"
-    effect    = "Allow"
-    actions   = ["s3:GetObject"]
-    resources = ["${var.backup_bucket_arn}/assets/*"]
+    sid     = "ReadServerAssets"
+    effect  = "Allow"
+    actions = ["s3:GetObject"]
+    resources = [
+      "${var.backup_bucket_arn}/assets/*",
+      # 데이터 이관 덤프. restore.sh 가 이 경로에서 내려받는다.
+      "${var.backup_bucket_arn}/migration/*",
+      # 복구 시 과거 백업을 되읽어야 한다.
+      "${var.backup_bucket_arn}/postgres/*",
+    ]
   }
 
   statement {

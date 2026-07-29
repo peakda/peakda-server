@@ -27,7 +27,12 @@ trap 'rm -f "$TMP"' EXIT
 # 1. 덤프 내려받기
 # ---------------------------------------------------------------------------
 log "다운로드: s3://$ASSETS_BUCKET/$S3_KEY"
-aws s3 cp "s3://$ASSETS_BUCKET/$S3_KEY" "$TMP" --region "$AWS_REGION" --quiet
+# --quiet 를 쓰지 않는다. 진행률과 함께 오류 메시지까지 묻혀 원인 파악이 어렵다.
+if ! aws s3 cp "s3://$ASSETS_BUCKET/$S3_KEY" "$TMP" --region "$AWS_REGION" --no-progress; then
+  log "ERROR: 덤프를 내려받지 못했다. 키가 맞는지, 인스턴스 역할에 해당 프리픽스"
+  log "       GetObject 권한이 있는지 확인한다: $S3_KEY"
+  exit 1
+fi
 log "크기: $(du -h "$TMP" | cut -f1)"
 
 # ---------------------------------------------------------------------------
