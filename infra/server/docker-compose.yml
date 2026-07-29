@@ -43,6 +43,13 @@ services:
   postgres:
     image: postgres:18
     container_name: peakda-postgres
+    # 루프백에만 바인딩한다. 보안 그룹이 5432 를 열지 않으므로 외부에서 직접
+    # 닿을 수 없고, SSM 포트포워딩으로 터널을 뚫었을 때만 접근된다.
+    #   aws ssm start-session --target <instance-id> \
+    #     --document-name AWS-StartPortForwardingSession \
+    #     --parameters '{"portNumber":["5432"],"localPortNumber":["15432"]}'
+    ports:
+      - "127.0.0.1:5432:5432"
     environment:
       POSTGRES_DB: peakda
       POSTGRES_USER: peakda
