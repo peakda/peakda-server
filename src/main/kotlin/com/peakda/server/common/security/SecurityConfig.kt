@@ -81,6 +81,9 @@ class SecurityConfig(
                     // health/readiness·health/liveness 는 컨테이너 헬스체크와 외부 감시가
                     // 인증 없이 호출한다. show-details 가 never 라 상태값만 노출된다.
                     .requestMatchers("/actuator/health", "/actuator/health/**", "/actuator/info").permitAll()
+                    // Alloy 가 컨테이너 네트워크(app:8080)로 30초마다 긁는다. 토큰을 쥐여줄 수 없다.
+                    // 외부 차단은 Caddy 가 맡는다 — /actuator/* 를 health 만 남기고 404 로 막는다.
+                    .requestMatchers("/actuator/prometheus").permitAll()
                     .requestMatchers("/actuator/**").hasRole("ADMIN")
                     .anyRequest().hasRole("USER")
             }

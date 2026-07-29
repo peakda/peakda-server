@@ -33,6 +33,10 @@ liquibase-core = { module = "org.liquibase:liquibase-core" }
 redisson = { module = "org.redisson:redisson", version.ref = "redisson" }
 resilience4j-spring-boot3 = { module = "io.github.resilience4j:resilience4j-spring-boot3", version.ref = "resilience4j" }
 
+# Observability
+# 버전은 Spring Boot BOM 이 관리한다.
+micrometer-registry-prometheus = { module = "io.micrometer:micrometer-registry-prometheus" }
+
 # Test
 spring-boot-testcontainers = { module = "org.springframework.boot:spring-boot-testcontainers" }
 spring-security-test = { module = "org.springframework.security:spring-security-test" }

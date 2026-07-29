@@ -235,11 +235,21 @@ peakda:
       tie-break-confidence-margin: 0.1
     calendar-horizon-days: 30
 
+# 프로파일별로 다시 선언하지 않는다. dev 에서 exposure 를 덮어쓰면
+# prometheus 가 조용히 빠져 수집이 멈춘다.
 management:
   endpoints:
     web:
       exposure:
-        include: health,info,metrics
+        include: health,info,metrics,prometheus
   endpoint:
     health:
       show-details: never
+      # 컨테이너 헬스체크와 Caddy upstream 검사가 readiness 를 쓴다.
+      probes:
+        enabled: true
+  metrics:
+    tags:
+      # 모든 메트릭에 붙는 공통 라벨. env 는 같은 Grafana 스택에서 dev/prod 를 가른다.
+      application: ${spring.application.name}
+      env: ${SPRING_PROFILES_ACTIVE:local}
