@@ -1,0 +1,89 @@
+#!/bin/bash
+# peakda 앱 서버 초기화. 부팅 시 1회 실행된다.
+# 실행 로그는 /var/log/cloud-init-output.log 에 남는다.
+set -euxo pipefail
+
+APP_DIR=/opt/peakda
+DATA_DIR="$APP_DIR/data"
+DEVICE="/dev/disk/by-id/nvme-Amazon_Elastic_Block_Store_${data_volume_id}"
+
+# ---------------------------------------------------------------------------
+# 1. 패키지
+# ---------------------------------------------------------------------------
+dnf update -y
+dnf install -y docker jq cronie tar gzip postgresql17
+
+systemctl enable --now docker
+systemctl enable --now crond
+
+# docker compose plugin 은 AL2023 기본 저장소에 없어 직접 설치한다.
+mkdir -p /usr/local/lib/docker/cli-plugins
+COMPOSE_VERSION="$(curl -fsSL https://api.github.com/repos/docker/compose/releases/latest | jq -r .tag_name || echo 'v2.32.4')"
+curl -fsSL "https://github.com/docker/compose/releases/download/$${COMPOSE_VERSION}/docker-compose-linux-aarch64" \
+  -o /usr/local/lib/docker/cli-plugins/docker-compose
+chmod +x /usr/local/lib/docker/cli-plugins/docker-compose
+
+# ---------------------------------------------------------------------------
+# 2. 데이터 볼륨 마운트
+#    attach 는 인스턴스 기동 직후 비동기로 일어나므로 장치가 보일 때까지 기다린다.
+# ---------------------------------------------------------------------------
+for _ in $(seq 1 60); do
+  [ -e "$DEVICE" ] && break
+  sleep 5
+done
+
+if [ ! -e "$DEVICE" ]; then
+  echo "데이터 볼륨을 찾지 못했다: $DEVICE" >&2
+  exit 1
+fi
+
+# 파일시스템이 없을 때만 만든다. 재부팅·인스턴스 교체 시 데이터를 지우면 안 된다.
+if ! blkid "$DEVICE" >/dev/null 2>&1; then
+  mkfs -t xfs "$DEVICE"
+fi
+
+mkdir -p "$DATA_DIR"
+DATA_UUID="$(blkid -s UUID -o value "$DEVICE")"
+
+# nofail: 볼륨이 없어도 인스턴스가 부팅되게 한다(복구 작업 여지를 남긴다).
+if ! grep -q "$DATA_UUID" /etc/fstab; then
+  echo "UUID=$DATA_UUID $DATA_DIR xfs defaults,nofail 0 2" >> /etc/fstab
+fi
+
+mount -a
+mkdir -p "$DATA_DIR/postgres" "$DATA_DIR/redis"
+
+# PostgreSQL 컨테이너는 uid 999 로 동작한다.
+chown -R 999:999 "$DATA_DIR/postgres"
+
+# ---------------------------------------------------------------------------
+# 3. 서버 자산 내려받기
+# ---------------------------------------------------------------------------
+aws s3 sync "s3://${assets_bucket}/assets/" "$APP_DIR/" --region ${region}
+chmod +x "$APP_DIR"/*.sh
+
+# ---------------------------------------------------------------------------
+# 4. 환경 정보 기록 (deploy.sh / backup.sh 가 참조)
+# ---------------------------------------------------------------------------
+cat > "$APP_DIR/env.conf" <<EOF
+AWS_REGION=${region}
+PARAMETER_PREFIX=${parameter_prefix}
+ECR_REPOSITORY=${ecr_repository}
+ASSETS_BUCKET=${assets_bucket}
+COMPOSE_PROJECT_NAME=${compose_project}
+EOF
+
+# ---------------------------------------------------------------------------
+# 5. 백업 cron (매일 03:00 KST = 18:00 UTC)
+# ---------------------------------------------------------------------------
+cat > /etc/cron.d/peakda-backup <<'EOF'
+0 18 * * * root /opt/peakda/backup.sh >> /var/log/peakda-backup.log 2>&1
+EOF
+chmod 644 /etc/cron.d/peakda-backup
+
+# ---------------------------------------------------------------------------
+# 6. 첫 기동 시도
+#    ECR 에 이미지가 아직 없을 수 있다. 그 경우 실패해도 부팅은 계속 진행하고,
+#    GitHub Actions 의 첫 배포에서 정상 기동된다.
+# ---------------------------------------------------------------------------
+"$APP_DIR/deploy.sh" latest || echo "첫 배포 건너뜀 - ECR 이미지 없음(정상). CI 배포를 기다린다."

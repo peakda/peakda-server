@@ -1,0 +1,20 @@
+# Terraform
+**/.terraform/*
+*.tfstate
+*.tfstate.*
+*.tfplan
+crash.log
+crash.*.log
+
+# 변수 파일에 실제 값이 들어가는 경우가 있어 override 계열은 제외한다.
+override.tf
+override.tf.json
+*_override.tf
+*_override.tf.json
+
+.terraformrc
+terraform.rc
+.terraform.lock.hcl.bak
+
+# 운영 메모. 인스턴스 ID·IP 같은 환경 고유 값이 들어가 로컬에만 둔다.
+README.md
