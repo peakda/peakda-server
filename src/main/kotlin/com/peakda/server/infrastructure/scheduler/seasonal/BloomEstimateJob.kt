@@ -2,6 +2,7 @@ package com.peakda.server.infrastructure.scheduler.seasonal
 
 import com.peakda.server.domain.festival.repository.FestivalRepository
 import com.peakda.server.domain.seasonal.application.BloomEstimateService
+import com.peakda.server.domain.seasonal.application.AttractionStationMappingService
 import com.peakda.server.domain.seasonal.application.DailyTemperature
 import com.peakda.server.domain.seasonal.application.ForecastTemperatureService
 import com.peakda.server.domain.seasonal.application.GddAccumulationService
@@ -30,6 +31,7 @@ class BloomEstimateJob(
     private val attractionBloomRepository: AttractionBloomRepository,
     private val festivalRepository: FestivalRepository,
     private val estimateService: BloomEstimateService,
+    private val mappingService: AttractionStationMappingService,
     private val gddAccumulationService: GddAccumulationService,
     private val forecastTemperatureService: ForecastTemperatureService,
     private val gddProperties: GddEstimatorProperties,
@@ -51,36 +53,40 @@ class BloomEstimateJob(
     private fun execute(): Map<String, Any?> {
         val today = LocalDate.now(KST)
         val festivals = festivalRepository.findByLatitudeIsNotNullAndLongitudeIsNotNull()
-        val stationId = gddProperties.defaultStationId
-        // 기본 지점의 올해 관측을 한 번만 읽어 모든 명소와 카테고리에서 재사용한다.
-        val temperatures =
-            if (gddProperties.enabled && stationId.isNotBlank()) {
+        val stationByAttraction = mappingService.findStationByAttraction()
+        val defaultStationId = gddProperties.defaultStationId
+        val stationIds = (stationByAttraction.values + defaultStationId).filter { it.isNotBlank() }.toSet()
+        // 필요한 모든 지점의 올해 관측을 한 번만 읽어 명소 수에 비례한 조회를 막는다.
+        val temperaturesByStation =
+            if (gddProperties.enabled && stationIds.isNotEmpty()) {
                 gddAccumulationService.loadDailyTemperatures(
-                    listOf(stationId),
+                    stationIds,
                     today.withDayOfYear(1),
                     today,
-                )[stationId]
+                )
             } else {
-                null
+                emptyMap()
             }
-        // 예보도 한 번만 읽어 종별 임계치 계산에 공유해야 명소 수에 비례한 조회를 막을 수 있다.
+        val defaultTemperatures = temperaturesByStation[defaultStationId]
+        // 예보 수집은 기본 격자 하나를 유지하며 기본 지점의 실측 다음날부터 잇는다.
         val forecasts =
-            if (temperatures != null && gddProperties.defaultMidRegionCode.isNotBlank()) {
+            if (defaultTemperatures != null && gddProperties.defaultMidRegionCode.isNotBlank()) {
                 forecastTemperatureService.loadForecastTemperatures(
                     gridX = gddProperties.defaultGridX,
                     gridY = gddProperties.defaultGridY,
                     midRegionCode = gddProperties.defaultMidRegionCode,
-                    from = resolveForecastStart(temperatures, today),
+                    from = resolveForecastStart(defaultTemperatures, today),
                     to = today.plusDays(gddProperties.forecastHorizonDays),
                 )
             } else {
                 emptyList()
             }
         var estimates = 0
+        val gddStationIds = mutableSetOf<String>()
         for (category in BloomCategory.entries) {
-            // 종별 기준온도만 바꿔 같은 관측을 누적하므로 카테고리마다 재조회하지 않는다.
-            val gdd = temperatures?.let { dailyTemperatures ->
-                gddProperties.thresholds[category.name]?.let { threshold ->
+            // 지점×카테고리 단위로만 누적해 계산량이 명소 수에 비례하지 않도록 한다.
+            val snapshotByStation = gddProperties.thresholds[category.name]?.let { threshold ->
+                temperaturesByStation.mapValues { (stationId, dailyTemperatures) ->
                     val accumulated = GddAccumulator.accumulate(dailyTemperatures, threshold.tBase)
                     GddSnapshot(
                         stationId = stationId,
@@ -99,13 +105,20 @@ class BloomEstimateJob(
                         ),
                     )
                 }
-            }
+            } ?: emptyMap()
+            gddStationIds += snapshotByStation.keys
             var page = 0
             while (true) {
                 val slice = attractionBloomRepository
                     .findDistinctAttractionIdsByBloomCategory(category, PageRequest.of(page, PAGE_SIZE))
                 if (slice.isEmpty) break
-                estimates += estimateService.estimatePage(slice.content, category, today, festivals, gdd)
+                val gddByAttraction = resolveGddByAttraction(
+                    attractionIds = slice.content,
+                    stationByAttraction = stationByAttraction,
+                    defaultStationId = defaultStationId,
+                    snapshotByStation = snapshotByStation,
+                )
+                estimates += estimateService.estimatePage(slice.content, category, today, festivals, gddByAttraction)
                 if (!slice.hasNext()) break
                 page++
             }
@@ -113,7 +126,8 @@ class BloomEstimateJob(
         return mapOf(
             JobLogger.KEY_PROCESSED to estimates,
             "festivals" to festivals.size,
-            "gddStation" to stationId.takeIf { temperatures != null },
+            "gddStations" to gddStationIds.size,
+            "mappedAttractions" to stationByAttraction.size,
             "forecastDays" to forecasts.size,
         )
     }
@@ -133,5 +147,15 @@ class BloomEstimateJob(
             observed: List<DailyTemperature>,
             today: LocalDate,
         ): LocalDate = observed.maxOfOrNull { it.observedOn }?.plusDays(1) ?: today
+
+        internal fun resolveGddByAttraction(
+            attractionIds: List<Long>,
+            stationByAttraction: Map<Long, String>,
+            defaultStationId: String,
+            snapshotByStation: Map<String, GddSnapshot>,
+        ): Map<Long, GddSnapshot> = attractionIds.mapNotNull { attractionId ->
+            val stationId = stationByAttraction[attractionId] ?: defaultStationId
+            snapshotByStation[stationId]?.let { snapshot -> attractionId to snapshot }
+        }.toMap()
     }
 }

@@ -1,6 +1,7 @@
 package com.peakda.server.infrastructure.scheduler.seasonal
 
 import com.peakda.server.domain.seasonal.application.DailyTemperature
+import com.peakda.server.domain.seasonal.application.GddSnapshot
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Test
 import java.time.LocalDate
@@ -53,6 +54,24 @@ class BloomEstimateJobTest {
         val forecastStart = BloomEstimateJob.resolveForecastStart(observed, today)
 
         assertThat(forecastStart).isEqualTo(today)
+    }
+
+    @Test
+    fun `매핑이 없는 명소는 기본 지점 스냅샷을 받는다`() {
+        val defaultSnapshot = GddSnapshot(stationId = "108", accumulated = 72.5)
+
+        val result = BloomEstimateJob.resolveGddByAttraction(
+            attractionIds = listOf(1L, 2L),
+            stationByAttraction = mapOf(2L to "184"),
+            defaultStationId = "108",
+            snapshotByStation = mapOf(
+                "108" to defaultSnapshot,
+                "184" to GddSnapshot(stationId = "184", accumulated = 105.0),
+            ),
+        )
+
+        assertThat(result[1L]).isSameAs(defaultSnapshot)
+        assertThat(result[2L]?.stationId).isEqualTo("184")
     }
 
     private fun temperature(observedOn: LocalDate) = DailyTemperature(

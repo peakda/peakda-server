@@ -4,6 +4,7 @@ import com.peakda.server.common.exception.ErrorCode
 import com.peakda.server.domain.weather.application.WeatherDailyObservationSyncService
 import com.peakda.server.infrastructure.external.common.ExternalApiException
 import com.peakda.server.infrastructure.external.kma.asosdaly.AsosDalyClient
+import com.peakda.server.infrastructure.external.kma.asosdaly.AsosStationCatalog
 import com.peakda.server.infrastructure.scheduler.JobLogger
 import com.peakda.server.infrastructure.scheduler.ManualTriggerableJob
 import com.peakda.server.infrastructure.scheduler.SchedulerProperties
@@ -23,6 +24,7 @@ import java.time.LocalDate
 class AsosDalySyncJob(
     private val client: AsosDalyClient,
     private val syncService: WeatherDailyObservationSyncService,
+    private val catalog: AsosStationCatalog,
     private val props: SchedulerProperties,
     private val jobLogger: JobLogger,
 ) : ManualTriggerableJob {
@@ -41,11 +43,12 @@ class AsosDalySyncJob(
     private fun execute(): Map<String, Any?> {
         val yesterday = LocalDate.now(KST).minusDays(1)
         val latestByStation = syncService.findLatestObservedOnByStation()
+        val stationIds = props.kma.asosDaly.stations.ifEmpty { catalog.all.map { it.stnId } }
         var processed = 0
         var syncedStations = 0
         var skippedStations = 0
 
-        for (stationId in props.kma.asosDaly.stations) {
+        for (stationId in stationIds) {
             val range = resolveBackfillRange(
                 lastObserved = latestByStation[stationId],
                 backfillFrom = props.kma.asosDaly.backfillFrom,
