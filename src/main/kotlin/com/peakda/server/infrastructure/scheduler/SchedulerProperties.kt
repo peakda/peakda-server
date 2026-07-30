@@ -65,6 +65,7 @@ data class SchedulerProperties(
 
     data class SeasonalSchedulerProps(
         val attractionBloomTagging: JobProps = JobProps(),
+        val attractionStationMapping: JobProps = JobProps(),
         val bloomEstimate: JobProps = JobProps(),
     )
 

@@ -196,12 +196,11 @@ external:
         enabled: true
         backfill-from: 2026-01-01
         max-backfill-days: 400
-        # 종관관측 주요 지점. 전체 지점 자동 동기화는 지점정보 API 연동 시 대체된다.
-        stations: ["108", "112", "101", "105", "133", "131", "129", "146", "156", "143", "136", "138", "159", "152", "165", "168", "184", "189"]
     pubdata:
       festival: { cron: "0 0 6 * * MON", enabled: true }
     seasonal:
       attraction-bloom-tagging: { cron: "0 45 5 * * *", enabled: true }
+      attraction-station-mapping: { cron: "0 15 6 * * *", enabled: true }
       bloom-estimate: { cron: "0 0 7 * * *", enabled: true }
     notification:
       bloom-timing-alert: { cron: "0 0 8 * * *", enabled: true }
@@ -240,7 +239,7 @@ peakda:
       enabled: true
       base-confidence: 0.7
       ended-confidence: 0.35
-      # 명소별 관측지점 매핑이 붙기 전까지 전국에 적용할 기준 지점(서울).
+      # 매핑이 아직 없는 명소에 적용할 기준 지점(서울).
       default-station-id: "108"
       # 기본 지점(서울)에 대응하는 단기예보 격자와 중기예보 지역.
       default-grid-x: 60
