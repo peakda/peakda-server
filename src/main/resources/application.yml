@@ -237,7 +237,16 @@ peakda:
       early-window-days: 7
       late-window-days: 7
     gdd:
-      enabled: false
+      enabled: true
+      base-confidence: 0.7
+      ended-confidence: 0.35
+      # 명소별 관측지점 매핑이 붙기 전까지 전국에 적용할 기준 지점(서울).
+      default-station-id: "108"
+      # 종별 임계치는 계절관측 실측 개화일로 캘리브레이션하기 전의 초기값이다.
+      # 근거가 확보된 벚꽃만 먼저 넣고, 나머지 종은 캘리브레이션 후 추가한다.
+      # 단풍은 기온 하강에 반응해 GDD 모델이 맞지 않으므로 여기에 넣지 않는다.
+      thresholds:
+        CHERRY: { t-base: 5.4, start: 90.0, peak: 110.0, end: 130.0 }
     fusion:
       agreement-bonus: 0.1
       agreement-bonus-cap: 1.0

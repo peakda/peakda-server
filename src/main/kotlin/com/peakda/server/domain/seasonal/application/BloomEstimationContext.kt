@@ -10,10 +10,12 @@ import java.time.LocalDate
  * 추정기는 부수효과 없이 이 컨텍스트만으로 산출한다.
  *
  * [festivals] 는 좌표를 가진 후보 축제 목록으로, 축제 추정기가 카테고리·근접·기간으로 직접 필터한다.
+ * [gdd] 는 실측 관측이 있는 날짜에만 채워지며, 미래 날짜 시뮬레이션에서는 null 이다.
  */
 data class BloomEstimationContext(
     val attraction: Attraction,
     val category: BloomCategory,
     val baseDate: LocalDate,
     val festivals: List<Festival> = emptyList(),
+    val gdd: GddSnapshot? = null,
 )
