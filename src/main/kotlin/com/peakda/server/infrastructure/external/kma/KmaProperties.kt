@@ -11,5 +11,6 @@ data class KmaProperties(
         val vilageFcst: String = "",
         val midFcst: String = "",
         val asosDaly: String = "",
+        val flowerObservation: String = "",
     )
 }

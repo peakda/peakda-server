@@ -35,6 +35,20 @@ class KmaRestClientConfig(
     @Qualifier("asosDalyRestClient")
     fun asosDalyRestClient(): RestClient = kmaRestClient(kmaProperties.baseUrl.asosDaly, "AsosDalyInfoService")
 
+    @Bean
+    @Qualifier("flowerObservationRestClient")
+    fun flowerObservationRestClient(): RestClient {
+        return ExternalRestClientFactory.create(
+            builder = restClientBuilder,
+            baseUrl = kmaProperties.baseUrl.flowerObservation,
+            properties = dataGoKrProperties,
+            interceptors = listOf(
+                RateLimitInterceptor(PROVIDER, rateLimiterRegistry, meterRegistry),
+                ExternalApiLoggingInterceptor(PROVIDER, "FlowerObservation"),
+            ),
+        )
+    }
+
     private fun kmaRestClient(baseUrl: String, service: String): RestClient {
         return ExternalRestClientFactory.create(
             builder = restClientBuilder,

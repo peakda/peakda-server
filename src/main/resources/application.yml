@@ -166,6 +166,7 @@ external:
       vilage-fcst: https://apis.data.go.kr/1360000/VilageFcstInfoService_2.0
       mid-fcst: https://apis.data.go.kr/1360000/MidFcstInfoService
       asos-daly: https://apis.data.go.kr/1360000/AsosDalyInfoService
+      flower-observation: https://www.kma.go.kr/kma/theme
   pubdata:
     festival:
       service-key: ${PUBDATA_FESTIVAL_SERVICE_KEY}
@@ -196,6 +197,7 @@ external:
         enabled: true
         backfill-from: 2026-01-01
         max-backfill-days: 400
+      flower-observation: { cron: "0 30 4 * * *", enabled: true }
     pubdata:
       festival: { cron: "0 0 6 * * MON", enabled: true }
     seasonal:
@@ -246,11 +248,20 @@ peakda:
       default-grid-y: 127
       default-mid-region-code: SEOUL
       forecast-horizon-days: 10
-      # 종별 임계치는 계절관측 실측 개화일로 캘리브레이션하기 전의 초기값이다.
-      # 근거가 확보된 벚꽃만 먼저 넣고, 나머지 종은 캘리브레이션 후 추가한다.
       # 단풍은 기온 하강에 반응해 GDD 모델이 맞지 않으므로 여기에 넣지 않는다.
       thresholds:
-        CHERRY: { t-base: 5.4, start: 90.0, peak: 110.0, end: 130.0 }
+        # 2026 시즌 기상청 계절관측 개화일(벚나무 9곳)과 해당 최근접 지점의 실측 일평균기온으로
+        # 역산했다. 누적을 3/1 로 늦추면 겨울이 따뜻한 남부의 과대 누적이 사라져 지점 간
+        # 변동계수가 0.38 -> 0.16 으로 줄었다. tBase 0 이 수치상 더 낮았으나(0.12) 기준온도의
+        # 의미가 사라져 과적합으로 보고 3.0 을 택했다.
+        # 표본이 1개 시즌 9곳이므로 관측이 쌓이면 재산출해야 한다.
+        CHERRY:
+          t-base: 3.0
+          accumulation-start-month: 3
+          accumulation-start-day: 1
+          start: 137.0
+          peak: 183.0
+          end: 226.0
     fusion:
       agreement-bonus: 0.1
       agreement-bonus-cap: 1.0
