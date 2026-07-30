@@ -3,6 +3,7 @@ package com.peakda.server.infrastructure.scheduler.kma
 import com.peakda.server.domain.weather.application.WeatherDailyObservationSyncService
 import com.peakda.server.domain.weather.repository.WeatherDailyObservationRepository
 import com.peakda.server.infrastructure.external.kma.asosdaly.AsosDalyClient
+import com.peakda.server.infrastructure.external.kma.asosdaly.AsosStationCatalog
 import com.peakda.server.infrastructure.external.kma.asosdaly.response.AsosDalyItem
 import com.peakda.server.infrastructure.scheduler.SchedulerProperties
 import com.peakda.server.infrastructure.scheduler.SchedulerTime.KST
@@ -15,6 +16,7 @@ import org.assertj.core.api.Assertions.assertThat
 import org.hamcrest.Matchers.startsWith
 import org.junit.jupiter.api.Test
 import org.mockito.Mockito
+import org.springframework.core.io.ByteArrayResource
 import org.springframework.http.MediaType
 import org.springframework.test.web.client.match.MockRestRequestMatchers.queryParam
 import org.springframework.test.web.client.match.MockRestRequestMatchers.requestTo
@@ -26,6 +28,15 @@ class AsosDalySyncJobTest {
         AsosDalyClient(it, testObjectMapper, testErrorDecoder, testResilience)
     }
     private val syncService = RecordingDailyObservationSync()
+    private val catalog = AsosStationCatalog(
+        ByteArrayResource(
+            """
+                stnId,name,latitude,longitude,altitude
+                108,서울,37.57142,126.9658,85.67
+                112,인천,37.47772,126.6249,68.99
+            """.trimIndent().toByteArray(),
+        ),
+    )
 
     @Test
     fun `run 시 지점별로 getWthrDataList를 호출해 sync service에 페이지를 전달한다`() {
@@ -40,6 +51,7 @@ class AsosDalySyncJobTest {
         val job = AsosDalySyncJob(
             fixture.client,
             syncService,
+            catalog,
             enabled(jobEnabled = true, backfillFrom = yesterday),
             testJobLogger(),
         )
@@ -51,8 +63,30 @@ class AsosDalySyncJobTest {
     }
 
     @Test
+    fun `설정 지점이 비어 있으면 카탈로그 전체 지점을 사용한다`() {
+        val yesterday = LocalDate.now(KST).minusDays(1)
+        for (stationId in listOf("108", "112")) {
+            fixture.server.expect(requestTo(startsWith("https://example.test/asos/getWthrDataList?")))
+                .andExpect(queryParam("stnIds", stationId))
+                .andRespond(withSuccess(successJson(stationId), MediaType.APPLICATION_JSON))
+        }
+        val job = AsosDalySyncJob(
+            fixture.client,
+            syncService,
+            catalog,
+            enabled(jobEnabled = true, backfillFrom = yesterday, stations = emptyList()),
+            testJobLogger(),
+        )
+
+        job.run()
+
+        fixture.server.verify()
+        assertThat(syncService.pages.flatten()).extracting<String> { it.stnId }.containsExactly("108", "112")
+    }
+
+    @Test
     fun `enabled=false 이면 client와 sync service 모두 호출하지 않는다`() {
-        val job = AsosDalySyncJob(fixture.client, syncService, enabled(false), testJobLogger())
+        val job = AsosDalySyncJob(fixture.client, syncService, catalog, enabled(false), testJobLogger())
 
         job.run()
 
@@ -112,6 +146,7 @@ class AsosDalySyncJobTest {
     private fun enabled(
         jobEnabled: Boolean,
         backfillFrom: LocalDate = LocalDate.of(2026, 1, 1),
+        stations: List<String> = listOf("108", "112"),
     ) = SchedulerProperties(
         enabled = true,
         kma = SchedulerProperties.KmaSchedulerProps(
@@ -120,7 +155,7 @@ class AsosDalySyncJobTest {
                 enabled = jobEnabled,
                 backfillFrom = backfillFrom,
                 maxBackfillDays = 400,
-                stations = listOf("108", "112"),
+                stations = stations,
             ),
         ),
     )
