@@ -150,7 +150,17 @@ class AttractionSyncServiceTest {
         assertThat(walkingRouteSyncService.upsertPage(listOf(RouteItem(routeIdx = "route-1")))).isEqualTo(1)
         assertThat(walkingCourseSyncService.upsertPage(listOf(CourseItem(crsIdx = "course-1")))).isEqualTo(1)
         assertThat(
-            congestionSyncService.upsertPage(listOf(CnctrRateItem(baseYmd = "20260514", tAtsCd = "spot-1"))),
+            congestionSyncService.upsertPage(
+                listOf(
+                    CnctrRateItem(
+                        baseYmd = "20260514",
+                        tAtsNm = "간현관광지",
+                        areaCd = "51",
+                        signguCd = "51130",
+                        cnctrRate = "46.71",
+                    ),
+                ),
+            ),
         ).isEqualTo(1)
         assertThat(
             regionVisitorSyncService.upsertPage(

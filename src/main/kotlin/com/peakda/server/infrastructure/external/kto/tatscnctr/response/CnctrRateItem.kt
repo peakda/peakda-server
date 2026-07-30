@@ -6,7 +6,6 @@ import com.fasterxml.jackson.annotation.JsonIgnoreProperties
 @JsonIgnoreProperties(ignoreUnknown = true)
 data class CnctrRateItem(
     val baseYmd: String = "",
-    val tAtsCd: String = "",
     val tAtsNm: String = "",
     val cnctrRate: String = "",
     val areaCd: String = "",
