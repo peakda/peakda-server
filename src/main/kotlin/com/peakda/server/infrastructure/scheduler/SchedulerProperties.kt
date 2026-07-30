@@ -37,7 +37,7 @@ data class SchedulerProperties(
     data class AsosDalyJobProps(
         val cron: String = "",
         val enabled: Boolean = true,
-        /** 관측 이력이 전혀 없는 지점을 이 날짜부터 백필한다. GDD 는 1/1 부터 누적하므로 연초가 기본값이다. */
+        /** 관측 이력이 전혀 없는 지점을 이 날짜부터 백필한다. 카테고리별 누적 시작일과 무관하게 연초부터 보관한다. */
         val backfillFrom: LocalDate = LocalDate.of(2026, 1, 1),
         /** 1회 실행당 지점별 최대 조회 일수. 첫 실행이 과도하게 커지는 것을 막는다. */
         val maxBackfillDays: Long = 400,
@@ -57,6 +57,7 @@ data class SchedulerProperties(
         val vilageFcst: VilageFcstJobProps = VilageFcstJobProps(),
         val midFcst: JobProps = JobProps(),
         val asosDaly: AsosDalyJobProps = AsosDalyJobProps(),
+        val flowerObservation: JobProps = JobProps(),
     )
 
     data class PubdataSchedulerProps(

@@ -18,6 +18,7 @@ import com.peakda.server.infrastructure.scheduler.SchedulerProperties
 import org.springframework.data.domain.PageRequest
 import org.springframework.scheduling.annotation.Scheduled
 import org.springframework.stereotype.Component
+import java.time.DateTimeException
 import java.time.LocalDate
 import java.time.ZoneId
 
@@ -86,8 +87,14 @@ class BloomEstimateJob(
         for (category in BloomCategory.entries) {
             // 지점×카테고리 단위로만 누적해 계산량이 명소 수에 비례하지 않도록 한다.
             val snapshotByStation = gddProperties.thresholds[category.name]?.let { threshold ->
+                val accumulationStart = resolveAccumulationStart(
+                    today.year,
+                    threshold.accumulationStartMonth,
+                    threshold.accumulationStartDay,
+                )
                 temperaturesByStation.mapValues { (stationId, dailyTemperatures) ->
-                    val accumulated = GddAccumulator.accumulate(dailyTemperatures, threshold.tBase)
+                    val scoped = dailyTemperatures.filter { !it.observedOn.isBefore(accumulationStart) }
+                    val accumulated = GddAccumulator.accumulate(scoped, threshold.tBase)
                     GddSnapshot(
                         stationId = stationId,
                         accumulated = accumulated,
@@ -147,6 +154,14 @@ class BloomEstimateJob(
             observed: List<DailyTemperature>,
             today: LocalDate,
         ): LocalDate = observed.maxOfOrNull { it.observedOn }?.plusDays(1) ?: today
+
+        internal fun resolveAccumulationStart(year: Int, month: Int, day: Int): LocalDate {
+            return try {
+                LocalDate.of(year, month, day)
+            } catch (_: DateTimeException) {
+                LocalDate.ofYearDay(year, 1)
+            }
+        }
 
         internal fun resolveGddByAttraction(
             attractionIds: List<Long>,

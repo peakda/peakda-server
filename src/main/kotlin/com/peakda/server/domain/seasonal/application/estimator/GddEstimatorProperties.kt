@@ -32,6 +32,12 @@ data class GddEstimatorProperties(
     data class GddThreshold(
         /** 생장 기준온도(°C). 일평균기온에서 이 값을 뺀 만큼만 누적한다. */
         val tBase: Double = 5.4,
+        /**
+         * 누적을 시작하는 월·일. 1/1 부터 누적하면 겨울이 따뜻한 남부가 과대평가되어
+         * 지점 간 누적값이 크게 흩어진다(2026 관측 기준 변동계수 0.38).
+         */
+        val accumulationStartMonth: Int = 1,
+        val accumulationStartDay: Int = 1,
         /** 개화 시작(STARTED) 누적 GDD 임계치. */
         val start: Double = 90.0,
         /** 절정(PEAK) 누적 GDD 임계치. */

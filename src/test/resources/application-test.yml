@@ -35,6 +35,7 @@ external:
       vilage-fcst: http://localhost:18081/kma/vilage-fcst
       mid-fcst: http://localhost:18081/kma/mid-fcst
       asos-daly: http://localhost:18081/kma/asos-daly
+      flower-observation: http://localhost:18081/kma/flower
   pubdata:
     festival:
       service-key: test-pubdata-festival-service-key
