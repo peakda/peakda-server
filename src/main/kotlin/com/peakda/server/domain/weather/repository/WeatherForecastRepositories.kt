@@ -115,6 +115,8 @@ private const val WEATHER_MID_TEMPERATURE_UPSERT_SQL = """
 interface WeatherMidForecastRepository : JpaRepository<WeatherMidForecast, Long> {
     fun findByRegionCodeAndAnnounceTime(regionCode: String, announceTime: String): WeatherMidForecast?
 
+    fun findFirstByRegionCodeOrderByAnnounceTimeDesc(regionCode: String): WeatherMidForecast?
+
     @Modifying
     @Query(value = WEATHER_MID_LAND_UPSERT_SQL, nativeQuery = true)
     fun upsertLand(@Param("command") command: WeatherMidLandForecastUpsertCommand): Int
@@ -132,6 +134,14 @@ interface WeatherShortForecastRepository : JpaRepository<WeatherShortForecast, L
         forecastTime: String,
         forecastCategory: String,
     ): WeatherShortForecast?
+
+    fun findByGridXAndGridYAndForecastCategoryInAndForecastDateBetween(
+        gridX: Int,
+        gridY: Int,
+        forecastCategories: Collection<String>,
+        forecastDateStart: String,
+        forecastDateEnd: String,
+    ): List<WeatherShortForecast>
 
     @Modifying
     @Query(value = WEATHER_SHORT_FORECAST_UPSERT_SQL, nativeQuery = true)

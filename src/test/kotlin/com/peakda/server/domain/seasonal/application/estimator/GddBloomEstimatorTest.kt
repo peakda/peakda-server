@@ -111,6 +111,35 @@ class GddBloomEstimatorTest {
             .isEqualTo("gdd:station=108,acc=100.0,tbase=5.4")
     }
 
+    @Test
+    fun `스냅샷의 예측 절정일을 추정 결과에 담는다`() {
+        val peakStartDate = LocalDate.of(2026, 4, 3)
+        val peakEndDate = LocalDate.of(2026, 4, 8)
+        val estimation = estimator.estimate(
+            context(
+                gdd = GddSnapshot(
+                    stationId = STATION_ID,
+                    accumulated = 100.0,
+                    projectedPeakStartDate = peakStartDate,
+                    projectedPeakEndDate = peakEndDate,
+                ),
+            ),
+        )
+
+        assertThat(estimation!!.peakStartDate).isEqualTo(peakStartDate)
+        assertThat(estimation.peakEndDate).isEqualTo(peakEndDate)
+    }
+
+    @Test
+    fun `예측 절정일이 없으면 추정 결과에도 null 로 남긴다`() {
+        val estimation = estimator.estimate(
+            context(gdd = GddSnapshot(stationId = STATION_ID, accumulated = 100.0)),
+        )
+
+        assertThat(estimation!!.peakStartDate).isNull()
+        assertThat(estimation.peakEndDate).isNull()
+    }
+
     private fun context(
         category: BloomCategory = BloomCategory.CHERRY,
         accumulated: Double = 100.0,
