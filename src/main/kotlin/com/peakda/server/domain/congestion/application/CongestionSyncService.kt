@@ -9,10 +9,16 @@ import org.springframework.transaction.annotation.Transactional
 class CongestionSyncService(
     private val repository: CongestionRepository,
 ) {
+    /** 자연키 (기준일자, 지역, 시군구, 관광지명) 가 온전한 항목만 적재한다. */
     @Transactional
     fun upsertPage(items: List<CnctrRateItem>): Int {
         return items
-            .filter { it.baseYmd.isNotBlank() && it.tAtsCd.isNotBlank() }
+            .filter {
+                it.baseYmd.isNotBlank() &&
+                    it.areaCd.isNotBlank() &&
+                    it.signguCd.isNotBlank() &&
+                    it.tAtsNm.isNotBlank()
+            }
             .sumOf { repository.upsert(it.toUpsertCommand()) }
     }
 }
