@@ -177,6 +177,19 @@ class BloomStatusFusionServiceTest {
         assertThat(result.peakEndDate).isEqualTo(festivalEnd)
     }
 
+    @Test
+    fun `관측과 축제가 같은 신뢰도면 관측이 채택된다`() {
+        val service = service(
+            stub(Estimator.FESTIVAL, estimation(Estimator.FESTIVAL, BloomStatus.PEAK, 0.9)),
+            stub(Estimator.OBSERVATION, estimation(Estimator.OBSERVATION, BloomStatus.PEAK, 0.9)),
+        )
+
+        val result = service.fuse(context())
+
+        assertThat(result!!.estimator).isEqualTo(Estimator.OBSERVATION)
+        assertThat(result.status).isEqualTo(BloomStatus.PEAK)
+    }
+
     private fun service(vararg estimators: BloomEstimator) =
         BloomStatusFusionService(estimators.toList(), properties)
 

@@ -2,6 +2,8 @@ package com.peakda.server.infrastructure.scheduler.seasonal
 
 import com.peakda.server.domain.seasonal.application.DailyTemperature
 import com.peakda.server.domain.seasonal.application.GddSnapshot
+import com.peakda.server.domain.seasonal.application.ObservationSnapshot
+import com.peakda.server.domain.seasonal.entity.BloomCategory
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Test
 import java.time.LocalDate
@@ -87,6 +89,47 @@ class BloomEstimateJobTest {
 
         assertThat(result[1L]).isSameAs(defaultSnapshot)
         assertThat(result[2L]?.stationId).isEqualTo("184")
+    }
+
+    @Test
+    fun `관측은 지점 권역 명소에만 매핑한다`() {
+        val snapshot = ObservationSnapshot(
+            obsPlace = "여의도 윤중로",
+            floweringOn = LocalDate.of(2026, 3, 25),
+            fullBloomOn = LocalDate.of(2026, 3, 30),
+        )
+
+        val result = BloomEstimateJob.resolveObservationByAttraction(
+            attractionIds = listOf(1L, 2L, 3L),
+            stationByAttraction = mapOf(1L to "108", 2L to "159", 3L to "108"),
+            category = BloomCategory.CHERRY,
+            observationsByStation = mapOf(
+                "108" to mapOf(BloomCategory.CHERRY to snapshot),
+                "159" to emptyMap(),
+            ),
+        )
+
+        assertThat(result).containsOnlyKeys(1L, 3L)
+        assertThat(result[1L]).isSameAs(snapshot)
+        assertThat(result[3L]).isSameAs(snapshot)
+    }
+
+    @Test
+    fun `매핑이 없는 명소에는 기본 지점 관측을 주지 않는다`() {
+        val defaultSnapshot = ObservationSnapshot(
+            obsPlace = "여의도 윤중로",
+            floweringOn = LocalDate.of(2026, 3, 25),
+            fullBloomOn = LocalDate.of(2026, 3, 30),
+        )
+
+        val result = BloomEstimateJob.resolveObservationByAttraction(
+            attractionIds = listOf(1L, 2L),
+            stationByAttraction = mapOf(2L to "159"),
+            category = BloomCategory.CHERRY,
+            observationsByStation = mapOf("108" to mapOf(BloomCategory.CHERRY to defaultSnapshot)),
+        )
+
+        assertThat(result).isEmpty()
     }
 
     private fun temperature(observedOn: LocalDate) = DailyTemperature(

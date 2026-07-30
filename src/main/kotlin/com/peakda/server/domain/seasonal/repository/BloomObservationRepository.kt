@@ -31,6 +31,8 @@ interface BloomObservationRepository : JpaRepository<BloomObservation, Long> {
     @Modifying
     @Query(value = BLOOM_OBSERVATION_UPSERT_SQL, nativeQuery = true)
     fun upsert(@Param("command") command: BloomObservationUpsertCommand): Int
+
+    fun findByObsYear(obsYear: Int): List<BloomObservation>
 }
 
 data class BloomObservationUpsertCommand(

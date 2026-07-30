@@ -8,4 +8,5 @@ enum class Estimator {
     FESTIVAL,
     CALENDAR,
     USER_RECORD,
+    OBSERVATION,
 }

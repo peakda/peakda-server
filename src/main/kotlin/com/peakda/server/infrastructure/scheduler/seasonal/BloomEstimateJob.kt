@@ -9,6 +9,10 @@ import com.peakda.server.domain.seasonal.application.GddAccumulationService
 import com.peakda.server.domain.seasonal.application.GddAccumulator
 import com.peakda.server.domain.seasonal.application.GddProjector
 import com.peakda.server.domain.seasonal.application.GddSnapshot
+import com.peakda.server.domain.seasonal.application.ObservationSnapshot
+import com.peakda.server.domain.seasonal.application.ObservationSnapshotService
+import com.peakda.server.domain.seasonal.application.resolveAccumulationStart as resolveBloomAccumulationStart
+import com.peakda.server.domain.seasonal.application.resolveForecastStart as resolveBloomForecastStart
 import com.peakda.server.domain.seasonal.application.estimator.GddEstimatorProperties
 import com.peakda.server.domain.seasonal.entity.BloomCategory
 import com.peakda.server.domain.seasonal.repository.AttractionBloomRepository
@@ -18,7 +22,6 @@ import com.peakda.server.infrastructure.scheduler.SchedulerProperties
 import org.springframework.data.domain.PageRequest
 import org.springframework.scheduling.annotation.Scheduled
 import org.springframework.stereotype.Component
-import java.time.DateTimeException
 import java.time.LocalDate
 import java.time.ZoneId
 
@@ -35,6 +38,7 @@ class BloomEstimateJob(
     private val mappingService: AttractionStationMappingService,
     private val gddAccumulationService: GddAccumulationService,
     private val forecastTemperatureService: ForecastTemperatureService,
+    private val observationSnapshotService: ObservationSnapshotService,
     private val gddProperties: GddEstimatorProperties,
     private val props: SchedulerProperties,
     private val jobLogger: JobLogger,
@@ -55,6 +59,8 @@ class BloomEstimateJob(
         val today = LocalDate.now(KST)
         val festivals = festivalRepository.findByLatitudeIsNotNullAndLongitudeIsNotNull()
         val stationByAttraction = mappingService.findStationByAttraction()
+        // 관측은 13개 안팎이지만 배치 전역에서 한 번만 읽어 페이지별 조회를 막는다.
+        val observationsByStation = observationSnapshotService.findByStationAndCategory(today.year)
         val defaultStationId = gddProperties.defaultStationId
         val stationIds = (stationByAttraction.values + defaultStationId).filter { it.isNotBlank() }.toSet()
         // 필요한 모든 지점의 올해 관측을 한 번만 읽어 명소 수에 비례한 조회를 막는다.
@@ -125,7 +131,20 @@ class BloomEstimateJob(
                     defaultStationId = defaultStationId,
                     snapshotByStation = snapshotByStation,
                 )
-                estimates += estimateService.estimatePage(slice.content, category, today, festivals, gddByAttraction)
+                val observations = resolveObservationByAttraction(
+                    attractionIds = slice.content,
+                    stationByAttraction = stationByAttraction,
+                    category = category,
+                    observationsByStation = observationsByStation,
+                )
+                estimates += estimateService.estimatePage(
+                    attractionIds = slice.content,
+                    category = category,
+                    baseDate = today,
+                    festivals = festivals,
+                    gdd = gddByAttraction,
+                    observations = observations,
+                )
                 if (!slice.hasNext()) break
                 page++
             }
@@ -136,6 +155,7 @@ class BloomEstimateJob(
             "gddStations" to gddStationIds.size,
             "mappedAttractions" to stationByAttraction.size,
             "forecastDays" to forecasts.size,
+            "observationStations" to observationsByStation.size,
         )
     }
 
@@ -153,15 +173,10 @@ class BloomEstimateJob(
         internal fun resolveForecastStart(
             observed: List<DailyTemperature>,
             today: LocalDate,
-        ): LocalDate = observed.maxOfOrNull { it.observedOn }?.plusDays(1) ?: today
+        ): LocalDate = resolveBloomForecastStart(observed, today)
 
-        internal fun resolveAccumulationStart(year: Int, month: Int, day: Int): LocalDate {
-            return try {
-                LocalDate.of(year, month, day)
-            } catch (_: DateTimeException) {
-                LocalDate.ofYearDay(year, 1)
-            }
-        }
+        internal fun resolveAccumulationStart(year: Int, month: Int, day: Int): LocalDate =
+            resolveBloomAccumulationStart(year, month, day)
 
         internal fun resolveGddByAttraction(
             attractionIds: List<Long>,
@@ -171,6 +186,16 @@ class BloomEstimateJob(
         ): Map<Long, GddSnapshot> = attractionIds.mapNotNull { attractionId ->
             val stationId = stationByAttraction[attractionId] ?: defaultStationId
             snapshotByStation[stationId]?.let { snapshot -> attractionId to snapshot }
+        }.toMap()
+
+        internal fun resolveObservationByAttraction(
+            attractionIds: List<Long>,
+            stationByAttraction: Map<Long, String>,
+            category: BloomCategory,
+            observationsByStation: Map<String, Map<BloomCategory, ObservationSnapshot>>,
+        ): Map<Long, ObservationSnapshot> = attractionIds.mapNotNull { attractionId ->
+            val stationId = stationByAttraction[attractionId] ?: return@mapNotNull null
+            observationsByStation[stationId]?.get(category)?.let { snapshot -> attractionId to snapshot }
         }.toMap()
     }
 }
