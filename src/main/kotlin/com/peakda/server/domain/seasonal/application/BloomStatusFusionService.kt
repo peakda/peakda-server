@@ -45,7 +45,18 @@ class BloomStatusFusionService(
         val boosted = base.confidence + (agreeing - 1) * properties.agreementBonus
         val confidence = boosted.coerceAtMost(properties.agreementBonusCap).coerceAtMost(1.0)
 
-        return base.copy(confidence = confidence)
+        return base.copy(confidence = confidence).inheritPeakWindow(ranked)
+    }
+
+    /**
+     * 채택된 추정이 절정 구간을 제시하지 않으면(GDD 처럼 상태만 판정하는 신호) 구간을 가진 다른
+     * 추정에서 승계한다. peak_start_date 가 null 이면 만개 임박 알림 후보 조회에서 제외되므로
+     * 승계하지 않으면 알림이 조용히 끊긴다.
+     */
+    private fun BloomEstimation.inheritPeakWindow(candidates: List<BloomEstimation>): BloomEstimation {
+        if (peakStartDate != null) return this
+        val donor = candidates.firstOrNull { it.peakStartDate != null } ?: return this
+        return copy(peakStartDate = donor.peakStartDate, peakEndDate = donor.peakEndDate)
     }
 
     /** 동률 신뢰도일 때 신호 신뢰도 우선순위 (작을수록 우선). */
