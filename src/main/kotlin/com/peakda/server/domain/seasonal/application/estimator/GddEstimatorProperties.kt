@@ -20,6 +20,13 @@ data class GddEstimatorProperties(
     val endedConfidence: Double = 0.35,
     /** 명소별 관측지점 매핑이 붙기 전까지 모든 명소에 적용할 기본 관측지점. */
     val defaultStationId: String = "",
+    /** 기본 관측지점에 대응하는 단기예보 격자. 명소별 격자 매핑이 붙기 전까지 전국에 적용한다. */
+    val defaultGridX: Int = 0,
+    val defaultGridY: Int = 0,
+    /** 기본 중기예보 지역 (MidRegionCode 이름). */
+    val defaultMidRegionCode: String = "",
+    /** 예보를 며칠까지 이어 붙여 예측할지. 중기예보가 +10일까지 제공한다. */
+    val forecastHorizonDays: Long = 10,
     val thresholds: Map<String, GddThreshold> = emptyMap(),
 ) {
     data class GddThreshold(

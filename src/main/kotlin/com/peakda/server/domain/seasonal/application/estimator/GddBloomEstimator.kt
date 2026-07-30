@@ -11,6 +11,7 @@ import java.util.Locale
  * 신호 A — GDD(생장도일) 누적기온 추정기.
  *
  * 단풍은 기온 하강에 반응해 GDD 메커니즘과 반대이므로 임계치를 두지 않고 신호에서 제외한다.
+ * 예측 절정일이 없으면 null 로 두어 융합 단계가 달력·축제 구간을 승계하도록 한다.
  */
 @Component
 class GddBloomEstimator(
@@ -42,6 +43,8 @@ class GddBloomEstimator(
             } else {
                 properties.baseConfidence
             },
+            peakStartDate = snapshot.projectedPeakStartDate,
+            peakEndDate = snapshot.projectedPeakEndDate,
             gddRatio = gddRatio,
             evidence = "gdd:station=${snapshot.stationId},acc=$roundedAccumulated,tbase=${threshold.tBase}",
         )
