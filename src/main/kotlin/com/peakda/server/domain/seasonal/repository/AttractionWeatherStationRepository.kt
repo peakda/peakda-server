@@ -19,6 +19,8 @@ private const val ATTRACTION_WEATHER_STATION_UPSERT_SQL = """
 """
 
 interface AttractionWeatherStationRepository : JpaRepository<AttractionWeatherStation, Long> {
+    fun findByAttractionId(attractionId: Long): AttractionWeatherStation?
+
     @Modifying
     @Query(value = ATTRACTION_WEATHER_STATION_UPSERT_SQL, nativeQuery = true)
     fun upsert(@Param("command") command: AttractionWeatherStationUpsertCommand): Int

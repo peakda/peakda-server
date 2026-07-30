@@ -37,4 +37,11 @@ class AttractionStationMappingService(
     @Transactional(readOnly = true)
     fun findStationByAttraction(): Map<Long, String> = repository.findAll()
         .associate { mapping -> mapping.attractionId to mapping.stationId }
+
+    /**
+     * 명소 하나의 관측지점. 요청당 호출되는 경로에서 쓴다 —
+     * 전체 매핑을 읽는 [findStationByAttraction]은 배치 전용이다.
+     */
+    @Transactional(readOnly = true)
+    fun findStationId(attractionId: Long): String? = repository.findByAttractionId(attractionId)?.stationId
 }
