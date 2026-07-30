@@ -1,6 +1,7 @@
 package com.peakda.server.infrastructure.scheduler
 
 import org.springframework.boot.context.properties.ConfigurationProperties
+import java.time.LocalDate
 
 @ConfigurationProperties(prefix = "external.scheduler")
 data class SchedulerProperties(
@@ -33,6 +34,17 @@ data class SchedulerProperties(
         )
     }
 
+    data class AsosDalyJobProps(
+        val cron: String = "",
+        val enabled: Boolean = true,
+        /** 관측 이력이 전혀 없는 지점을 이 날짜부터 백필한다. GDD 는 1/1 부터 누적하므로 연초가 기본값이다. */
+        val backfillFrom: LocalDate = LocalDate.of(2026, 1, 1),
+        /** 1회 실행당 지점별 최대 조회 일수. 첫 실행이 과도하게 커지는 것을 막는다. */
+        val maxBackfillDays: Long = 400,
+        /** 종관관측 지점번호 목록. */
+        val stations: List<String> = emptyList(),
+    )
+
     data class KtoSchedulerProps(
         val korService: JobProps = JobProps(),
         val durunubi: JobProps = JobProps(),
@@ -44,6 +56,7 @@ data class SchedulerProperties(
     data class KmaSchedulerProps(
         val vilageFcst: VilageFcstJobProps = VilageFcstJobProps(),
         val midFcst: JobProps = JobProps(),
+        val asosDaly: AsosDalyJobProps = AsosDalyJobProps(),
     )
 
     data class PubdataSchedulerProps(

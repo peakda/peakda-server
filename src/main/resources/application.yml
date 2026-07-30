@@ -111,6 +111,7 @@ external:
       KTO.Durunubi: { daily-limit: 10000 }
       KMA.VilageFcstInfoService: { daily-limit: 10000 }
       KMA.MidFcstInfoService: { daily-limit: 10000 }
+      KMA.AsosDalyInfoService: { daily-limit: 10000 }
       PUBDATA.PublicCultureFestival: { daily-limit: 10000 }
   rate-limit:
     enabled: ${EXTERNAL_RATE_LIMIT_ENABLED:true}
@@ -164,6 +165,7 @@ external:
     base-url:
       vilage-fcst: https://apis.data.go.kr/1360000/VilageFcstInfoService_2.0
       mid-fcst: https://apis.data.go.kr/1360000/MidFcstInfoService
+      asos-daly: https://apis.data.go.kr/1360000/AsosDalyInfoService
   pubdata:
     festival:
       service-key: ${PUBDATA_FESTIVAL_SERVICE_KEY}
@@ -189,6 +191,13 @@ external:
           - { name: "광주", nx: 58, ny: 74 }
           - { name: "대전", nx: 67, ny: 100 }
       mid-fcst: { cron: "0 30 6,18 * * *", enabled: true }
+      asos-daly:
+        cron: "0 0 4 * * *"
+        enabled: true
+        backfill-from: 2026-01-01
+        max-backfill-days: 400
+        # 종관관측 주요 지점. 전체 지점 자동 동기화는 지점정보 API 연동 시 대체된다.
+        stations: ["108", "112", "101", "105", "133", "131", "129", "146", "156", "143", "136", "138", "159", "152", "165", "168", "184", "189"]
     pubdata:
       festival: { cron: "0 0 6 * * MON", enabled: true }
     seasonal:

@@ -10,5 +10,6 @@ data class KmaProperties(
     data class BaseUrl(
         val vilageFcst: String = "",
         val midFcst: String = "",
+        val asosDaly: String = "",
     )
 }
