@@ -57,6 +57,21 @@ class BloomEstimateJobTest {
     }
 
     @Test
+    fun `누적 시작일은 설정된 월과 일로 만든다`() {
+        val accumulationStart = BloomEstimateJob.resolveAccumulationStart(2026, 3, 1)
+
+        assertThat(accumulationStart).isEqualTo(LocalDate.of(2026, 3, 1))
+    }
+
+    @Test
+    fun `누적 시작 월과 일이 유효하지 않으면 연초로 되돌린다`() {
+        assertThat(BloomEstimateJob.resolveAccumulationStart(2026, 13, 1))
+            .isEqualTo(LocalDate.of(2026, 1, 1))
+        assertThat(BloomEstimateJob.resolveAccumulationStart(2026, 2, 30))
+            .isEqualTo(LocalDate.of(2026, 1, 1))
+    }
+
+    @Test
     fun `매핑이 없는 명소는 기본 지점 스냅샷을 받는다`() {
         val defaultSnapshot = GddSnapshot(stationId = "108", accumulated = 72.5)
 
