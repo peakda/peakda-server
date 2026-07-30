@@ -31,6 +31,10 @@ class KmaRestClientConfig(
     @Qualifier("midFcstRestClient")
     fun midFcstRestClient(): RestClient = kmaRestClient(kmaProperties.baseUrl.midFcst, "MidFcstInfoService")
 
+    @Bean
+    @Qualifier("asosDalyRestClient")
+    fun asosDalyRestClient(): RestClient = kmaRestClient(kmaProperties.baseUrl.asosDaly, "AsosDalyInfoService")
+
     private fun kmaRestClient(baseUrl: String, service: String): RestClient {
         return ExternalRestClientFactory.create(
             builder = restClientBuilder,

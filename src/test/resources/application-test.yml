@@ -34,6 +34,7 @@ external:
     base-url:
       vilage-fcst: http://localhost:18081/kma/vilage-fcst
       mid-fcst: http://localhost:18081/kma/mid-fcst
+      asos-daly: http://localhost:18081/kma/asos-daly
   pubdata:
     festival:
       service-key: test-pubdata-festival-service-key
