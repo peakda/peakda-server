@@ -27,12 +27,12 @@ class BloomEstimateService(
         category: BloomCategory,
         baseDate: LocalDate,
         festivals: List<Festival>,
-        gdd: GddSnapshot?,
+        gdd: Map<Long, GddSnapshot>,
     ): Int {
         var count = 0
         for (attraction in attractionRepository.findAllById(attractionIds)) {
             val attractionId = attraction.id ?: continue
-            val context = BloomEstimationContext(attraction, category, baseDate, festivals, gdd)
+            val context = BloomEstimationContext(attraction, category, baseDate, festivals, gdd[attractionId])
             val estimation = fusionService.fuse(context) ?: continue
             seasonalBloomEstimateRepository.upsert(
                 SeasonalBloomEstimateUpsertCommand(
