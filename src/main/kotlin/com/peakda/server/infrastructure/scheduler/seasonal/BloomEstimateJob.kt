@@ -2,6 +2,10 @@ package com.peakda.server.infrastructure.scheduler.seasonal
 
 import com.peakda.server.domain.festival.repository.FestivalRepository
 import com.peakda.server.domain.seasonal.application.BloomEstimateService
+import com.peakda.server.domain.seasonal.application.GddAccumulationService
+import com.peakda.server.domain.seasonal.application.GddAccumulator
+import com.peakda.server.domain.seasonal.application.GddSnapshot
+import com.peakda.server.domain.seasonal.application.estimator.GddEstimatorProperties
 import com.peakda.server.domain.seasonal.entity.BloomCategory
 import com.peakda.server.domain.seasonal.repository.AttractionBloomRepository
 import com.peakda.server.infrastructure.scheduler.JobLogger
@@ -23,6 +27,8 @@ class BloomEstimateJob(
     private val attractionBloomRepository: AttractionBloomRepository,
     private val festivalRepository: FestivalRepository,
     private val estimateService: BloomEstimateService,
+    private val gddAccumulationService: GddAccumulationService,
+    private val gddProperties: GddEstimatorProperties,
     private val props: SchedulerProperties,
     private val jobLogger: JobLogger,
 ) : ManualTriggerableJob {
@@ -41,14 +47,35 @@ class BloomEstimateJob(
     private fun execute(): Map<String, Any?> {
         val today = LocalDate.now(KST)
         val festivals = festivalRepository.findByLatitudeIsNotNullAndLongitudeIsNotNull()
+        val stationId = gddProperties.defaultStationId
+        // 기본 지점의 올해 관측을 한 번만 읽어 모든 명소와 카테고리에서 재사용한다.
+        val temperatures =
+            if (gddProperties.enabled && stationId.isNotBlank()) {
+                gddAccumulationService.loadDailyTemperatures(
+                    listOf(stationId),
+                    today.withDayOfYear(1),
+                    today,
+                )[stationId]
+            } else {
+                null
+            }
         var estimates = 0
         for (category in BloomCategory.entries) {
+            // 종별 기준온도만 바꿔 같은 관측을 누적하므로 카테고리마다 재조회하지 않는다.
+            val gdd = temperatures?.let { dailyTemperatures ->
+                gddProperties.thresholds[category.name]?.let { threshold ->
+                    GddSnapshot(
+                        stationId = stationId,
+                        accumulated = GddAccumulator.accumulate(dailyTemperatures, threshold.tBase),
+                    )
+                }
+            }
             var page = 0
             while (true) {
                 val slice = attractionBloomRepository
                     .findDistinctAttractionIdsByBloomCategory(category, PageRequest.of(page, PAGE_SIZE))
                 if (slice.isEmpty) break
-                estimates += estimateService.estimatePage(slice.content, category, today, festivals)
+                estimates += estimateService.estimatePage(slice.content, category, today, festivals, gdd)
                 if (!slice.hasNext()) break
                 page++
             }
@@ -56,6 +83,7 @@ class BloomEstimateJob(
         return mapOf(
             JobLogger.KEY_PROCESSED to estimates,
             "festivals" to festivals.size,
+            "gddStation" to stationId.takeIf { temperatures != null },
         )
     }
 

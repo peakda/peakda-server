@@ -25,6 +25,12 @@ private const val WEATHER_DAILY_OBSERVATION_UPSERT_SQL = """
 """
 
 interface WeatherDailyObservationRepository : JpaRepository<WeatherDailyObservation, Long> {
+    fun findByStationIdInAndObservedOnBetween(
+        stationIds: Collection<String>,
+        from: LocalDate,
+        to: LocalDate,
+    ): List<WeatherDailyObservation>
+
     @Modifying
     @Query(value = WEATHER_DAILY_OBSERVATION_UPSERT_SQL, nativeQuery = true)
     fun upsert(@Param("command") command: WeatherDailyObservationUpsertCommand): Int
