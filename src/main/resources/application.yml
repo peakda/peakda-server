@@ -233,6 +233,10 @@ peakda:
       peak-confidence: 0.9
       started-confidence: 0.8
       ended-confidence: 0.7
+    observation:
+      enabled: true
+      base-confidence: 0.9
+      peak-duration-days: 7
     calendar:
       base-confidence: 0.4
       early-window-days: 7

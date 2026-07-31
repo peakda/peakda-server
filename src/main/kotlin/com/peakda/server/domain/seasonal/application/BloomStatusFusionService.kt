@@ -10,7 +10,7 @@ import kotlin.math.abs
  * 여러 추정기의 산출을 하나의 [BloomEstimation] 으로 융합한다.
  *
  * 1. 각 추정기를 호출해 비-null 결과만 모은다 (모두 비활성이면 null).
- * 2. 신뢰도 내림차순, 동률이면 카테고리별 추정기 우선순위(온도의존종 FESTIVAL>GDD>CALENDAR, 그 외 FESTIVAL>CALENDAR)로 정렬한다.
+ * 2. 신뢰도 내림차순, 동률이면 직접 관측을 가장 먼저 두고 기존 카테고리별 추정기 우선순위를 적용한다.
  * 3. 상위 두 결과의 상태가 다르고 신뢰도 차가 작으면 보수적 상태(STARTED>PEAK>PREPARING>ENDED)를 채택한다.
  * 4. 채택 상태에 동의하는 추정기 수만큼 신뢰도를 가산한다(상한 적용).
  */
@@ -61,10 +61,11 @@ class BloomStatusFusionService(
 
     /** 동률 신뢰도일 때 신호 신뢰도 우선순위 (작을수록 우선). */
     private fun estimatorPriority(estimator: Estimator, temperatureDriven: Boolean): Int = when (estimator) {
-        Estimator.FESTIVAL -> 0
-        Estimator.GDD -> if (temperatureDriven) 1 else 9
-        Estimator.CALENDAR -> 2
-        Estimator.USER_RECORD -> 3
+        Estimator.OBSERVATION -> 0
+        Estimator.FESTIVAL -> 1
+        Estimator.GDD -> if (temperatureDriven) 2 else 9
+        Estimator.CALENDAR -> 3
+        Estimator.USER_RECORD -> 4
     }
 
     /** 보수성 순위 (작을수록 보수적). 같은 신뢰도면 사용자에게 덜 단정적인 상태를 택한다. */
