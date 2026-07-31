@@ -91,6 +91,9 @@ class BloomCalendarService(
         val observed = gddAccumulationService
             .loadDailyTemperatures(setOf(stationId), today.withDayOfYear(1), today)[stationId]
             .orEmpty()
+        // 예보는 실측 누적 뒤에 잇는 값이라 단독으로는 의미가 없다. 실측이 없으면 GDD를 만들지 않고
+        // 달력·축제 신호로 넘긴다. 배치(BloomEstimateJob)도 같은 이유로 실측이 없으면 예보를 읽지 않는다.
+        if (observed.isEmpty()) return emptyMap()
         val baseAccumulated = GddAccumulator.accumulate(
             observed.filter { temperature -> !temperature.observedOn.isBefore(accumulationStart) },
             threshold.tBase,
