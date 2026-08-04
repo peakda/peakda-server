@@ -41,9 +41,8 @@ app_parameters = {
   COOKIE_SECURE    = "true"
   COOKIE_SAME_SITE = "None"
 
-  # TODO: 프론트엔드 도메인 확정 후 갱신
-  CORS_ALLOWED_ORIGINS = "https://peakda.com,https://www.peakda.com"
-  OAUTH2_REDIRECT_URI  = "https://peakda.com/oauth/callback"
+  CORS_ALLOWED_ORIGINS = "https://peakda.vercel.app,https://peakda.com,https://www.peakda.com"
+  OAUTH2_REDIRECT_URI  = "https://peakda.vercel.app/auth/callback"
 
   # Grafana Cloud 수집 엔드포인트. 시크릿이 아니라 계정 식별자라 여기에 값을 둔다.
   # 토큰만 SecureString 으로 분리한다.
