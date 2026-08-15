@@ -47,16 +47,16 @@ class FeedService(
             FeedFilter.FOLLOWING -> followingPage(userId, blockedIds, pageable)
             FeedFilter.INTEREST -> interestPage(userId, blockedIds, pageable)
         }
-        val summariesById = responseAssembler.assembleSummaries(page.content).associateBy { it.id }
+        val summariesById = responseAssembler.assembleSummaries(page.content, userId).associateBy { it.id }
         return page.map { record -> summariesById.getValue(requireNotNull(record.id)) }.toPageResponse()
     }
 
     /** 게시된 기록만 노출한다 — DRAFT id 를 추측해 남의 비공개 기록을 보는 것을 막는다. */
     @Transactional(readOnly = true)
-    fun detail(recordId: Long): SpotRecordResponse {
+    fun detail(recordId: Long, userId: Long): SpotRecordResponse {
         val record = spotRecordRepository.findById(recordId).orElseThrow { SpotRecordNotFoundException() }
         if (record.status != SpotRecordStatus.PUBLISHED) throw SpotRecordNotFoundException()
-        return responseAssembler.assemble(record)
+        return responseAssembler.assemble(record, userId)
     }
 
     private fun allPage(blockedIds: Set<Long>, pageable: Pageable): Page<SpotRecord> {

@@ -43,14 +43,20 @@ class SpotPreviewServiceTest {
     private val spotRecordPhotoRepository = mock(SpotRecordPhotoRepository::class.java)
     private val spotRecordPhotoUploader = mock(SpotRecordPhotoUploader::class.java)
     private val spotFavoriteRepository = mock(SpotFavoriteRepository::class.java)
+    private val spotThumbnailResolver = SpotThumbnailResolver(
+        attractionRepository,
+        spotRecordRepository,
+        spotRecordPhotoRepository,
+        spotRecordPhotoUploader,
+    )
 
     private val service = SpotPreviewService(
         spotRepository,
-        attractionRepository,
         seasonalBloomEstimateRepository,
         spotRecordRepository,
         spotRecordPlantRepository,
         plantRepository,
+        spotThumbnailResolver,
         spotRecordPhotoRepository,
         spotRecordPhotoUploader,
         spotFavoriteRepository,
@@ -72,6 +78,9 @@ class SpotPreviewServiceTest {
             )
         `when`(attractionRepository.findAllById(listOf(ATTRACTION_ID)))
             .thenReturn(listOf(attraction(ATTRACTION_ID, "https://img/primary.jpg")))
+        `when`(spotRecordPhotoRepository.findRecentPhotosBySpotIds(listOf(SPOT_ID), SpotRecordStatus.PUBLISHED.name, 4))
+            .thenReturn(listOf(photo(SPOT_ID, "key-record")))
+        `when`(spotRecordPhotoUploader.presignedUrlOf("key-record")).thenReturn("https://rec/record.jpg")
 
         val response = service.preview(listOf(SPOT_ID), category = null, lat = null, lng = null)
 
@@ -80,6 +89,7 @@ class SpotPreviewServiceTest {
         assertThat(item.badge?.category).isEqualTo(BloomCategory.CHERRY)
         assertThat(item.badge?.status).isEqualTo(BloomStatus.PEAK)
         assertThat(item.thumbnailUrl).isEqualTo("https://img/primary.jpg")
+        assertThat(item.photoUrls).containsExactly("https://img/primary.jpg", "https://rec/record.jpg")
         assertThat(item.distanceMeters).isNull()
     }
 

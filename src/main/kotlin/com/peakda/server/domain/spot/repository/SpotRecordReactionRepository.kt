@@ -22,6 +22,19 @@ interface SpotRecordReactionRepository : JpaRepository<SpotRecordReaction, Long>
     )
     fun countsBySpotRecordId(@Param("spotRecordId") spotRecordId: Long): List<ReactionTypeCount>
 
+    /** 여러 기록의 리액션 타입별 집계. 목록 조회에서 기록별 N+1을 방지한다. */
+    @Query(
+        """
+            SELECT r.spotRecordId AS spotRecordId, r.reactionType AS reactionType, COUNT(r) AS count
+            FROM SpotRecordReaction r
+            WHERE r.spotRecordId IN :spotRecordIds
+            GROUP BY r.spotRecordId, r.reactionType
+        """,
+    )
+    fun countsBySpotRecordIdIn(@Param("spotRecordIds") spotRecordIds: List<Long>): List<RecordReactionTypeCount>
+
+    fun findByUserIdAndSpotRecordIdIn(userId: Long, spotRecordIds: List<Long>): List<SpotRecordReaction>
+
     /**
      * 리액션을 멱등하게 추가한다. 이미 같은 (user, record, type) 이 있으면 무시되므로
      * 동시 요청에서도 유니크 제약 위반 예외 없이 단일 행을 보장한다.
@@ -36,10 +49,4 @@ interface SpotRecordReactionRepository : JpaRepository<SpotRecordReaction, Long>
         nativeQuery = true,
     )
     fun insertIfAbsent(userId: Long, spotRecordId: Long, reactionType: String)
-}
-
-/** [SpotRecordReactionRepository.countsBySpotRecordId] 프로젝션. */
-interface ReactionTypeCount {
-    val reactionType: ReactionType
-    val count: Long
 }

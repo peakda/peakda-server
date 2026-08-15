@@ -1,5 +1,6 @@
 package com.peakda.server.domain.festival.presentation.response
 
+import com.fasterxml.jackson.annotation.JsonProperty
 import com.peakda.server.domain.festival.application.FestivalPhase
 import com.peakda.server.domain.seasonal.entity.BloomCategory
 import io.swagger.v3.oas.annotations.media.Schema
@@ -49,6 +50,7 @@ data class FestivalDetailResponse(
     @field:Schema(description = "서버가 판정한 축제 상태. 시작일을 판정할 수 없으면 null", example = "ENDING_SOON")
     val phase: FestivalPhase?,
 
+    @get:JsonProperty("dDay")
     @field:Schema(description = "UPCOMING일 때 시작까지 남은 일수. 그 외에는 null", example = "12")
     val dDay: Long?,
 

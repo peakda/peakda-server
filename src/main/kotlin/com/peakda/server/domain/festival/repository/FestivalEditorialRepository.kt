@@ -9,6 +9,11 @@ interface FestivalEditorialRepository : JpaRepository<FestivalEditorial, Long> {
 
     fun findByFestivalIdIn(festivalIds: Collection<Long>): List<FestivalEditorial>
 
+    fun findByFestivalIdInAndStatus(
+        festivalIds: Collection<Long>,
+        status: FestivalEditorialStatus,
+    ): List<FestivalEditorial>
+
     fun findByFestivalIdAndStatus(
         festivalId: Long,
         status: FestivalEditorialStatus,

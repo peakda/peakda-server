@@ -1,5 +1,6 @@
 package com.peakda.server.domain.notification.application
 
+import com.peakda.server.common.storage.ObjectKeyUrlResolver
 import com.peakda.server.common.page.PageRequest
 import com.peakda.server.common.page.PageResponse
 import com.peakda.server.common.page.toPageResponse
@@ -8,6 +9,7 @@ import com.peakda.server.domain.notification.entity.NotificationSegment
 import com.peakda.server.domain.notification.exception.NotificationNotFoundException
 import com.peakda.server.domain.notification.presentation.response.NotificationResponse
 import com.peakda.server.domain.notification.repository.NotificationRepository
+import com.peakda.server.domain.user.repository.UserRepository
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 import java.time.Instant
@@ -19,11 +21,14 @@ import java.time.Instant
 @Transactional
 class NotificationService(
     private val notificationRepository: NotificationRepository,
+    private val userRepository: UserRepository,
+    private val objectKeyUrlResolver: ObjectKeyUrlResolver,
 ) {
 
     fun create(command: CreateNotificationCommand): Notification {
         val notification = Notification(
             recipientId = command.recipientId,
+            actorUserId = command.actorUserId,
             type = command.type,
             title = command.title,
             body = command.body,
@@ -40,7 +45,18 @@ class NotificationService(
         val page = segment.types
             ?.let { notificationRepository.findByRecipientIdAndTypeInOrderByCreatedAtDesc(recipientId, it, pageable) }
             ?: notificationRepository.findByRecipientIdOrderByCreatedAtDesc(recipientId, pageable)
-        return page.map { NotificationResponse.from(it) }.toPageResponse()
+        val actorIds = page.content.mapNotNull { it.actorUserId }.distinct()
+        val usersById = if (actorIds.isEmpty()) {
+            emptyMap()
+        } else {
+            userRepository.findAllById(actorIds).associateBy { requireNotNull(it.id) }
+        }
+        return page.map { notification ->
+            val imageUrl = notification.actorUserId
+                ?.let { usersById[it]?.profileImageUrl }
+                ?.let(objectKeyUrlResolver::resolve)
+            NotificationResponse.from(notification, imageUrl)
+        }.toPageResponse()
     }
 
     @Transactional(readOnly = true)

@@ -7,6 +7,8 @@ import com.peakda.server.domain.search.application.SearchService
 import com.peakda.server.domain.search.presentation.response.SpotSearchItem
 import com.peakda.server.domain.search.presentation.response.TrendingSpotsResponse
 import com.peakda.server.domain.search.presentation.response.UserSearchItem
+import com.peakda.server.common.security.principal.PrincipalDetails
+import com.peakda.server.domain.seasonal.entity.BloomCategory
 import org.springframework.http.HttpStatus
 import org.springframework.http.ResponseEntity
 import org.springframework.web.bind.annotation.RequestMapping
@@ -19,18 +21,21 @@ class SearchController(
 ) : SearchControllerDocs {
 
     override fun searchSpots(
+        principal: PrincipalDetails,
         query: String,
+        category: BloomCategory?,
         pageRequest: PageRequest,
     ): ResponseEntity<ApiResponse<PageResponse<SpotSearchItem>>> {
-        val response = searchService.searchSpots(query, pageRequest)
+        val response = searchService.searchSpots(requireNotNull(principal.getUser().id), query, pageRequest, category)
         return ResponseEntity.ok(ApiResponse.success(HttpStatus.OK, response))
     }
 
     override fun searchUsers(
+        principal: PrincipalDetails,
         query: String,
         pageRequest: PageRequest,
     ): ResponseEntity<ApiResponse<PageResponse<UserSearchItem>>> {
-        val response = searchService.searchUsers(query, pageRequest)
+        val response = searchService.searchUsers(requireNotNull(principal.getUser().id), query, pageRequest)
         return ResponseEntity.ok(ApiResponse.success(HttpStatus.OK, response))
     }
 

@@ -14,4 +14,5 @@ data class CreateNotificationCommand(
     val linkType: NotificationLinkType = NotificationLinkType.INTERNAL,
     val linkUrl: String? = null,
     val targetId: Long? = null,
+    val actorUserId: Long? = null,
 )

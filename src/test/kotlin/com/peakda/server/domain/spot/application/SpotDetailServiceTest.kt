@@ -157,7 +157,7 @@ class SpotDetailServiceTest {
                 PageRequest.of(0, PREVIEW_SIZE),
             ),
         ).thenReturn(PageImpl(emptyList<SpotRecord>()))
-        `when`(assembler.assembleSummaries(anyList())).thenReturn(preview)
+        `when`(assembler.assembleSummaries(emptyList(), USER_ID)).thenReturn(preview)
     }
 
     private fun stubFavorite(favorite: SpotFavorite?) {

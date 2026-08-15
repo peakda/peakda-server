@@ -79,7 +79,7 @@ class SpotRecordService(
         val recordId = requireNotNull(record.id)
         replacePlants(recordId, command.plantIds)
         replacePhotos(recordId, command.photoKeys)
-        return responseAssembler.assemble(record)
+        return responseAssembler.assemble(record, command.userId)
     }
 
     fun update(command: UpdateSpotRecordCommand): SpotRecordResponse {
@@ -95,13 +95,13 @@ class SpotRecordService(
             validatePhotoKeysCount(it.size)
             replacePhotos(command.recordId, it)
         }
-        return responseAssembler.assemble(record)
+        return responseAssembler.assemble(record, command.userId)
     }
 
     fun publish(recordId: Long, userId: Long): SpotRecordResponse {
         val record = loadOwned(recordId, userId)
         if (record.status == SpotRecordStatus.PUBLISHED) {
-            return responseAssembler.assemble(record)
+            return responseAssembler.assemble(record, userId)
         }
         val plantIds = spotRecordPlantRepository.findByIdSpotRecordId(recordId).map { it.plantId }
         val photoKeys = spotRecordPhotoRepository.findBySpotRecordIdOrderBySortOrderAsc(recordId).map { it.objectKey }
@@ -113,7 +113,7 @@ class SpotRecordService(
         )
         record.status = SpotRecordStatus.PUBLISHED
         record.publishedAt = Instant.now()
-        return responseAssembler.assemble(record)
+        return responseAssembler.assemble(record, userId)
     }
 
     fun delete(recordId: Long, userId: Long) {
@@ -144,14 +144,14 @@ class SpotRecordService(
     fun get(recordId: Long, userId: Long): SpotRecordResponse {
         val record = spotRecordRepository.findById(recordId).orElseThrow { SpotRecordNotFoundException() }
         if (record.userId != userId && record.status != SpotRecordStatus.PUBLISHED) throw SpotRecordNotFoundException()
-        return responseAssembler.assemble(record)
+        return responseAssembler.assemble(record, userId)
     }
 
     @Transactional(readOnly = true)
-    fun listBySpot(spotId: Long, pageRequest: PageRequest): PageResponse<SpotRecordSummaryResponse> {
+    fun listBySpot(spotId: Long, userId: Long, pageRequest: PageRequest): PageResponse<SpotRecordSummaryResponse> {
         val pageable = pageRequest.toPageable(Sort.by(Sort.Direction.DESC, "createdAt"))
         val page = spotRecordRepository.findBySpotId(spotId, pageable)
-        val summariesById = responseAssembler.assembleSummaries(page.content).associateBy { it.id }
+        val summariesById = responseAssembler.assembleSummaries(page.content, userId).associateBy { it.id }
         return page.map { record -> summariesById.getValue(requireNotNull(record.id)) }.toPageResponse()
     }
 
@@ -159,7 +159,7 @@ class SpotRecordService(
     fun listMine(userId: Long, status: SpotRecordStatus, pageRequest: PageRequest): PageResponse<SpotRecordSummaryResponse> {
         val pageable = pageRequest.toPageable()
         val page = spotRecordRepository.findByUserIdAndStatusOrderByCreatedAtDesc(userId, status, pageable)
-        val summariesById = responseAssembler.assembleSummaries(page.content).associateBy { it.id }
+        val summariesById = responseAssembler.assembleSummaries(page.content, userId).associateBy { it.id }
         return page.map { record -> summariesById.getValue(requireNotNull(record.id)) }.toPageResponse()
     }
 

@@ -13,13 +13,4 @@ data class FeedReactionSummaryResponse(
 
     @field:Schema(description = "현재 로그인 사용자가 남긴 리액션 타입들 (없으면 빈 배열)")
     val myReactions: Set<ReactionType>,
-) {
-    @Schema(description = "리액션 타입별 집계 1건")
-    data class ReactionCount(
-        @field:Schema(description = "리액션 타입", example = "HEART")
-        val reactionType: ReactionType,
-
-        @field:Schema(description = "개수", example = "12")
-        val count: Long,
-    )
-}
+)

@@ -28,6 +28,12 @@ data class UserProfileResponse(
         example = "true",
     )
     val following: Boolean,
+
+    @field:Schema(
+        description = "현재 로그인 사용자가 이 사용자를 차단 중인지 여부. 본인 프로필이면 항상 false.",
+        example = "false",
+    )
+    val blocked: Boolean,
 ) {
     @Schema(description = "프로필 통계")
     data class Stats(

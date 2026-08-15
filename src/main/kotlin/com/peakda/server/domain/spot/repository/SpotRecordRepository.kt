@@ -53,10 +53,30 @@ interface SpotRecordRepository : JpaRepository<SpotRecord, Long> {
         @Param("spotIds") spotIds: Collection<Long>,
         @Param("status") status: SpotRecordStatus,
     ): List<SpotRecordCount>
+
+    @Query(
+        """
+            SELECT r.userId AS userId, COUNT(r) AS recordCount
+            FROM SpotRecord r
+            WHERE r.userId IN :userIds
+              AND r.status = :status
+            GROUP BY r.userId
+        """,
+    )
+    fun countByUserIdInAndStatus(
+        @Param("userIds") userIds: Collection<Long>,
+        @Param("status") status: SpotRecordStatus,
+    ): List<UserRecordCount>
 }
 
 /** [SpotRecordRepository.countBySpotIdInAndStatus] 프로젝션. */
 interface SpotRecordCount {
     val spotId: Long
+    val recordCount: Long
+}
+
+/** [SpotRecordRepository.countByUserIdInAndStatus] 프로젝션. */
+interface UserRecordCount {
+    val userId: Long
     val recordCount: Long
 }

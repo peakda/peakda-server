@@ -1,6 +1,7 @@
 package com.peakda.server.domain.explore.presentation.response
 
 import com.peakda.server.domain.curation.presentation.response.CurationCardResponse
+import com.peakda.server.domain.festival.application.FestivalPhase
 import com.peakda.server.domain.seasonal.entity.BloomCategory
 import com.peakda.server.domain.seasonal.entity.BloomStatus
 import io.swagger.v3.oas.annotations.media.Schema
@@ -31,7 +32,10 @@ data class ExploreResponse(
 ) {
     @Schema(description = "탐색 큐레이션 명소 카드")
     data class ExploreSpotItem(
-        @field:Schema(description = "명소형 스팟 id. 아직 생성되지 않았거나 비노출이면 null", example = "100")
+        @field:Schema(
+            description = "명소형 스팟 id. 정상 데이터에서는 항상 채워진다. null이면 좌표를 보유하지 않아 스팟을 생성할 수 없는 명소다",
+            example = "100",
+        )
         val spotId: Long?,
 
         @field:Schema(description = "명소 id", example = "501")
@@ -117,5 +121,11 @@ data class ExploreResponse(
 
         @field:Schema(description = "축제 홈페이지. 없으면 null", example = "https://www.changwon.go.kr")
         val homepageUrl: String?,
+
+        @field:Schema(description = "축제 카드 배경 이미지 URL. 발행 에디토리얼 hero 이미지가 우선된다", example = "https://img.peakda.kr/festivals/701/hero.jpg")
+        val thumbnailUrl: String?,
+
+        @field:Schema(description = "축제 상태", example = "ONGOING")
+        val phase: FestivalPhase,
     )
 }
