@@ -42,7 +42,7 @@ class SpotRecordServiceTest {
     fun `본인 DRAFT 기록은 조회된다`() {
         val record = record(1L, userId = OWNER_ID, status = SpotRecordStatus.DRAFT)
         `when`(spotRecordRepository.findById(1L)).thenReturn(Optional.of(record))
-        `when`(responseAssembler.assemble(record)).thenReturn(response(1L))
+        `when`(responseAssembler.assemble(record, OWNER_ID)).thenReturn(response(1L))
 
         val result = service.get(1L, OWNER_ID)
 
@@ -61,7 +61,7 @@ class SpotRecordServiceTest {
     fun `타인의 PUBLISHED 기록은 조회된다`() {
         val record = record(1L, userId = OWNER_ID, status = SpotRecordStatus.PUBLISHED)
         `when`(spotRecordRepository.findById(1L)).thenReturn(Optional.of(record))
-        `when`(responseAssembler.assemble(record)).thenReturn(response(1L))
+        `when`(responseAssembler.assemble(record, OTHER_USER_ID)).thenReturn(response(1L))
 
         val result = service.get(1L, OTHER_USER_ID)
 

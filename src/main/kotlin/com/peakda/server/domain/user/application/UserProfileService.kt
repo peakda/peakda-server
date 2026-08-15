@@ -8,6 +8,7 @@ import com.peakda.server.domain.user.exception.UserNotFoundException
 import com.peakda.server.domain.user.presentation.response.FavoriteCategoryResponse
 import com.peakda.server.domain.user.presentation.response.UserProfileResponse
 import com.peakda.server.domain.user.repository.FollowRepository
+import com.peakda.server.domain.user.repository.BlockRepository
 import com.peakda.server.domain.user.repository.UserFavoriteCategoryRepository
 import com.peakda.server.domain.user.repository.UserRepository
 import org.springframework.data.domain.PageRequest
@@ -22,6 +23,7 @@ import org.springframework.transaction.annotation.Transactional
 class UserProfileService(
     private val userRepository: UserRepository,
     private val followRepository: FollowRepository,
+    private val blockRepository: BlockRepository,
     private val userFavoriteCategoryRepository: UserFavoriteCategoryRepository,
     private val spotRecordRepository: SpotRecordRepository,
     private val spotRecordResponseAssembler: SpotRecordResponseAssembler,
@@ -49,9 +51,11 @@ class UserProfileService(
                 followingCount = followRepository.countByFollowerId(targetUserId),
             ),
             favoriteCategories = FavoriteCategoryResponse.of(favoriteCategories),
-            recordPreview = spotRecordResponseAssembler.assembleSummaries(recordsPage.content),
+            recordPreview = spotRecordResponseAssembler.assembleSummaries(recordsPage.content, currentUserId),
             following = currentUserId != targetUserId &&
                 followRepository.existsByFollowerIdAndFollowingId(currentUserId, targetUserId),
+            blocked = currentUserId != targetUserId &&
+                blockRepository.existsByBlockerIdAndBlockedId(currentUserId, targetUserId),
         )
     }
 

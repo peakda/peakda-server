@@ -14,6 +14,7 @@ import com.peakda.server.domain.user.entity.UserFavoriteCategory
 import com.peakda.server.domain.user.entity.UserFavoriteCategoryId
 import com.peakda.server.domain.user.exception.UserNotFoundException
 import com.peakda.server.domain.user.repository.FollowRepository
+import com.peakda.server.domain.user.repository.BlockRepository
 import com.peakda.server.domain.user.repository.UserFavoriteCategoryRepository
 import com.peakda.server.domain.user.repository.UserRepository
 import org.assertj.core.api.Assertions.assertThat
@@ -31,6 +32,7 @@ class UserProfileServiceTest {
 
     private val userRepository = mock(UserRepository::class.java)
     private val followRepository = mock(FollowRepository::class.java)
+    private val blockRepository = mock(BlockRepository::class.java)
     private val userFavoriteCategoryRepository = mock(UserFavoriteCategoryRepository::class.java)
     private val spotRecordRepository = mock(SpotRecordRepository::class.java)
     private val spotRecordResponseAssembler = mock(SpotRecordResponseAssembler::class.java)
@@ -39,6 +41,7 @@ class UserProfileServiceTest {
     private val service = UserProfileService(
         userRepository,
         followRepository,
+        blockRepository,
         userFavoriteCategoryRepository,
         spotRecordRepository,
         spotRecordResponseAssembler,
@@ -63,7 +66,7 @@ class UserProfileServiceTest {
         val record = record(1L)
         `when`(spotRecordRepository.findByUserIdAndStatusOrderByCreatedAtDesc(TARGET_ID, SpotRecordStatus.PUBLISHED, pageable))
             .thenReturn(PageImpl(listOf(record), pageable, 24))
-        `when`(spotRecordResponseAssembler.assembleSummaries(listOf(record))).thenReturn(listOf(summary(1L)))
+        `when`(spotRecordResponseAssembler.assembleSummaries(listOf(record), VIEWER_ID)).thenReturn(listOf(summary(1L)))
 
         `when`(userFavoriteCategoryRepository.findByIdUserId(TARGET_ID))
             .thenReturn(listOf(favoriteCategory(TARGET_ID, BloomCategory.CHERRY)))
@@ -71,6 +74,7 @@ class UserProfileServiceTest {
         `when`(followRepository.countByFollowingId(TARGET_ID)).thenReturn(1280L)
         `when`(followRepository.countByFollowerId(TARGET_ID)).thenReturn(312L)
         `when`(followRepository.existsByFollowerIdAndFollowingId(VIEWER_ID, TARGET_ID)).thenReturn(true)
+        `when`(blockRepository.existsByBlockerIdAndBlockedId(VIEWER_ID, TARGET_ID)).thenReturn(true)
 
         val response = service.getProfile(TARGET_ID, VIEWER_ID)
 
@@ -84,6 +88,7 @@ class UserProfileServiceTest {
             .containsExactly(BloomCategory.CHERRY)
         assertThat(response.recordPreview).extracting<Long> { it.id }.containsExactly(1L)
         assertThat(response.following).isTrue()
+        assertThat(response.blocked).isTrue()
     }
 
     @Test
@@ -94,7 +99,7 @@ class UserProfileServiceTest {
         val pageable = PageRequest.of(0, 6)
         `when`(spotRecordRepository.findByUserIdAndStatusOrderByCreatedAtDesc(TARGET_ID, SpotRecordStatus.PUBLISHED, pageable))
             .thenReturn(PageImpl(emptyList(), pageable, 0))
-        `when`(spotRecordResponseAssembler.assembleSummaries(emptyList())).thenReturn(emptyList())
+        `when`(spotRecordResponseAssembler.assembleSummaries(emptyList(), TARGET_ID)).thenReturn(emptyList())
         `when`(userFavoriteCategoryRepository.findByIdUserId(TARGET_ID)).thenReturn(emptyList())
         `when`(followRepository.countByFollowingId(TARGET_ID)).thenReturn(0L)
         `when`(followRepository.countByFollowerId(TARGET_ID)).thenReturn(0L)
@@ -102,6 +107,7 @@ class UserProfileServiceTest {
         val response = service.getProfile(TARGET_ID, TARGET_ID)
 
         assertThat(response.following).isFalse()
+        assertThat(response.blocked).isFalse()
     }
 
     // --- fixtures ---

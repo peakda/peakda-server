@@ -8,6 +8,7 @@ import org.springframework.data.jpa.repository.Modifying
 import org.springframework.data.jpa.repository.Query
 
 interface BlockRepository : JpaRepository<Block, Long> {
+    fun existsByBlockerIdAndBlockedId(blockerId: Long, blockedId: Long): Boolean
     fun deleteByBlockerIdAndBlockedId(blockerId: Long, blockedId: Long)
     fun findByBlockerIdOrderByCreatedAtDesc(blockerId: Long, pageable: Pageable): Page<Block>
 

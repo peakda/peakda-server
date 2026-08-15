@@ -42,7 +42,7 @@ class SpotDetailService(
         val previewRecords = spotRecordRepository
             .findBySpotIdAndStatusOrderByCreatedAtDesc(spotId, SpotRecordStatus.PUBLISHED, PageRequest.of(0, PREVIEW_SIZE))
             .content
-        val recordPreview = spotRecordResponseAssembler.assembleSummaries(previewRecords)
+        val recordPreview = spotRecordResponseAssembler.assembleSummaries(previewRecords, userId)
 
         return SpotDetailResponse(
             id = requireNotNull(spot.id),

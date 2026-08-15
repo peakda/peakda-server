@@ -51,7 +51,7 @@ class MyPageService(
                 favoriteSpotCount = spotFavoriteRepository.countByUserId(userId),
             ),
             favoriteCategories = FavoriteCategoryResponse.of(favoriteCategories),
-            recordPreview = spotRecordResponseAssembler.assembleSummaries(recordsPage.content),
+            recordPreview = spotRecordResponseAssembler.assembleSummaries(recordsPage.content, userId),
         )
     }
 

@@ -112,7 +112,8 @@ class SpotRecordController(
         spotId: Long,
         pageRequest: PageRequest,
     ): ResponseEntity<ApiResponse<PageResponse<SpotRecordSummaryResponse>>> {
-        val response = spotRecordService.listBySpot(spotId, pageRequest)
+        val userId = requireNotNull(principal.getUser().id)
+        val response = spotRecordService.listBySpot(spotId, userId, pageRequest)
         return ResponseEntity.ok(ApiResponse.success(HttpStatus.OK, response))
     }
 
