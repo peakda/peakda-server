@@ -62,7 +62,7 @@ class FeedServiceTest {
         val pageable = SpringPageRequest.of(0, 20, sort)
         `when`(spotRecordRepository.findByStatus(SpotRecordStatus.PUBLISHED, pageable))
             .thenReturn(PageImpl(listOf(record), pageable, 1))
-        `when`(responseAssembler.assembleSummaries(listOf(record))).thenReturn(listOf(summary(1L)))
+        `when`(responseAssembler.assembleSummaries(listOf(record), USER_ID)).thenReturn(listOf(summary(1L)))
 
         val response = service.list(USER_ID, FeedFilter.ALL, PageRequest(page = 0, size = 20))
 
@@ -85,7 +85,7 @@ class FeedServiceTest {
         `when`(followRepository.findFollowingIds(USER_ID)).thenReturn(listOf(FOLLOWING_ID))
         `when`(spotRecordRepository.findByUserIdInAndStatus(listOf(FOLLOWING_ID), SpotRecordStatus.PUBLISHED, pageable))
             .thenReturn(PageImpl(listOf(record), pageable, 1))
-        `when`(responseAssembler.assembleSummaries(listOf(record))).thenReturn(listOf(summary(2L)))
+        `when`(responseAssembler.assembleSummaries(listOf(record), USER_ID)).thenReturn(listOf(summary(2L)))
 
         val response = service.list(USER_ID, FeedFilter.FOLLOWING, PageRequest(page = 0, size = 20))
 
@@ -113,7 +113,7 @@ class FeedServiceTest {
             .thenReturn(listOf(SpotRecordPlant(SpotRecordPlantId(3L, 10L))))
         `when`(spotRecordRepository.findByIdInAndStatus(listOf(3L), SpotRecordStatus.PUBLISHED, pageable))
             .thenReturn(PageImpl(listOf(record), pageable, 1))
-        `when`(responseAssembler.assembleSummaries(listOf(record))).thenReturn(listOf(summary(3L)))
+        `when`(responseAssembler.assembleSummaries(listOf(record), USER_ID)).thenReturn(listOf(summary(3L)))
 
         val response = service.list(USER_ID, FeedFilter.INTEREST, PageRequest(page = 0, size = 20))
 
@@ -127,7 +127,7 @@ class FeedServiceTest {
         `when`(blockRepository.findBlockedIdsByBlockerId(USER_ID)).thenReturn(listOf(BLOCKED_ID))
         `when`(spotRecordRepository.findByStatusAndUserIdNotIn(SpotRecordStatus.PUBLISHED, setOf(BLOCKED_ID), pageable))
             .thenReturn(PageImpl(listOf(record), pageable, 1))
-        `when`(responseAssembler.assembleSummaries(listOf(record))).thenReturn(listOf(summary(1L)))
+        `when`(responseAssembler.assembleSummaries(listOf(record), USER_ID)).thenReturn(listOf(summary(1L)))
 
         val response = service.list(USER_ID, FeedFilter.ALL, PageRequest(page = 0, size = 20))
 
@@ -165,9 +165,9 @@ class FeedServiceTest {
     fun `게시된 기록 상세는 정상 조회된다`() {
         val record = record(1L, status = SpotRecordStatus.PUBLISHED)
         `when`(spotRecordRepository.findById(1L)).thenReturn(Optional.of(record))
-        `when`(responseAssembler.assemble(record)).thenReturn(detail(1L))
+        `when`(responseAssembler.assemble(record, USER_ID)).thenReturn(detail(1L))
 
-        val response = service.detail(1L)
+        val response = service.detail(1L, USER_ID)
 
         assertThat(response.id).isEqualTo(1L)
     }
@@ -177,14 +177,14 @@ class FeedServiceTest {
         val record = record(1L, status = SpotRecordStatus.DRAFT)
         `when`(spotRecordRepository.findById(1L)).thenReturn(Optional.of(record))
 
-        assertThatThrownBy { service.detail(1L) }.isInstanceOf(SpotRecordNotFoundException::class.java)
+        assertThatThrownBy { service.detail(1L, USER_ID) }.isInstanceOf(SpotRecordNotFoundException::class.java)
     }
 
     @Test
     fun `존재하지 않는 기록 상세 조회는 404 로 처리한다`() {
         `when`(spotRecordRepository.findById(99L)).thenReturn(Optional.empty())
 
-        assertThatThrownBy { service.detail(99L) }.isInstanceOf(SpotRecordNotFoundException::class.java)
+        assertThatThrownBy { service.detail(99L, USER_ID) }.isInstanceOf(SpotRecordNotFoundException::class.java)
     }
 
     // --- fixtures ---

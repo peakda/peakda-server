@@ -37,7 +37,8 @@ class FeedController(
         principal: PrincipalDetails,
         id: Long,
     ): ResponseEntity<ApiResponse<SpotRecordResponse>> {
-        val response = feedService.detail(id)
+        val userId = requireNotNull(principal.getUser().id)
+        val response = feedService.detail(id, userId)
         return ResponseEntity.ok(ApiResponse.success(HttpStatus.OK, response))
     }
 

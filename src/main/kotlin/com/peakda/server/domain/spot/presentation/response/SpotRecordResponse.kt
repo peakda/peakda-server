@@ -1,5 +1,6 @@
 package com.peakda.server.domain.spot.presentation.response
 
+import com.peakda.server.domain.feed.presentation.response.ReactionSummary
 import com.peakda.server.domain.spot.entity.BloomStage
 import com.peakda.server.domain.spot.entity.SpotRecordStatus
 import com.peakda.server.domain.spot.entity.SpotType
@@ -44,6 +45,9 @@ data class SpotRecordResponse(
 
     @field:Schema(description = "최종 수정 시각")
     val updatedAt: Instant,
+
+    @field:Schema(description = "리액션 요약")
+    val reactions: ReactionSummary = ReactionSummary(emptyList(), emptySet()),
 ) {
     @Schema(description = "스팟 요약")
     data class SpotSummary(

@@ -1,7 +1,7 @@
 package com.peakda.server.domain.feed.application
 
 import com.peakda.server.domain.feed.presentation.response.FeedReactionSummaryResponse
-import com.peakda.server.domain.feed.presentation.response.FeedReactionSummaryResponse.ReactionCount
+import com.peakda.server.domain.feed.presentation.response.ReactionCount
 import com.peakda.server.domain.spot.entity.ReactionType
 import com.peakda.server.domain.spot.entity.SpotRecord
 import com.peakda.server.domain.spot.entity.SpotRecordStatus

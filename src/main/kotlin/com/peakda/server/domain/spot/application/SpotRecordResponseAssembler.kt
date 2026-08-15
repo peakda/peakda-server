@@ -1,6 +1,8 @@
 package com.peakda.server.domain.spot.application
 
 import com.peakda.server.common.storage.ObjectKeyUrlResolver
+import com.peakda.server.domain.feed.presentation.response.ReactionCount
+import com.peakda.server.domain.feed.presentation.response.ReactionSummary
 import com.peakda.server.domain.spot.entity.Plant
 import com.peakda.server.domain.spot.entity.Spot
 import com.peakda.server.domain.spot.entity.SpotRecord
@@ -14,6 +16,7 @@ import com.peakda.server.domain.spot.presentation.response.SpotRecordSummaryResp
 import com.peakda.server.domain.spot.repository.PlantRepository
 import com.peakda.server.domain.spot.repository.SpotRecordPhotoRepository
 import com.peakda.server.domain.spot.repository.SpotRecordPlantRepository
+import com.peakda.server.domain.spot.repository.SpotRecordReactionRepository
 import com.peakda.server.domain.spot.repository.SpotRepository
 import com.peakda.server.domain.user.entity.User
 import com.peakda.server.domain.user.repository.UserRepository
@@ -26,19 +29,20 @@ class SpotRecordResponseAssembler(
     private val plantRepository: PlantRepository,
     private val spotRecordPhotoRepository: SpotRecordPhotoRepository,
     private val spotRecordPlantRepository: SpotRecordPlantRepository,
+    private val spotRecordReactionRepository: SpotRecordReactionRepository,
     private val spotRecordPhotoUploader: SpotRecordPhotoUploader,
     private val objectKeyUrlResolver: ObjectKeyUrlResolver,
 ) {
 
-    fun assemble(record: SpotRecord): SpotRecordResponse {
+    fun assemble(record: SpotRecord, viewerId: Long): SpotRecordResponse {
         val recordId = requireNotNull(record.id) { "record.id must not be null" }
-        val context = loadContext(listOf(record))
+        val context = loadContext(listOf(record), viewerId)
         return buildResponse(record, context, recordId)
     }
 
-    fun assembleSummaries(records: List<SpotRecord>): List<SpotRecordSummaryResponse> {
+    fun assembleSummaries(records: List<SpotRecord>, viewerId: Long): List<SpotRecordSummaryResponse> {
         if (records.isEmpty()) return emptyList()
-        val context = loadContext(records)
+        val context = loadContext(records, viewerId)
         return records.map { record ->
             val recordId = requireNotNull(record.id) { "record.id must not be null" }
             buildSummary(record, context, recordId)
@@ -63,6 +67,7 @@ class SpotRecordResponseAssembler(
             publishedAt = record.publishedAt,
             createdAt = record.createdAt,
             updatedAt = record.updatedAt,
+            reactions = context.reactionsByRecordId.getValue(recordId),
         )
     }
 
@@ -85,10 +90,11 @@ class SpotRecordResponseAssembler(
             publishedAt = record.publishedAt,
             createdAt = record.createdAt,
             updatedAt = record.updatedAt,
+            reactions = context.reactionsByRecordId.getValue(recordId),
         )
     }
 
-    private fun loadContext(records: List<SpotRecord>): AssemblyContext {
+    private fun loadContext(records: List<SpotRecord>, viewerId: Long): AssemblyContext {
         val recordIds = records.mapNotNull { it.id }
         val spotIds = records.map { it.spotId }.toSet()
         val userIds = records.map { it.userId }.toSet()
@@ -104,7 +110,19 @@ class SpotRecordResponseAssembler(
             .mapNotNull { join -> plantsById[join.plantId]?.let { join.spotRecordId to it } }
             .groupBy({ it.first }, { it.second })
             .mapValues { (_, plants) -> plants.sortedBy { it.sortOrder } }
-        return AssemblyContext(spotsById, usersById, plantsByRecordId, photosByRecordId)
+        val countsByRecordId = spotRecordReactionRepository.countsBySpotRecordIdIn(recordIds)
+            .groupBy { it.spotRecordId }
+            .mapValues { (_, counts) -> counts.map { ReactionCount(it.reactionType, it.count) } }
+        val mineByRecordId = spotRecordReactionRepository.findByUserIdAndSpotRecordIdIn(viewerId, recordIds)
+            .groupBy { it.spotRecordId }
+            .mapValues { (_, reactions) -> reactions.map { it.reactionType }.toSet() }
+        val reactionsByRecordId = recordIds.associateWith { recordId ->
+            ReactionSummary(
+                counts = countsByRecordId[recordId].orEmpty(),
+                myReactions = mineByRecordId[recordId].orEmpty(),
+            )
+        }
+        return AssemblyContext(spotsById, usersById, plantsByRecordId, photosByRecordId, reactionsByRecordId)
     }
 
     private fun Spot.toSummary() = SpotSummary(
@@ -134,5 +152,6 @@ class SpotRecordResponseAssembler(
         val usersById: Map<Long, User>,
         val plantsByRecordId: Map<Long, List<Plant>>,
         val photosByRecordId: Map<Long, List<SpotRecordPhoto>>,
+        val reactionsByRecordId: Map<Long, ReactionSummary>,
     )
 }

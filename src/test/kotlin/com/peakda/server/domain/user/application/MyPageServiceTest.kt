@@ -65,7 +65,7 @@ class MyPageServiceTest {
         val record = record(1L)
         `when`(spotRecordRepository.findByUserIdAndStatusOrderByCreatedAtDesc(USER_ID, SpotRecordStatus.PUBLISHED, pageable))
             .thenReturn(PageImpl(listOf(record), pageable, 24))
-        `when`(spotRecordResponseAssembler.assembleSummaries(listOf(record))).thenReturn(listOf(summary(1L)))
+        `when`(spotRecordResponseAssembler.assembleSummaries(listOf(record), USER_ID)).thenReturn(listOf(summary(1L)))
 
         `when`(userFavoriteCategoryRepository.findByIdUserId(USER_ID))
             .thenReturn(listOf(favoriteCategory(USER_ID, BloomCategory.CHERRY)))
