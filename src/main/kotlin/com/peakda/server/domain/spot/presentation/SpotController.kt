@@ -3,6 +3,7 @@ package com.peakda.server.domain.spot.presentation
 import com.peakda.server.common.response.ApiResponse
 import com.peakda.server.common.security.principal.PrincipalDetails
 import com.peakda.server.domain.seasonal.entity.BloomCategory
+import com.peakda.server.domain.seasonal.entity.BloomStatus
 import com.peakda.server.domain.spot.application.SpotDetailService
 import com.peakda.server.domain.spot.application.SpotMatcher
 import com.peakda.server.domain.spot.application.SpotPreviewService
@@ -56,12 +57,17 @@ class SpotController(
     }
 
     override fun preview(
+        principal: PrincipalDetails,
         spotIds: List<Long>,
         category: BloomCategory?,
+        categories: List<BloomCategory>?,
+        status: BloomStatus?,
         lat: Double?,
         lng: Double?,
     ): ResponseEntity<ApiResponse<SpotPreviewResponse>> {
-        val response = spotPreviewService.preview(spotIds, category, lat, lng)
+        val mergedCategories = (listOfNotNull(category) + categories.orEmpty()).distinct().ifEmpty { null }
+        val userId = requireNotNull(principal.getUser().id)
+        val response = spotPreviewService.preview(spotIds, mergedCategories, status, lat, lng, userId)
         return ResponseEntity.ok(ApiResponse.success(HttpStatus.OK, response))
     }
 

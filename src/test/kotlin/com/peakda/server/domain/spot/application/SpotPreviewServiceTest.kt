@@ -11,16 +11,18 @@ import com.peakda.server.domain.spot.entity.BloomStage
 import com.peakda.server.domain.spot.entity.Plant
 import com.peakda.server.domain.spot.entity.PlantStatus
 import com.peakda.server.domain.spot.entity.Spot
+import com.peakda.server.domain.spot.entity.SpotFavorite
 import com.peakda.server.domain.spot.entity.SpotRecord
-import com.peakda.server.domain.spot.entity.SpotRecordPhoto
 import com.peakda.server.domain.spot.entity.SpotRecordPlant
 import com.peakda.server.domain.spot.entity.SpotRecordPlantId
 import com.peakda.server.domain.spot.entity.SpotRecordStatus
 import com.peakda.server.domain.spot.entity.SpotType
 import com.peakda.server.domain.spot.repository.PlantRepository
+import com.peakda.server.domain.spot.repository.SpotFavoriteRepository
 import com.peakda.server.domain.spot.repository.SpotRecordPhotoRepository
 import com.peakda.server.domain.spot.repository.SpotRecordPlantRepository
 import com.peakda.server.domain.spot.repository.SpotRecordRepository
+import com.peakda.server.domain.spot.repository.SpotRecordCount
 import com.peakda.server.domain.spot.repository.SpotRepository
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Test
@@ -40,6 +42,7 @@ class SpotPreviewServiceTest {
     private val plantRepository = mock(PlantRepository::class.java)
     private val spotRecordPhotoRepository = mock(SpotRecordPhotoRepository::class.java)
     private val spotRecordPhotoUploader = mock(SpotRecordPhotoUploader::class.java)
+    private val spotFavoriteRepository = mock(SpotFavoriteRepository::class.java)
     private val spotThumbnailResolver = SpotThumbnailResolver(
         attractionRepository,
         spotRecordRepository,
@@ -54,6 +57,9 @@ class SpotPreviewServiceTest {
         spotRecordPlantRepository,
         plantRepository,
         spotThumbnailResolver,
+        spotRecordPhotoRepository,
+        spotRecordPhotoUploader,
+        spotFavoriteRepository,
     )
 
     private val baseDate = LocalDate.of(2026, 3, 30)
@@ -72,6 +78,9 @@ class SpotPreviewServiceTest {
             )
         `when`(attractionRepository.findAllById(listOf(ATTRACTION_ID)))
             .thenReturn(listOf(attraction(ATTRACTION_ID, "https://img/primary.jpg")))
+        `when`(spotRecordPhotoRepository.findRecentPhotosBySpotIds(listOf(SPOT_ID), SpotRecordStatus.PUBLISHED.name, 4))
+            .thenReturn(listOf(photo(SPOT_ID, "key-record")))
+        `when`(spotRecordPhotoUploader.presignedUrlOf("key-record")).thenReturn("https://rec/record.jpg")
 
         val response = service.preview(listOf(SPOT_ID), category = null, lat = null, lng = null)
 
@@ -80,7 +89,81 @@ class SpotPreviewServiceTest {
         assertThat(item.badge?.category).isEqualTo(BloomCategory.CHERRY)
         assertThat(item.badge?.status).isEqualTo(BloomStatus.PEAK)
         assertThat(item.thumbnailUrl).isEqualTo("https://img/primary.jpg")
+        assertThat(item.photoUrls).containsExactly("https://img/primary.jpg", "https://rec/record.jpg")
         assertThat(item.distanceMeters).isNull()
+    }
+
+    @Test
+    fun `명소형 스팟은 ENDED 를 제외한 모든 뱃지를 상태와 신뢰도 순으로 반환한다`() {
+        val spot = attractionSpot(SPOT_ID, ATTRACTION_ID)
+        `when`(spotRepository.findAllById(listOf(SPOT_ID))).thenReturn(listOf(spot))
+        `when`(seasonalBloomEstimateRepository.findLatestBaseDate()).thenReturn(baseDate)
+        `when`(seasonalBloomEstimateRepository.findByBaseDateAndAttractionIdIn(baseDate, listOf(ATTRACTION_ID)))
+            .thenReturn(
+                listOf(
+                    estimate(BloomCategory.AZALEA_KR, BloomStatus.STARTED, confidence = 0.99),
+                    estimate(BloomCategory.CHERRY, BloomStatus.PEAK, confidence = 0.7, peakStart = baseDate, peakEnd = baseDate.plusDays(3)),
+                    estimate(BloomCategory.PLUM, BloomStatus.ENDED, confidence = 1.0),
+                ),
+            )
+
+        val item = service.preview(listOf(SPOT_ID), categories = null, status = null, lat = null, lng = null, userId = USER_ID)
+            .items.single()
+
+        assertThat(item.badges.map { it.category }).containsExactly(BloomCategory.CHERRY, BloomCategory.AZALEA_KR)
+        assertThat(item.badge).isEqualTo(item.badges.first())
+        assertThat(item.badges.first().peakDurationDays).isEqualTo(4)
+    }
+
+    @Test
+    fun `status 필터 후 뱃지가 비면 스팟 자체를 제외한다`() {
+        val spot = attractionSpot(SPOT_ID, ATTRACTION_ID)
+        `when`(spotRepository.findAllById(listOf(SPOT_ID))).thenReturn(listOf(spot))
+        `when`(seasonalBloomEstimateRepository.findLatestBaseDate()).thenReturn(baseDate)
+        `when`(seasonalBloomEstimateRepository.findByBaseDateAndAttractionIdIn(baseDate, listOf(ATTRACTION_ID)))
+            .thenReturn(listOf(estimate(BloomCategory.CHERRY, BloomStatus.PEAK, confidence = 0.9)))
+
+        val response = service.preview(
+            listOf(SPOT_ID),
+            categories = null,
+            status = BloomStatus.PREPARING,
+            lat = null,
+            lng = null,
+            userId = USER_ID,
+        )
+
+        assertThat(response.items).isEmpty()
+    }
+
+    @Test
+    fun `사진은 스팟당 최대 4장이고 찜 상태와 기록수는 배치 결과로 채우며 요청 순서를 보존한다`() {
+        val first = localSpot(SPOT_ID)
+        val second = localSpot(SECOND_SPOT_ID)
+        `when`(spotRepository.findAllById(listOf(SPOT_ID, SECOND_SPOT_ID))).thenReturn(listOf(second, first))
+        `when`(spotRecordPhotoRepository.findRecentPhotosBySpotIds(listOf(SECOND_SPOT_ID, SPOT_ID), SpotRecordStatus.PUBLISHED.name, 4))
+            .thenReturn((1..5).map { photo(SPOT_ID, "key-$it") })
+        (1..5).forEach { `when`(spotRecordPhotoUploader.presignedUrlOf("key-$it")).thenReturn("https://rec/$it.jpg") }
+        `when`(spotFavoriteRepository.findByUserIdAndSpotIdIn(USER_ID, listOf(SPOT_ID, SECOND_SPOT_ID)))
+            .thenReturn(listOf(SpotFavorite(userId = USER_ID, spotId = SPOT_ID, notifyEnabled = true)))
+        `when`(spotRecordRepository.countBySpotIdInAndStatus(listOf(SPOT_ID, SECOND_SPOT_ID), SpotRecordStatus.PUBLISHED))
+            .thenReturn(listOf(recordCount(SPOT_ID, 5)))
+
+        val response = service.preview(
+            listOf(SPOT_ID, SECOND_SPOT_ID),
+            categories = null,
+            status = null,
+            lat = null,
+            lng = null,
+            userId = USER_ID,
+        )
+
+        assertThat(response.items.map { it.spotId }).containsExactly(SPOT_ID, SECOND_SPOT_ID)
+        assertThat(response.items.first().photoUrls).containsExactly("https://rec/1.jpg", "https://rec/2.jpg", "https://rec/3.jpg", "https://rec/4.jpg")
+        assertThat(response.items.first().thumbnailUrl).isEqualTo("https://rec/1.jpg")
+        assertThat(response.items.first().favorited).isTrue()
+        assertThat(response.items.first().notifyEnabled).isTrue()
+        assertThat(response.items.first().recordCount).isEqualTo(5)
+        assertThat(response.items[1].favorited).isFalse()
     }
 
     @Test
@@ -100,8 +183,8 @@ class SpotPreviewServiceTest {
             ),
         )
         `when`(plantRepository.findAllById(setOf(10L))).thenReturn(listOf(plant(10L, BloomCategory.CHERRY)))
-        `when`(spotRecordPhotoRepository.findBySpotRecordIdIn(listOf(2L)))
-            .thenReturn(listOf(SpotRecordPhoto(spotRecordId = 2L, objectKey = "key-2", sortOrder = 0)))
+        `when`(spotRecordPhotoRepository.findRecentPhotosBySpotIds(listOf(SPOT_ID), SpotRecordStatus.PUBLISHED.name, 4))
+            .thenReturn(listOf(photo(spotId = SPOT_ID, objectKey = "key-2")))
         `when`(spotRecordPhotoUploader.presignedUrlOf("key-2")).thenReturn("https://rec/2.jpg")
 
         val response = service.preview(listOf(SPOT_ID), category = null, lat = null, lng = null)
@@ -181,13 +264,21 @@ class SpotPreviewServiceTest {
         return attraction
     }
 
-    private fun estimate(category: BloomCategory, status: BloomStatus, confidence: Double) = SeasonalBloomEstimate(
+    private fun estimate(
+        category: BloomCategory,
+        status: BloomStatus,
+        confidence: Double,
+        peakStart: LocalDate? = null,
+        peakEnd: LocalDate? = null,
+    ) = SeasonalBloomEstimate(
         attractionId = ATTRACTION_ID,
         bloomCategory = category,
         baseDate = baseDate,
         status = status,
         confidence = confidence,
         chosenEstimator = Estimator.CALENDAR,
+        peakStartDate = peakStart,
+        peakEndDate = peakEnd,
     )
 
     private fun record(id: Long, spotId: Long, visitedDate: LocalDate, stage: BloomStage): SpotRecord {
@@ -208,9 +299,21 @@ class SpotPreviewServiceTest {
         return plant
     }
 
+    private fun photo(spotId: Long, objectKey: String) = object : com.peakda.server.domain.spot.repository.SpotPhoto {
+        override val spotId: Long = spotId
+        override val objectKey: String = objectKey
+    }
+
+    private fun recordCount(spotId: Long, count: Long) = object : SpotRecordCount {
+        override val spotId: Long = spotId
+        override val recordCount: Long = count
+    }
+
     companion object {
         private const val SPOT_ID = 100L
         private const val MISSING_SPOT_ID = 999L
+        private const val SECOND_SPOT_ID = 200L
         private const val ATTRACTION_ID = 501L
+        private const val USER_ID = 7L
     }
 }
