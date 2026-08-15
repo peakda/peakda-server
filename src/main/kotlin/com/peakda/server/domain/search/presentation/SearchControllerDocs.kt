@@ -5,9 +5,11 @@ import com.peakda.server.common.openapi.ApiErrorResponses
 import com.peakda.server.common.page.PageRequest
 import com.peakda.server.common.page.PageResponse
 import com.peakda.server.common.response.ApiResponse
+import com.peakda.server.common.security.principal.PrincipalDetails
 import com.peakda.server.domain.search.presentation.response.SpotSearchItem
 import com.peakda.server.domain.search.presentation.response.TrendingSpotsResponse
 import com.peakda.server.domain.search.presentation.response.UserSearchItem
+import com.peakda.server.domain.seasonal.entity.BloomCategory
 import io.swagger.v3.oas.annotations.Operation
 import io.swagger.v3.oas.annotations.Parameter
 import io.swagger.v3.oas.annotations.security.SecurityRequirement
@@ -15,6 +17,7 @@ import io.swagger.v3.oas.annotations.tags.Tag
 import jakarta.validation.Valid
 import org.springframework.http.ResponseEntity
 import org.springframework.web.bind.annotation.GetMapping
+import org.springframework.security.core.annotation.AuthenticationPrincipal
 import org.springframework.web.bind.annotation.ModelAttribute
 import org.springframework.web.bind.annotation.RequestParam
 
@@ -32,8 +35,11 @@ interface SearchControllerDocs {
     )
     @GetMapping("/spots")
     fun searchSpots(
+        @AuthenticationPrincipal principal: PrincipalDetails,
         @Parameter(description = "검색어", example = "남산")
         @RequestParam("q") query: String,
+        @Parameter(description = "개화 신호가 있는 꽃 카테고리로 결과를 제한한다", example = "CHERRY")
+        @RequestParam("category", required = false) category: BloomCategory?,
         @Valid @ModelAttribute pageRequest: PageRequest,
     ): ResponseEntity<ApiResponse<PageResponse<SpotSearchItem>>>
 
@@ -48,6 +54,7 @@ interface SearchControllerDocs {
     )
     @GetMapping("/users")
     fun searchUsers(
+        @AuthenticationPrincipal principal: PrincipalDetails,
         @Parameter(description = "검색어 (닉네임)", example = "피크다")
         @RequestParam("q") query: String,
         @Valid @ModelAttribute pageRequest: PageRequest,

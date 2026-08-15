@@ -6,6 +6,7 @@ import org.springframework.data.domain.Pageable
 import org.springframework.data.jpa.repository.JpaRepository
 import org.springframework.data.jpa.repository.Modifying
 import org.springframework.data.jpa.repository.Query
+import org.springframework.data.repository.query.Param
 
 interface FollowRepository : JpaRepository<Follow, Long> {
     fun existsByFollowerIdAndFollowingId(followerId: Long, followingId: Long): Boolean
@@ -21,6 +22,16 @@ interface FollowRepository : JpaRepository<Follow, Long> {
 
     /** 팔로워 수: 이 사용자를 팔로우하는 사람 수 */
     fun countByFollowingId(followingId: Long): Long
+
+    @Query(
+        """
+            SELECT f.followingId AS userId, COUNT(f) AS followerCount
+            FROM Follow f
+            WHERE f.followingId IN :userIds
+            GROUP BY f.followingId
+        """,
+    )
+    fun countByFollowingIdIn(@Param("userIds") userIds: Collection<Long>): List<FollowerCount>
 
     /** 팔로워 목록: 대상(followingId)을 팔로우하는 행들을 최근 팔로우 순으로 */
     fun findByFollowingIdOrderByCreatedAtDesc(followingId: Long, pageable: Pageable): Page<Follow>
@@ -53,4 +64,10 @@ interface FollowRepository : JpaRepository<Follow, Long> {
         nativeQuery = true,
     )
     fun insertIfAbsent(followerId: Long, followingId: Long)
+}
+
+/** [FollowRepository.countByFollowingIdIn] 프로젝션. */
+interface FollowerCount {
+    val userId: Long
+    val followerCount: Long
 }

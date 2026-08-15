@@ -12,4 +12,13 @@ data class UserSearchItem(
 
     @field:Schema(description = "프로필 이미지 URL (없으면 null)", example = "https://img/profile.jpg")
     val profileImageUrl: String?,
+
+    @field:Schema(description = "현재 사용자가 팔로우 중인지 여부", example = "true")
+    val following: Boolean,
+
+    @field:Schema(description = "게시된 기록 수", example = "123")
+    val recordCount: Long,
+
+    @field:Schema(description = "팔로워 수", example = "456")
+    val followerCount: Long,
 )
