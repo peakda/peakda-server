@@ -37,18 +37,8 @@ class FestivalDetailService(
             ?: emptyList()
         val category = BloomCategory.ofFestivalName(festival.name)
         val startsOn = festival.startsOn
-        val effectiveEndsOn = startsOn?.let { festival.endsOn ?: it }
-        val phase = if (startsOn == null || effectiveEndsOn == null) {
-            null
-        } else {
-            when {
-                today.isBefore(startsOn) -> FestivalPhase.UPCOMING
-                today.isAfter(effectiveEndsOn) -> FestivalPhase.ENDED
-                ChronoUnit.DAYS.between(today, effectiveEndsOn) <= properties.endingSoonDays ->
-                    FestivalPhase.ENDING_SOON
-                else -> FestivalPhase.ONGOING
-            }
-        }
+        val effectiveEndsOn = FestivalPhaseResolver.effectiveEndsOn(startsOn, festival.endsOn)
+        val phase = FestivalPhaseResolver.resolve(startsOn, festival.endsOn, today, properties.endingSoonDays)
 
         return FestivalDetailResponse(
             festivalId = requireNotNull(festival.id),
