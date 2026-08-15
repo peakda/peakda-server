@@ -1,6 +1,5 @@
 package com.peakda.server.domain.spot.application
 
-import com.peakda.server.domain.attraction.repository.AttractionRepository
 import com.peakda.server.domain.seasonal.application.BloomStageStatusMapper
 import com.peakda.server.domain.seasonal.entity.BloomCategory
 import com.peakda.server.domain.seasonal.entity.BloomStatus
@@ -14,7 +13,6 @@ import com.peakda.server.domain.spot.presentation.response.SpotPreviewResponse
 import com.peakda.server.domain.spot.presentation.response.SpotPreviewResponse.BloomBadge
 import com.peakda.server.domain.spot.presentation.response.SpotPreviewResponse.SpotPreviewItem
 import com.peakda.server.domain.spot.repository.PlantRepository
-import com.peakda.server.domain.spot.repository.SpotRecordPhotoRepository
 import com.peakda.server.domain.spot.repository.SpotRecordPlantRepository
 import com.peakda.server.domain.spot.repository.SpotRecordRepository
 import com.peakda.server.domain.spot.repository.SpotRepository
@@ -37,13 +35,11 @@ import kotlin.math.sqrt
 @Service
 class SpotPreviewService(
     private val spotRepository: SpotRepository,
-    private val attractionRepository: AttractionRepository,
     private val seasonalBloomEstimateRepository: SeasonalBloomEstimateRepository,
     private val spotRecordRepository: SpotRecordRepository,
     private val spotRecordPlantRepository: SpotRecordPlantRepository,
     private val plantRepository: PlantRepository,
-    private val spotRecordPhotoRepository: SpotRecordPhotoRepository,
-    private val spotRecordPhotoUploader: SpotRecordPhotoUploader,
+    private val spotThumbnailResolver: SpotThumbnailResolver,
 ) {
 
     @Transactional(readOnly = true)
@@ -57,7 +53,7 @@ class SpotPreviewService(
         if (spotsById.isEmpty()) return SpotPreviewResponse(emptyList())
 
         val badgeBySpot = attractionBadges(spotsById.values, category) + localBadges(spotsById.values, category)
-        val thumbnailBySpot = attractionThumbnails(spotsById.values) + localThumbnails(spotsById.values)
+        val thumbnailBySpot = spotThumbnailResolver.resolve(spotsById.values)
 
         val items = distinctIds.mapNotNull { spotId ->
             val spot = spotsById[spotId] ?: return@mapNotNull null
@@ -120,41 +116,6 @@ class SpotPreviewService(
             badgeBySpot[spotId] = BloomBadge(matched, matched.displayName, status)
         }
         return badgeBySpot
-    }
-
-    private fun attractionThumbnails(spots: Collection<Spot>): Map<Long, String> {
-        val attractionIdBySpot = spots
-            .filter { it.type == SpotType.ATTRACTION }
-            .mapNotNull { spot -> spot.attractionId?.let { requireNotNull(spot.id) to it } }
-        if (attractionIdBySpot.isEmpty()) return emptyMap()
-
-        val imageByAttraction = attractionRepository.findAllById(attractionIdBySpot.map { it.second })
-            .mapNotNull { attraction ->
-                (attraction.primaryImageUrl ?: attraction.thumbnailImageUrl)?.let { requireNotNull(attraction.id) to it }
-            }
-            .toMap()
-
-        return attractionIdBySpot.mapNotNull { (spotId, attractionId) ->
-            imageByAttraction[attractionId]?.let { spotId to it }
-        }.toMap()
-    }
-
-    /** 동네형 스팟 썸네일 — 카테고리 무관, 가장 최근 게시 기록의 대표 사진. */
-    private fun localThumbnails(spots: Collection<Spot>): Map<Long, String> {
-        val localSpotIds = spots.filter { it.type == SpotType.LOCAL }.mapNotNull { it.id }
-        if (localSpotIds.isEmpty()) return emptyMap()
-
-        val records = spotRecordRepository.findBySpotIdInAndStatus(localSpotIds, SpotRecordStatus.PUBLISHED)
-        val latestBySpot = records.groupBy { it.spotId }.mapValues { (_, rows) -> rows.maxBy { it.recordDate } }
-        val recordIds = latestBySpot.values.mapNotNull { it.id }
-        val photosByRecord = spotRecordPhotoRepository.findBySpotRecordIdIn(recordIds)
-            .sortedBy { it.sortOrder }
-            .groupBy { it.spotRecordId }
-
-        return latestBySpot.mapNotNull { (spotId, record) ->
-            val recordId = record.id ?: return@mapNotNull null
-            photosByRecord[recordId]?.firstOrNull()?.let { spotId to spotRecordPhotoUploader.presignedUrlOf(it.objectKey) }
-        }.toMap()
     }
 
     /** 각 기록 id 의 꽃 카테고리 집합 (식물의 bloomCategory 브릿지 경유). */
