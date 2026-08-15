@@ -40,16 +40,20 @@ class SpotPreviewServiceTest {
     private val plantRepository = mock(PlantRepository::class.java)
     private val spotRecordPhotoRepository = mock(SpotRecordPhotoRepository::class.java)
     private val spotRecordPhotoUploader = mock(SpotRecordPhotoUploader::class.java)
+    private val spotThumbnailResolver = SpotThumbnailResolver(
+        attractionRepository,
+        spotRecordRepository,
+        spotRecordPhotoRepository,
+        spotRecordPhotoUploader,
+    )
 
     private val service = SpotPreviewService(
         spotRepository,
-        attractionRepository,
         seasonalBloomEstimateRepository,
         spotRecordRepository,
         spotRecordPlantRepository,
         plantRepository,
-        spotRecordPhotoRepository,
-        spotRecordPhotoUploader,
+        spotThumbnailResolver,
     )
 
     private val baseDate = LocalDate.of(2026, 3, 30)
