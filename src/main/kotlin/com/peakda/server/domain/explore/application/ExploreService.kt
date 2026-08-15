@@ -1,5 +1,6 @@
 package com.peakda.server.domain.explore.application
 
+import com.peakda.server.common.storage.ObjectKeyUrlResolver
 import com.peakda.server.common.page.PageRequest
 import com.peakda.server.common.page.PageResponse
 import com.peakda.server.domain.attraction.entity.Attraction
@@ -10,6 +11,10 @@ import com.peakda.server.domain.explore.presentation.response.ExploreResponse
 import com.peakda.server.domain.explore.presentation.response.ExploreResponse.ExploreFestivalItem
 import com.peakda.server.domain.explore.presentation.response.ExploreResponse.ExploreSpotItem
 import com.peakda.server.domain.festival.entity.Festival
+import com.peakda.server.domain.festival.application.FestivalDetailProperties
+import com.peakda.server.domain.festival.application.FestivalPhaseResolver
+import com.peakda.server.domain.festival.entity.FestivalEditorialStatus
+import com.peakda.server.domain.festival.repository.FestivalEditorialRepository
 import com.peakda.server.domain.festival.repository.FestivalRepository
 import com.peakda.server.domain.seasonal.entity.BloomCategory
 import com.peakda.server.domain.seasonal.entity.BloomStatus
@@ -40,6 +45,9 @@ class ExploreService(
     private val spotRepository: SpotRepository,
     private val spotFavoriteRepository: SpotFavoriteRepository,
     private val festivalRepository: FestivalRepository,
+    private val festivalEditorialRepository: FestivalEditorialRepository,
+    private val objectKeyUrlResolver: ObjectKeyUrlResolver,
+    private val festivalDetailProperties: FestivalDetailProperties,
     private val curationQueryService: CurationQueryService,
     private val properties: ExploreProperties,
 ) {
@@ -190,10 +198,21 @@ class ExploreService(
 
     private fun festivalItems(category: BloomCategory?, today: LocalDate): List<ExploreFestivalItem> {
         val pageable = SpringPageRequest.of(0, properties.festivalCandidateSize)
-        return festivalRepository.findOngoing(today, pageable).mapNotNull { festival ->
+        val festivals = festivalRepository.findOngoing(today, pageable)
+        val festivalIds = festivals.mapNotNull(Festival::id)
+        val editorialsByFestivalId = if (festivalIds.isEmpty()) {
+            emptyMap()
+        } else {
+            festivalEditorialRepository.findByFestivalIdInAndStatus(
+                festivalIds,
+                FestivalEditorialStatus.PUBLISHED,
+            ).associateBy { it.festivalId }
+        }
+        return festivals.mapNotNull { festival ->
             val matchedCategory = BloomCategory.ofFestivalName(festival.name) ?: return@mapNotNull null
             if (category != null && matchedCategory != category) return@mapNotNull null
             val startsOn = festival.startsOn ?: return@mapNotNull null
+            val editorial = editorialsByFestivalId[festival.id]
             ExploreFestivalItem(
                 festivalId = requireNotNull(festival.id),
                 name = festival.name,
@@ -207,6 +226,15 @@ class ExploreService(
                 latitude = festival.latitude,
                 longitude = festival.longitude,
                 homepageUrl = festival.homepageUrl,
+                thumbnailUrl = editorial?.heroImageUrl?.let(objectKeyUrlResolver::resolve),
+                phase = requireNotNull(
+                    FestivalPhaseResolver.resolve(
+                        startsOn = startsOn,
+                        endsOn = festival.endsOn,
+                        today = today,
+                        endingSoonDays = festivalDetailProperties.endingSoonDays,
+                    ),
+                ),
             )
         }
     }

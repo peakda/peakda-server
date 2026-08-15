@@ -1,11 +1,17 @@
 package com.peakda.server.domain.explore.application
 
+import com.peakda.server.common.storage.ObjectKeyUrlResolver
 import com.peakda.server.common.page.PageRequest
 import com.peakda.server.domain.attraction.entity.Attraction
 import com.peakda.server.domain.attraction.repository.AttractionRepository
 import com.peakda.server.domain.curation.application.CurationQueryService
 import com.peakda.server.domain.curation.presentation.response.CurationCardResponse
 import com.peakda.server.domain.festival.entity.Festival
+import com.peakda.server.domain.festival.application.FestivalDetailProperties
+import com.peakda.server.domain.festival.application.FestivalPhase
+import com.peakda.server.domain.festival.entity.FestivalEditorial
+import com.peakda.server.domain.festival.entity.FestivalEditorialStatus
+import com.peakda.server.domain.festival.repository.FestivalEditorialRepository
 import com.peakda.server.domain.festival.repository.FestivalRepository
 import com.peakda.server.domain.seasonal.entity.BloomCategory
 import com.peakda.server.domain.seasonal.entity.BloomStatus
@@ -24,6 +30,7 @@ import org.mockito.Mockito.never
 import org.mockito.Mockito.times
 import org.mockito.Mockito.verify
 import org.mockito.Mockito.`when`
+import org.mockito.Mockito.doReturn
 import org.springframework.data.domain.PageImpl
 import org.springframework.data.domain.PageRequest as SpringPageRequest
 import org.springframework.test.util.ReflectionTestUtils
@@ -36,6 +43,8 @@ class ExploreServiceTest {
     private val spotRepository = mock(SpotRepository::class.java)
     private val spotFavoriteRepository = mock(SpotFavoriteRepository::class.java)
     private val festivalRepository = mock(FestivalRepository::class.java)
+    private val festivalEditorialRepository = mock(FestivalEditorialRepository::class.java)
+    private val objectKeyUrlResolver = mock(ObjectKeyUrlResolver::class.java)
     private val curationQueryService = mock(CurationQueryService::class.java)
     private val properties = ExploreProperties(
         peakNowSize = 3,
@@ -50,6 +59,9 @@ class ExploreServiceTest {
         spotRepository,
         spotFavoriteRepository,
         festivalRepository,
+        festivalEditorialRepository,
+        objectKeyUrlResolver,
+        FestivalDetailProperties(endingSoonDays = 7),
         curationQueryService,
         properties,
     )
@@ -261,6 +273,35 @@ class ExploreServiceTest {
         assertThat(response.items.map { it.festivalId }).containsExactly(701L, 703L)
         assertThat(response.items.map { it.endsInDays }).containsExactly(4L, null)
         assertThat(response.items.map { it.region }).containsExactly("경상남도 창원시", "전라남도 광양시")
+    }
+
+    @Test
+    fun `축제 목록은 상세와 같은 phase 판정과 발행 hero 이미지를 사용한다`() {
+        val festival = festival(
+            701L,
+            "진해 군항제",
+            TODAY.minusDays(2),
+            TODAY.plusDays(4),
+            roadAddress = "경상남도 창원시 진해구 통신동",
+        )
+        val editorial = FestivalEditorial(
+            festivalId = 701L,
+            heroImageUrl = "https://img/hero.jpg",
+            status = FestivalEditorialStatus.PUBLISHED,
+        )
+        `when`(festivalRepository.findOngoing(TODAY, festivalPageable)).thenReturn(listOf(festival))
+        `when`(
+            festivalEditorialRepository.findByFestivalIdInAndStatus(
+                listOf(701L),
+                FestivalEditorialStatus.PUBLISHED,
+            ),
+        ).thenReturn(listOf(editorial))
+        doReturn("https://img/hero.jpg").`when`(objectKeyUrlResolver).resolve("https://img/hero.jpg")
+
+        val response = service.festivals(category = null, today = TODAY).items.single()
+
+        assertThat(response.phase).isEqualTo(FestivalPhase.ENDING_SOON)
+        assertThat(response.thumbnailUrl).isEqualTo("https://img/hero.jpg")
     }
 
     @Test
