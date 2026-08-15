@@ -20,9 +20,13 @@ data class BloomEstimation(
     val evidence: String? = null,
 ) {
     val peakDurationDays: Int?
-        get() = if (peakStartDate != null && peakEndDate != null) {
-            (ChronoUnit.DAYS.between(peakStartDate, peakEndDate) + 1).toInt()
-        } else {
-            null
-        }
+        get() = peakDurationDaysInclusive(peakStartDate, peakEndDate)
 }
+
+/** 절정 시작일과 종료일을 모두 포함한 지속일 산식. 상세·프리뷰가 동일하게 사용한다. */
+fun peakDurationDaysInclusive(start: LocalDate?, end: LocalDate?): Int? =
+    if (start != null && end != null) {
+        (ChronoUnit.DAYS.between(start, end) + 1).toInt()
+    } else {
+        null
+    }

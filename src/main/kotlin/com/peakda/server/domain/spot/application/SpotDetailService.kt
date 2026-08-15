@@ -1,6 +1,7 @@
 package com.peakda.server.domain.spot.application
 
 import com.peakda.server.domain.attraction.repository.AttractionRepository
+import com.peakda.server.domain.seasonal.application.peakDurationDaysInclusive
 import com.peakda.server.domain.seasonal.entity.BloomStatus
 import com.peakda.server.domain.seasonal.entity.SeasonalBloomEstimate
 import com.peakda.server.domain.seasonal.repository.SeasonalBloomEstimateRepository
@@ -98,7 +99,7 @@ class SpotDetailService(
         confidence = confidence,
         peakStartDate = peakStartDate,
         peakEndDate = peakEndDate,
-        peakDurationDays = peakDurationDays,
+        peakDurationDays = peakDurationDaysInclusive(peakStartDate, peakEndDate),
         baseDate = baseDate,
     )
 

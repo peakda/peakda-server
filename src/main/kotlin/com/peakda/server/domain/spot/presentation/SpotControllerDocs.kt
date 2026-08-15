@@ -5,6 +5,7 @@ import com.peakda.server.common.openapi.ApiErrorResponses
 import com.peakda.server.common.response.ApiResponse
 import com.peakda.server.common.security.principal.PrincipalDetails
 import com.peakda.server.domain.seasonal.entity.BloomCategory
+import com.peakda.server.domain.seasonal.entity.BloomStatus
 import com.peakda.server.domain.spot.presentation.request.SpotMatchRequest
 import com.peakda.server.domain.spot.presentation.response.SpotDetailResponse
 import com.peakda.server.domain.spot.presentation.response.SpotMatchResponse
@@ -64,9 +65,10 @@ interface SpotControllerDocs {
 
     @Operation(
         summary = "핀 클릭 프리뷰",
-        description = "지도 핀 탭 시 보여줄 카드(썸네일/개화 단계 뱃지/거리)를 조회한다. " +
+        description = "지도 핀 탭 시 보여줄 카드(주소/사진/개화 단계 뱃지/찜/알림/거리)를 조회한다. " +
             "spotIds 1건이면 단일 프리뷰(SCR-011e), 여러 건이면 클러스터 리스트(SCR-011d)로 그대로 쓸 수 있다. " +
-            "lat/lng 을 함께 주면 각 스팟까지의 거리(m)를 계산해 채운다.",
+            "lat/lng 을 함께 주면 각 스팟까지의 거리(m)를 계산해 채운다. " +
+            "items 는 요청한 spotIds 순서를 보존하며 서버 정렬 옵션은 제공하지 않는다.",
         security = [SecurityRequirement(name = "accessTokenCookie")],
     )
     @ApiErrorResponses(
@@ -75,10 +77,25 @@ interface SpotControllerDocs {
     )
     @GetMapping("/preview")
     fun preview(
+        @Parameter(hidden = true)
+        @AuthenticationPrincipal principal: PrincipalDetails,
         @Parameter(description = "프리뷰할 스팟 id 목록", example = "100,101")
         @RequestParam("spotIds") spotIds: List<Long>,
-        @Parameter(description = "꽃 카테고리 필터 (생략 시 각 스팟의 대표 단계)", example = "CHERRY")
+        @Parameter(
+            description = "꽃 카테고리 단일 필터. categories 와 함께 전달하면 두 파라미터의 합집합으로 필터링한다.",
+            example = "CHERRY",
+        )
         @RequestParam("category", required = false) category: BloomCategory?,
+        @Parameter(
+            description = "꽃 카테고리 반복 필터. category 와 함께 전달하면 두 파라미터의 합집합으로 필터링한다.",
+            example = "CHERRY,AZALEA_KR",
+        )
+        @RequestParam("categories", required = false) categories: List<BloomCategory>?,
+        @Parameter(
+            description = "지금 상태 필터 (PEAK=절정, STARTED=피기시작, PREPARING=이르다)",
+            example = "PEAK",
+        )
+        @RequestParam("status", required = false) status: BloomStatus?,
         @Parameter(description = "거리 계산 기준 위도 (lng 과 함께 생략 가능)", example = "37.55")
         @RequestParam("lat", required = false) lat: Double?,
         @Parameter(description = "거리 계산 기준 경도 (lat 과 함께 생략 가능)", example = "126.98")
