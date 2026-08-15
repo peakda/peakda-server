@@ -14,6 +14,7 @@ import com.peakda.server.domain.spot.presentation.response.SpotRecordResponse
 import com.peakda.server.domain.spot.presentation.response.SpotRecordSummaryResponse
 import io.swagger.v3.oas.annotations.Operation
 import io.swagger.v3.oas.annotations.Parameter
+import io.swagger.v3.oas.annotations.media.ArraySchema
 import io.swagger.v3.oas.annotations.media.Content
 import io.swagger.v3.oas.annotations.media.Encoding
 import io.swagger.v3.oas.annotations.media.Schema
@@ -194,10 +195,11 @@ interface SpotRecordControllerDocs {
 
     @Schema(description = "스팟 기록 사진 업로드 multipart form")
     data class SpotRecordPhotoUploadForm(
-        @field:Schema(
-            type = "array",
-            description = "업로드할 이미지 파일들 (jpeg/png/webp, 1~5장, 단일 파일 최대 10MB)",
-            implementation = MultipartFile::class,
+        @field:ArraySchema(
+            schema = Schema(type = "string", format = "binary"),
+            arraySchema = Schema(description = "업로드할 이미지 파일들 (jpeg/png/webp, 1~5장, 단일 파일 최대 10MB)"),
+            minItems = 1,
+            maxItems = 5,
         )
         val images: List<MultipartFile>,
     )
