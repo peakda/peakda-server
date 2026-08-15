@@ -4,7 +4,7 @@ import com.peakda.server.domain.spot.entity.Season
 import java.time.MonthDay
 
 /**
- * 타이밍 산출의 단위가 되는 꽃·계절 카테고리 (MVP 13종).
+ * 타이밍 산출의 단위가 되는 꽃·계절 카테고리 (MVP 15종).
  *
  * 타이밍 도메인의 **정본**이다. 사용자 제안형 `plants` 테이블과는 `plants.bloom_category` 브릿지 컬럼으로 연결된다.
  *
@@ -76,12 +76,26 @@ enum class BloomCategory(
         keywordHints = listOf("연꽃", "연밭", "lotus"),
         festivalHints = listOf("연꽃"),
     ),
+    SUNFLOWER(
+        displayName = "해바라기",
+        season = Season.SUMMER,
+        typicalPeakRange = MonthDayRange(MonthDay.of(7, 15), MonthDay.of(8, 31)),
+        keywordHints = listOf("해바라기", "sunflower"),
+        festivalHints = listOf("해바라기"),
+    ),
     COSMOS(
         displayName = "코스모스",
         season = Season.AUTUMN_WINTER,
         typicalPeakRange = MonthDayRange(MonthDay.of(9, 10), MonthDay.of(10, 15)),
         keywordHints = listOf("코스모스", "cosmos"),
         festivalHints = listOf("코스모스"),
+    ),
+    CHRYSANTHEMUM(
+        displayName = "국화",
+        season = Season.AUTUMN_WINTER,
+        typicalPeakRange = MonthDayRange(MonthDay.of(10, 10), MonthDay.of(11, 10)),
+        keywordHints = listOf("국화", "chrysanthemum"),
+        festivalHints = listOf("국화"),
     ),
     PINK_MUHLY(
         displayName = "핑크뮬리",
