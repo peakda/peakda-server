@@ -28,6 +28,9 @@ class Notification(
     @Column(name = "recipient_id", nullable = false)
     val recipientId: Long,
 
+    @Column(name = "actor_user_id")
+    val actorUserId: Long? = null,
+
     @Enumerated(EnumType.STRING)
     @Column(name = "type", nullable = false, columnDefinition = "TEXT")
     val type: NotificationType,

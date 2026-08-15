@@ -33,6 +33,7 @@ class NotificationEventListener(
         createAndPush(
             CreateNotificationCommand(
                 recipientId = event.followingId,
+                actorUserId = event.followerId,
                 type = NotificationType.FOLLOW,
                 title = "새 팔로워",
                 body = "${actor.nickname}님이 회원님을 팔로우했습니다.",
@@ -50,6 +51,7 @@ class NotificationEventListener(
         createAndPush(
             CreateNotificationCommand(
                 recipientId = event.recordOwnerId,
+                actorUserId = event.actorId,
                 type = NotificationType.REACTION,
                 title = "새 반응",
                 body = "${actor.nickname}님이 회원님의 기록에 반응했습니다.",

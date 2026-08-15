@@ -50,6 +50,7 @@ class NotificationEventListenerTest {
 
         verify(notificationService).create(capture())
         assertThat(captor.value.recipientId).isEqualTo(9L)
+        assertThat(captor.value.actorUserId).isEqualTo(2L)
         assertThat(captor.value.type).isEqualTo(NotificationType.REACTION)
         assertThat(captor.value.targetId).isEqualTo(100L)
     }
@@ -62,6 +63,7 @@ class NotificationEventListenerTest {
 
         verify(notificationService).create(capture())
         assertThat(captor.value.recipientId).isEqualTo(7L)
+        assertThat(captor.value.actorUserId).isEqualTo(3L)
         assertThat(captor.value.type).isEqualTo(NotificationType.FOLLOW)
         assertThat(captor.value.targetId).isEqualTo(3L)
     }
