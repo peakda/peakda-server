@@ -69,6 +69,12 @@ interface SeasonalBloomEstimateRepository : JpaRepository<SeasonalBloomEstimate,
         bloomCategory: BloomCategory,
     ): List<SeasonalBloomEstimate>
 
+    fun findByBaseDateAndAttractionIdInAndBloomCategoryIn(
+        baseDate: LocalDate,
+        attractionIds: Collection<Long>,
+        bloomCategories: Collection<BloomCategory>,
+    ): List<SeasonalBloomEstimate>
+
     fun findByBaseDateAndStatus(
         baseDate: LocalDate,
         status: BloomStatus,
