@@ -5,6 +5,8 @@ import com.peakda.server.domain.seasonal.application.BloomCalendarService
 import com.peakda.server.domain.seasonal.application.BloomQueryService
 import com.peakda.server.domain.seasonal.application.SpotBloomMapService
 import com.peakda.server.domain.seasonal.entity.BloomCategory
+import com.peakda.server.domain.seasonal.entity.BloomStatus
+import com.peakda.server.domain.seasonal.entity.Region
 import com.peakda.server.domain.seasonal.presentation.response.BloomCalendarResponse
 import com.peakda.server.domain.seasonal.presentation.response.BloomMapResponse
 import com.peakda.server.domain.seasonal.presentation.response.BloomPeakListResponse
@@ -28,9 +30,22 @@ class SeasonalBloomController(
         minLng: Double,
         maxLng: Double,
         category: BloomCategory?,
+        categories: List<BloomCategory>?,
+        status: BloomStatus?,
+        region: Region?,
         date: LocalDate?,
     ): ResponseEntity<ApiResponse<BloomMapResponse>> {
-        val response = spotBloomMapService.map(minLat, maxLat, minLng, maxLng, category, date)
+        val selectedCategories = (categories.orEmpty() + listOfNotNull(category)).distinct().ifEmpty { null }
+        val response = spotBloomMapService.map(
+            minLat = minLat,
+            maxLat = maxLat,
+            minLng = minLng,
+            maxLng = maxLng,
+            categories = selectedCategories,
+            status = status,
+            region = region,
+            date = date,
+        )
         return ResponseEntity.ok(ApiResponse.success(HttpStatus.OK, response))
     }
 

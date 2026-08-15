@@ -4,6 +4,7 @@ import com.peakda.server.domain.attraction.entity.Attraction
 import com.peakda.server.domain.attraction.repository.AttractionRepository
 import com.peakda.server.domain.seasonal.entity.BloomCategory
 import com.peakda.server.domain.seasonal.entity.BloomStatus
+import com.peakda.server.domain.seasonal.entity.Region
 import com.peakda.server.domain.seasonal.entity.SeasonalBloomEstimate
 import com.peakda.server.domain.seasonal.presentation.response.BloomMapResponse
 import com.peakda.server.domain.seasonal.presentation.response.BloomMapResponse.BloomMapItem
@@ -50,10 +51,31 @@ class SpotBloomMapService(
         maxLng: Double,
         category: BloomCategory?,
         date: LocalDate?,
+    ): BloomMapResponse = map(
+        minLat = minLat,
+        maxLat = maxLat,
+        minLng = minLng,
+        maxLng = maxLng,
+        categories = category?.let(::listOf),
+        status = null,
+        region = null,
+        date = date,
+    )
+
+    @Transactional(readOnly = true)
+    fun map(
+        minLat: Double,
+        maxLat: Double,
+        minLng: Double,
+        maxLng: Double,
+        categories: List<BloomCategory>?,
+        status: BloomStatus?,
+        region: Region?,
+        date: LocalDate?,
     ): BloomMapResponse {
         val baseDate = seasonalBloomEstimateRepository.findLatestBaseDate()
-        val pins = buildAttractionPins(minLat, maxLat, minLng, maxLng, category, date, baseDate) +
-            buildLocalPins(minLat, maxLat, minLng, maxLng, category)
+        val pins = buildAttractionPins(minLat, maxLat, minLng, maxLng, categories, status, region, date, baseDate) +
+            buildLocalPins(minLat, maxLat, minLng, maxLng, categories, status, region)
         // 하위호환: 명소형 핀만 옛 구조(attractions)로도 함께 제공한다.
         val legacyAttractions = pins.filter { it.type == SpotType.ATTRACTION }.map { it.toLegacyItem() }
         return BloomMapResponse(baseDate = baseDate, count = pins.size, pins = pins, attractions = legacyAttractions)
@@ -64,21 +86,27 @@ class SpotBloomMapService(
         maxLat: Double,
         minLng: Double,
         maxLng: Double,
-        category: BloomCategory?,
+        categories: List<BloomCategory>?,
+        status: BloomStatus?,
+        region: Region?,
         date: LocalDate?,
         baseDate: LocalDate?,
     ): List<BloomMapPin> {
         if (baseDate == null) return emptyList()
         val attractionsById = attractionRepository
             .findVisibleInBoundingBox(minLat = minLat, maxLat = maxLat, minLng = minLng, maxLng = maxLng)
+            .filter { attraction -> region == null || Region.ofAreaCode(attraction.areaCode.orEmpty()) == region }
             .associateBy { requireNotNull(it.id) }
         if (attractionsById.isEmpty()) return emptyList()
 
         val ids = attractionsById.keys.toList()
-        val estimates = if (category != null) {
-            seasonalBloomEstimateRepository.findByBaseDateAndAttractionIdInAndBloomCategory(baseDate, ids, category)
-        } else {
-            seasonalBloomEstimateRepository.findByBaseDateAndAttractionIdIn(baseDate, ids)
+        val selectedCategories = categories.orEmpty().distinct()
+        val estimates = when {
+            selectedCategories.isEmpty() -> seasonalBloomEstimateRepository.findByBaseDateAndAttractionIdIn(baseDate, ids)
+            selectedCategories.size == 1 -> seasonalBloomEstimateRepository
+                .findByBaseDateAndAttractionIdInAndBloomCategory(baseDate, ids, selectedCategories.first())
+            else -> seasonalBloomEstimateRepository
+                .findByBaseDateAndAttractionIdInAndBloomCategoryIn(baseDate, ids, selectedCategories)
         }
         val spotIdByAttraction = spotRepository
             .findByTypeAndAttractionIdIn(SpotType.ATTRACTION, ids)
@@ -90,6 +118,7 @@ class SpotBloomMapService(
             .mapNotNull { (attractionId, rows) ->
                 val attraction = attractionsById[attractionId] ?: return@mapNotNull null
                 val slots = rows.mapNotNull { it.toSlot(date) }
+                    .filter { status == null || it.status == status }
                 if (slots.isEmpty()) return@mapNotNull null
                 attraction.toPin(spotIdByAttraction[attractionId], slots)
             }
@@ -100,9 +129,12 @@ class SpotBloomMapService(
         maxLat: Double,
         minLng: Double,
         maxLng: Double,
-        category: BloomCategory?,
+        categories: List<BloomCategory>?,
+        status: BloomStatus?,
+        region: Region?,
     ): List<BloomMapPin> {
         val spots = spotRepository.findVisibleInBoundingBox(SpotType.LOCAL, minLat, maxLat, minLng, maxLng)
+            .filter { spot -> region == null || Region.ofAddress(spot.address) == region }
         if (spots.isEmpty()) return emptyList()
 
         val records = spotRecordRepository
@@ -114,7 +146,7 @@ class SpotBloomMapService(
 
         return spots.mapNotNull { spot ->
             val spotId = spot.id ?: return@mapNotNull null
-            val slots = localSlots(recordsBySpot[spotId].orEmpty(), categoriesByRecord, category)
+            val slots = localSlots(recordsBySpot[spotId].orEmpty(), categoriesByRecord, categories, status)
             if (slots.isEmpty()) return@mapNotNull null
             spot.toPin(slots)
         }
@@ -137,7 +169,8 @@ class SpotBloomMapService(
     private fun localSlots(
         spotRecords: List<SpotRecord>,
         categoriesByRecord: Map<Long, Set<BloomCategory>>,
-        categoryFilter: BloomCategory?,
+        categoryFilters: List<BloomCategory>?,
+        statusFilter: BloomStatus?,
     ): List<BloomSlot> {
         val slotByCategory = linkedMapOf<BloomCategory, BloomSlot>()
         val recent = spotRecords.sortedWith(
@@ -149,14 +182,14 @@ class SpotBloomMapService(
             if (status == BloomStatus.ENDED) continue
             val recordId = record.id ?: continue
             val categories = categoriesByRecord[recordId].orEmpty()
-                .filter { categoryFilter == null || it == categoryFilter }
+                .filter { categoryFilters.isNullOrEmpty() || it in categoryFilters }
             for (category in categories) {
                 slotByCategory.getOrPut(category) {
                     BloomSlot(category, category.displayName, status, LOCAL_RECORD_CONFIDENCE)
                 }
             }
         }
-        return slotByCategory.values.toList()
+        return slotByCategory.values.filter { statusFilter == null || it.status == statusFilter }
     }
 
     /**

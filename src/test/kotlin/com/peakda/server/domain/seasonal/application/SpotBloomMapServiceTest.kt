@@ -5,6 +5,7 @@ import com.peakda.server.domain.attraction.repository.AttractionRepository
 import com.peakda.server.domain.seasonal.entity.BloomCategory
 import com.peakda.server.domain.seasonal.entity.BloomStatus
 import com.peakda.server.domain.seasonal.entity.Estimator
+import com.peakda.server.domain.seasonal.entity.Region
 import com.peakda.server.domain.seasonal.entity.SeasonalBloomEstimate
 import com.peakda.server.domain.seasonal.repository.SeasonalBloomEstimateRepository
 import com.peakda.server.domain.spot.entity.BloomStage
@@ -167,6 +168,100 @@ class SpotBloomMapServiceTest {
 
         assertThat(response.pins.first().blooms).extracting<BloomCategory> { it.category }
             .containsExactly(BloomCategory.CHERRY)
+    }
+
+    @Test
+    fun `categories 반복 파라미터는 레포지토리 IN 조회로 합집합 슬롯을 반환한다`() {
+        stubAttractions(attraction(ATTRACTION_ID, "남산"))
+        `when`(
+            seasonalBloomEstimateRepository.findByBaseDateAndAttractionIdInAndBloomCategoryIn(
+                baseDate,
+                listOf(ATTRACTION_ID),
+                listOf(BloomCategory.CHERRY, BloomCategory.AZALEA),
+            ),
+        ).thenReturn(
+            listOf(
+                estimate(BloomCategory.CHERRY, BloomStatus.PEAK, confidence = 0.9),
+                estimate(BloomCategory.AZALEA, BloomStatus.STARTED, confidence = 0.8),
+            ),
+        )
+        stubMaterializedSpot(spotId = 100L)
+        stubNoLocalSpots()
+
+        val response = service.map(
+            MIN_LAT,
+            MAX_LAT,
+            MIN_LNG,
+            MAX_LNG,
+            categories = listOf(BloomCategory.CHERRY, BloomCategory.AZALEA),
+            status = null,
+            region = null,
+            date = null,
+        )
+
+        assertThat(response.pins.single().blooms).extracting<BloomCategory> { it.category }
+            .containsExactlyInAnyOrder(BloomCategory.CHERRY, BloomCategory.AZALEA)
+    }
+
+    @Test
+    fun `status 필터는 명소 추정과 동네 관측에 동일한 BloomStatus를 적용한다`() {
+        val attraction = attraction(ATTRACTION_ID, "남산").also { it.areaCode = "1" }
+        stubAttractions(attraction)
+        stubAttractionEstimates(estimate(BloomCategory.CHERRY, BloomStatus.PEAK, confidence = 0.9))
+        stubMaterializedSpot(spotId = 100L)
+
+        val local = localSpot(SPOT_ID, "벚꽃길").also { it.address = "서울특별시 중구" }
+        `when`(spotRepository.findVisibleInBoundingBox(SpotType.LOCAL, MIN_LAT, MAX_LAT, MIN_LNG, MAX_LNG))
+            .thenReturn(listOf(local))
+        val record = record(1L, SPOT_ID, LocalDate.of(2026, 4, 1), BloomStage.PEAK)
+        `when`(spotRecordRepository.findBySpotIdInAndStatus(listOf(SPOT_ID), SpotRecordStatus.PUBLISHED))
+            .thenReturn(listOf(record))
+        `when`(spotRecordPlantRepository.findByIdSpotRecordIdIn(listOf(1L))).thenReturn(
+            listOf(SpotRecordPlant(SpotRecordPlantId(1L, 10L))),
+        )
+        `when`(plantRepository.findAllById(setOf(10L))).thenReturn(listOf(plant(10L, BloomCategory.CHERRY)))
+
+        val response = service.map(
+            MIN_LAT,
+            MAX_LAT,
+            MIN_LNG,
+            MAX_LNG,
+            categories = null,
+            status = BloomStatus.PEAK,
+            region = Region.CAPITAL,
+            date = null,
+        )
+
+        assertThat(response.pins).hasSize(2)
+        assertThat(response.pins).allSatisfy { pin ->
+            assertThat(pin.blooms).allMatch { it.status == BloomStatus.PEAK }
+        }
+    }
+
+    @Test
+    fun `권역 필터는 bbox 결과와 AND로 동작하고 LOCAL 판정 불가 주소는 제외한다`() {
+        val attraction = attraction(ATTRACTION_ID, "세종 명소").also { it.areaCode = "8" }
+        stubAttractions(attraction)
+        stubAttractionEstimates(estimate(BloomCategory.CHERRY, BloomStatus.PEAK, confidence = 0.9))
+        stubMaterializedSpot(spotId = 100L)
+
+        val unknownLocal = localSpot(SPOT_ID, "주소 불명")
+        `when`(spotRepository.findVisibleInBoundingBox(SpotType.LOCAL, MIN_LAT, MAX_LAT, MIN_LNG, MAX_LNG))
+            .thenReturn(listOf(unknownLocal))
+
+        val response = service.map(
+            MIN_LAT,
+            MAX_LAT,
+            MIN_LNG,
+            MAX_LNG,
+            categories = null,
+            status = null,
+            region = Region.CHUNGCHEONG,
+            date = null,
+        )
+
+        assertThat(response.pins).hasSize(1)
+        assertThat(response.pins.single().attractionId).isEqualTo(ATTRACTION_ID)
     }
 
     // --- fixtures ---
