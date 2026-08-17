@@ -1,6 +1,7 @@
 package com.peakda.server.domain.seasonal.presentation
 
 import com.peakda.server.common.response.ApiResponse
+import com.peakda.server.common.security.principal.PrincipalDetails
 import com.peakda.server.domain.seasonal.application.BloomCalendarService
 import com.peakda.server.domain.seasonal.application.BloomQueryService
 import com.peakda.server.domain.seasonal.application.SpotBloomMapService
@@ -10,6 +11,7 @@ import com.peakda.server.domain.seasonal.entity.Region
 import com.peakda.server.domain.seasonal.presentation.response.BloomCalendarResponse
 import com.peakda.server.domain.seasonal.presentation.response.BloomMapResponse
 import com.peakda.server.domain.seasonal.presentation.response.BloomPeakListResponse
+import org.slf4j.LoggerFactory
 import org.springframework.http.HttpStatus
 import org.springframework.http.ResponseEntity
 import org.springframework.web.bind.annotation.RequestMapping
@@ -25,6 +27,7 @@ class SeasonalBloomController(
 ) : SeasonalBloomControllerDocs {
 
     override fun map(
+        principal: PrincipalDetails,
         minLat: Double,
         maxLat: Double,
         minLng: Double,
@@ -35,6 +38,14 @@ class SeasonalBloomController(
         region: Region?,
         date: LocalDate?,
     ): ResponseEntity<ApiResponse<BloomMapResponse>> {
+        log.info(
+            "Bloom map requested. userId={}, bbox=[{}, {}, {}, {}]",
+            principal.getUser().id,
+            minLat,
+            minLng,
+            maxLat,
+            maxLng,
+        )
         val selectedCategories = (categories.orEmpty() + listOfNotNull(category)).distinct().ifEmpty { null }
         val response = spotBloomMapService.map(
             minLat = minLat,
@@ -62,5 +73,9 @@ class SeasonalBloomController(
     ): ResponseEntity<ApiResponse<BloomCalendarResponse>> {
         val response = bloomCalendarService.getCalendar(attractionId, category)
         return ResponseEntity.ok(ApiResponse.success(HttpStatus.OK, response))
+    }
+
+    companion object {
+        private val log = LoggerFactory.getLogger(SeasonalBloomController::class.java)
     }
 }
