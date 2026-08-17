@@ -10,6 +10,7 @@ const NAV_ITEMS = [
     ['users', '/admin/users.html', '사용자'],
     ['jobs', '/admin/jobs.html', '스케줄러 잡'],
     ['audit-logs', '/admin/audit-logs.html', '감사 로그'],
+    ['location-usage-logs', '/admin/location-usage-logs.html', '위치정보 이용내역'],
 ];
 
 function renderSidebar(activePage) {
