@@ -3,7 +3,6 @@ package com.peakda.server.domain.seasonal.presentation
 import com.peakda.server.common.exception.ErrorCode
 import com.peakda.server.common.openapi.ApiErrorResponses
 import com.peakda.server.common.response.ApiResponse
-import com.peakda.server.common.security.principal.PrincipalDetails
 import com.peakda.server.domain.seasonal.entity.BloomCategory
 import com.peakda.server.domain.seasonal.entity.BloomStatus
 import com.peakda.server.domain.seasonal.entity.Region
@@ -16,7 +15,6 @@ import io.swagger.v3.oas.annotations.security.SecurityRequirement
 import io.swagger.v3.oas.annotations.tags.Tag
 import org.springframework.format.annotation.DateTimeFormat
 import org.springframework.http.ResponseEntity
-import org.springframework.security.core.annotation.AuthenticationPrincipal
 import org.springframework.web.bind.annotation.GetMapping
 import org.springframework.web.bind.annotation.RequestParam
 import java.time.LocalDate
@@ -42,8 +40,6 @@ interface SeasonalBloomControllerDocs {
     )
     @GetMapping
     fun map(
-        @Parameter(hidden = true)
-        @AuthenticationPrincipal principal: PrincipalDetails,
         @Parameter(description = "남서 위도", example = "37.4")
         @RequestParam("minLat") minLat: Double,
         @Parameter(description = "북동 위도", example = "37.7")
