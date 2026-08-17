@@ -2,6 +2,8 @@ package com.peakda.server.domain.spot.presentation
 
 import com.peakda.server.common.response.ApiResponse
 import com.peakda.server.common.security.principal.PrincipalDetails
+import com.peakda.server.domain.location.application.RecordLocationUsage
+import com.peakda.server.domain.location.entity.LocationServiceType
 import com.peakda.server.domain.seasonal.entity.BloomCategory
 import com.peakda.server.domain.seasonal.entity.BloomStatus
 import com.peakda.server.domain.spot.application.SpotDetailService
@@ -29,6 +31,7 @@ class SpotController(
     private val spotPreviewService: SpotPreviewService,
 ) : SpotControllerDocs {
 
+    @RecordLocationUsage(service = LocationServiceType.SPOT_MATCH)
     override fun match(
         principal: PrincipalDetails,
         request: SpotMatchRequest,
@@ -56,6 +59,7 @@ class SpotController(
         return ResponseEntity.ok(ApiResponse.success(HttpStatus.OK, response))
     }
 
+    @RecordLocationUsage(service = LocationServiceType.SPOT_PREVIEW, coordinateParams = ["lat", "lng"])
     override fun preview(
         principal: PrincipalDetails,
         spotIds: List<Long>,

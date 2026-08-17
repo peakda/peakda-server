@@ -1,6 +1,8 @@
 package com.peakda.server.domain.seasonal.presentation
 
 import com.peakda.server.common.response.ApiResponse
+import com.peakda.server.domain.location.application.RecordLocationUsage
+import com.peakda.server.domain.location.entity.LocationServiceType
 import com.peakda.server.domain.seasonal.application.BloomCalendarService
 import com.peakda.server.domain.seasonal.application.BloomQueryService
 import com.peakda.server.domain.seasonal.application.SpotBloomMapService
@@ -24,6 +26,7 @@ class SeasonalBloomController(
     private val spotBloomMapService: SpotBloomMapService,
 ) : SeasonalBloomControllerDocs {
 
+    @RecordLocationUsage(service = LocationServiceType.BLOOM_MAP)
     override fun map(
         minLat: Double,
         maxLat: Double,

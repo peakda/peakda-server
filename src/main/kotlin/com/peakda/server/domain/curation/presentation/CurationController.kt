@@ -6,6 +6,8 @@ import com.peakda.server.common.page.toPageResponse
 import com.peakda.server.common.response.ApiResponse
 import com.peakda.server.domain.curation.application.CurationQueryService
 import com.peakda.server.domain.curation.presentation.response.CurationCardResponse
+import com.peakda.server.domain.location.application.RecordLocationUsage
+import com.peakda.server.domain.location.entity.LocationServiceType
 import com.peakda.server.domain.curation.presentation.response.CurationDetailResponse
 import org.springframework.http.HttpStatus
 import org.springframework.http.ResponseEntity
@@ -25,6 +27,7 @@ class CurationController(
         return ResponseEntity.ok(ApiResponse.success(HttpStatus.OK, response))
     }
 
+    @RecordLocationUsage(service = LocationServiceType.CURATION_DETAIL, coordinateParams = ["lat", "lng"])
     override fun detail(
         id: Long,
         lat: Double?,

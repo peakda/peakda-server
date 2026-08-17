@@ -57,6 +57,8 @@ dependencies {
 kotlin {
 	compilerOptions {
 		freeCompilerArgs.addAll("-Xjsr305=strict")
+		// AOP 에서 메서드 파라미터 이름을 읽는다 (@RecordLocationUsage 의 coordinateParams 판별).
+		javaParameters.set(true)
 	}
 }
 
