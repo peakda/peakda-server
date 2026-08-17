@@ -51,4 +51,23 @@ interface UserRepository : JpaRepository<User, Long> {
         @Param("role") role: UserRole?,
         pageable: Pageable,
     ): Page<User>
+
+    /**
+     * 이메일 부분일치(대소문자 무시) 사용자 id 조회. 백오피스 위치정보 확인자료를 대상자로 좁힐 때 쓴다.
+     *
+     * [findAdminUsers] 와 같은 이유로 [emailPattern] 은 절대 null 이 아니어야 한다.
+     * 이메일이 없는 계정(탈퇴로 익명화된 계정 포함)은 LIKE 비교에서 자연히 빠진다.
+     */
+    @Query(
+        """
+            SELECT u.id
+            FROM User u
+            WHERE LOWER(u.email) LIKE LOWER(:emailPattern) ESCAPE '\'
+            ORDER BY u.id DESC
+        """,
+    )
+    fun findIdsByEmailPattern(
+        @Param("emailPattern") emailPattern: String,
+        pageable: Pageable,
+    ): List<Long>
 }
