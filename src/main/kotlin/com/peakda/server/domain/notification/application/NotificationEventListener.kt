@@ -62,7 +62,7 @@ class NotificationEventListener(
     }
 
     private fun createAndPush(command: CreateNotificationCommand) {
-        notificationService.create(command)
+        val notification = notificationService.create(command)
         val tokens = deviceTokenRepository.findByUserId(command.recipientId)
         if (tokens.isEmpty()) return
 
@@ -74,6 +74,8 @@ class NotificationEventListener(
                 linkType = command.linkType,
                 linkUrl = command.linkUrl,
                 targetId = command.targetId,
+                notificationId = requireNotNull(notification.id),
+                type = notification.type,
             ),
         )
     }

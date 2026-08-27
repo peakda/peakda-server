@@ -44,12 +44,12 @@ class NoticeFanoutService(
             if (users.isEmpty()) break
 
             val userIds = users.map { requireNotNull(it.id) }
-            val insertedUserIds = transactionTemplate.execute {
+            val notifications = transactionTemplate.execute {
                 recordNotifications(notice, noticeId, userIds)
             }.orEmpty()
 
-            push(notice, insertedUserIds)
-            dispatched += insertedUserIds.size
+            push(notice, notifications)
+            dispatched += notifications.size
             cursor = userIds.last()
             if (users.size < PAGE_SIZE) break
         }
@@ -66,11 +66,11 @@ class NoticeFanoutService(
         return dispatched
     }
 
-    private fun recordNotifications(notice: Notice, noticeId: Long, userIds: List<Long>): List<Long> {
+    private fun recordNotifications(notice: Notice, noticeId: Long, userIds: List<Long>): List<Notification> {
         val insertedUserIds = noticeDispatchRepository.insertIfAbsent(noticeId, userIds.toLongArray())
         if (insertedUserIds.isEmpty()) return emptyList()
 
-        notificationRepository.saveAll(
+        return notificationRepository.saveAll(
             insertedUserIds.map { userId ->
                 Notification(
                     recipientId = userId,
@@ -83,24 +83,30 @@ class NoticeFanoutService(
                 )
             },
         )
-        return insertedUserIds
     }
 
-    private fun push(notice: Notice, userIds: List<Long>) {
-        if (userIds.isEmpty()) return
+    private fun push(notice: Notice, notifications: List<Notification>) {
+        if (notifications.isEmpty()) return
+        val userIds = notifications.map { it.recipientId }
         val tokens = deviceTokenRepository.findByUserIdIn(userIds)
         if (tokens.isEmpty()) return
 
-        pushSender.send(
-            tokens,
-            PushPayload(
-                title = notice.title,
-                body = notice.body,
-                linkType = notice.linkType,
-                linkUrl = notice.linkUrl,
-                targetId = notice.targetId,
-            ),
-        )
+        val notificationByUserId = notifications.associateBy { it.recipientId }
+        tokens.groupBy { it.userId }.forEach { (userId, userTokens) ->
+            val notification = notificationByUserId[userId] ?: return@forEach
+            pushSender.send(
+                userTokens,
+                PushPayload(
+                    title = notice.title,
+                    body = notice.body,
+                    linkType = notice.linkType,
+                    linkUrl = notice.linkUrl,
+                    targetId = notice.targetId,
+                    notificationId = requireNotNull(notification.id),
+                    type = notification.type,
+                ),
+            )
+        }
     }
 
     companion object {

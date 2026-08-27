@@ -74,6 +74,11 @@ spring:
             user-name-attribute: sub
 
 app:
+  push:
+    enabled: ${FCM_ENABLED:false}
+    project-id: ${FCM_PROJECT_ID:}
+    service-account-location: ${FCM_SERVICE_ACCOUNT_LOCATION:}
+    service-account-base64: ${FCM_SERVICE_ACCOUNT_BASE64:}
   jwt:
     secret: ${JWT_SECRET}
     access-token-validity-in-seconds: 1800

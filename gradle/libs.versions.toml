@@ -8,6 +8,7 @@ redisson = "4.3.1"
 resilience4j = "2.2.0"
 aws-sdk = "2.30.10"
 thumbnailator = "0.4.20"
+firebase-admin = "9.7.0"
 
 [libraries]
 # Spring Boot Starters
@@ -58,6 +59,7 @@ aws-sdk-s3 = { module = "software.amazon.awssdk:s3", version.ref = "aws-sdk" }
 
 # Image processing
 thumbnailator = { module = "net.coobird:thumbnailator", version.ref = "thumbnailator" }
+firebase-admin = { module = "com.google.firebase:firebase-admin", version.ref = "firebase-admin" }
 
 [plugins]
 kotlin-jvm = { id = "org.jetbrains.kotlin.jvm", version.ref = "kotlin" }

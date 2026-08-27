@@ -73,6 +73,7 @@ class NotificationEventListenerTest {
         val tokens = listOf(deviceToken(userId = 7L, token = "token-1"))
         `when`(userRepository.findById(3L)).thenReturn(Optional.of(user(3L, "팔로워")))
         `when`(deviceTokenRepository.findByUserId(7L)).thenReturn(tokens)
+        `when`(notificationService.create(capture())).thenReturn(notification(9012L))
 
         listener.onFollowCreated(FollowCreatedEvent(followerId = 3L, followingId = 7L))
 
@@ -85,6 +86,8 @@ class NotificationEventListenerTest {
                 linkType = NotificationLinkType.INTERNAL,
                 linkUrl = null,
                 targetId = 3L,
+                notificationId = 9012L,
+                type = NotificationType.FOLLOW,
             ),
         )
     }
@@ -116,6 +119,15 @@ class NotificationEventListenerTest {
 
     private fun deviceToken(userId: Long, token: String): DeviceToken =
         DeviceToken(userId = userId, token = token, platform = DevicePlatform.ANDROID)
+
+    private fun notification(id: Long) = com.peakda.server.domain.notification.entity.Notification(
+        recipientId = 7L,
+        type = NotificationType.FOLLOW,
+        title = "새 팔로워",
+        body = "팔로워님이 회원님을 팔로우했습니다.",
+        linkType = NotificationLinkType.INTERNAL,
+        targetId = 3L,
+    ).also { ReflectionTestUtils.setField(it, "id", id) }
 
     companion object {
         private val DUMMY = CreateNotificationCommand(0L, NotificationType.TIMING, "", "")
