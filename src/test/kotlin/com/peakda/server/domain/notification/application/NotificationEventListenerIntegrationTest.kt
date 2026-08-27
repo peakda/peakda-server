@@ -5,6 +5,7 @@ import com.peakda.server.domain.auth.oauth.model.OAuth2LoginType
 import com.peakda.server.domain.notification.entity.DevicePlatform
 import com.peakda.server.domain.notification.entity.DeviceToken
 import com.peakda.server.domain.notification.entity.NotificationLinkType
+import com.peakda.server.domain.notification.entity.NotificationType
 import com.peakda.server.domain.notification.repository.DeviceTokenRepository
 import com.peakda.server.domain.notification.repository.NotificationRepository
 import com.peakda.server.domain.user.application.FollowCreatedEvent
@@ -120,7 +121,7 @@ class NotificationEventListenerIntegrationTest {
     private fun anyPayload(): PushPayload = any(PushPayload::class.java) ?: DUMMY_PAYLOAD
 
     companion object {
-        private val DUMMY_PAYLOAD = PushPayload("", "", NotificationLinkType.INTERNAL, null, null)
+        private val DUMMY_PAYLOAD = PushPayload("", "", NotificationLinkType.INTERNAL, null, null, 0L, NotificationType.TIMING)
 
         @Container
         @ServiceConnection

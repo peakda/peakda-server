@@ -87,6 +87,8 @@ class BloomTimingAlertServiceTest {
                 linkType = NotificationLinkType.INTERNAL,
                 linkUrl = null,
                 targetId = 10L,
+                notificationId = 9012L,
+                type = NotificationType.TIMING,
             ),
         )
     }
@@ -284,7 +286,7 @@ class BloomTimingAlertServiceTest {
             body = "body",
             linkType = NotificationLinkType.INTERNAL,
             targetId = 10L,
-        )
+        ).also { org.springframework.test.util.ReflectionTestUtils.setField(it, "id", 9012L) }
 
     /** ArgumentCaptor.capture() 도 null 을 돌려주므로 non-null 더미로 감싼다 (매처는 그대로 등록됨). */
     private fun captureCandidate(): BloomTimingAlertCandidate = candidateCaptor.capture() ?: DUMMY_CANDIDATE
@@ -342,6 +344,8 @@ class BloomTimingAlertServiceTest {
             linkType = NotificationLinkType.INTERNAL,
             linkUrl = null,
             targetId = null,
+            notificationId = 0L,
+            type = NotificationType.TIMING,
         )
     }
 }

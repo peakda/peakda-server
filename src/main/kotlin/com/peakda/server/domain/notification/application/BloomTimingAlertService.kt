@@ -83,10 +83,11 @@ class BloomTimingAlertService(
             val estimates = estimatesByAttraction[favorite.attractionId] ?: continue
             for (estimate in estimates) {
                 val candidate = candidate(favorite, estimate, today) ?: continue
-                if (recorder.record(candidate) == null) continue
+                val notification = recorder.record(candidate) ?: continue
 
                 val tokens = tokensByUser[favorite.userId].orEmpty()
                 if (tokens.isNotEmpty()) {
+                    val notificationId = requireNotNull(notification.id)
                     pushSender.send(
                         tokens,
                         PushPayload(
@@ -95,6 +96,8 @@ class BloomTimingAlertService(
                             linkType = NotificationLinkType.INTERNAL,
                             linkUrl = null,
                             targetId = candidate.spotId,
+                            notificationId = notificationId,
+                            type = notification.type,
                         ),
                     )
                 }

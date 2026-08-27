@@ -41,6 +41,7 @@ dependencies {
 	runtimeOnly(libs.jjwt.jackson)
 	implementation(libs.aws.sdk.s3)
 	implementation(libs.thumbnailator)
+	implementation(libs.firebase.admin)
 	annotationProcessor(libs.spring.boot.configuration.processor)
 	// 코드에서 참조하지 않는다. classpath 에 있으면 Actuator 가 /actuator/prometheus 를 노출한다.
 	runtimeOnly(libs.micrometer.registry.prometheus)

@@ -63,6 +63,9 @@ app_parameters = {
   STORAGE_PRESIGNED_URL_TTL_SECONDS = "604800"
 
   SPOT_MATCHER_RADIUS_METERS = "50.0"
+
+  FCM_ENABLED   = "true"
+  FCM_PROJECT_ID = "peakda"
 }
 
 # ---------------------------------------------------------------------------
@@ -83,6 +86,7 @@ app_secret_names = [
   "KMA_SERVICE_KEY",
   "PUBDATA_FESTIVAL_SERVICE_KEY",
   "GRAFANA_CLOUD_API_KEY",
+  "FCM_SERVICE_ACCOUNT_BASE64",
 
   # S3 IAM 사용자 액세스 키. apply 후 CLI 로 발급해 주입한다.
   # Terraform 으로 만들면 state 에 평문으로 남는다.
