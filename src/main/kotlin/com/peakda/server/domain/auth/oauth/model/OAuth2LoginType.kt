@@ -3,6 +3,7 @@ package com.peakda.server.domain.auth.oauth.model
 enum class OAuth2LoginType(val provider: String) {
     KAKAO("kakao"),
     NAVER("naver"),
+    GOOGLE("google"),
     APPLE("apple");
 
     companion object {
