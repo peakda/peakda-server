@@ -3,7 +3,10 @@ package com.peakda.server.domain.auth.presentation
 import com.peakda.server.common.response.ApiResponse
 import com.peakda.server.common.security.principal.PrincipalDetails
 import com.peakda.server.common.security.principal.SignupSessionPrincipal
+import com.peakda.server.domain.auth.application.AppleLoginService
 import com.peakda.server.domain.auth.application.AuthService
+import com.peakda.server.domain.auth.presentation.request.AppleLoginRequest
+import com.peakda.server.domain.auth.presentation.response.AppleLoginResponse
 import com.peakda.server.domain.auth.presentation.response.UserInfoResponse
 import com.peakda.server.domain.auth.signup.presentation.request.SignupCompleteRequest
 import com.peakda.server.domain.auth.signup.presentation.response.NicknameCheckResponse
@@ -20,7 +23,16 @@ import org.springframework.web.multipart.MultipartFile
 @RequestMapping("/api/auth")
 class AuthController(
     private val authService: AuthService,
+    private val appleLoginService: AppleLoginService,
 ) : AuthControllerDocs {
+
+    override fun appleLogin(
+        request: AppleLoginRequest,
+        response: HttpServletResponse,
+    ): ResponseEntity<ApiResponse<AppleLoginResponse>> {
+        val result = appleLoginService.login(request.identityToken, response)
+        return ResponseEntity.ok(ApiResponse.success(HttpStatus.OK, result))
+    }
 
     override fun getCurrentUser(
         principal: PrincipalDetails,

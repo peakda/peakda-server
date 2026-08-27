@@ -39,7 +39,8 @@ class SecurityConfig(
             "/admin/**",
             "/oauth2/**",
             "/login/oauth2/**",
-            "/api/auth/refresh"
+            "/api/auth/refresh",
+            "/api/auth/oauth/apple"
         )
     }
 
