@@ -22,6 +22,7 @@ class OpenApiConfig(
 
     companion object {
         private const val KAKAO_LOGIN_PATH = "/oauth2/authorization/kakao"
+        private const val GOOGLE_LOGIN_PATH = "/oauth2/authorization/google"
     }
 
     @Bean
@@ -185,6 +186,28 @@ class OpenApiConfig(
                             ExternalDocumentation()
                                 .description("Develop 카카오 로그인 시작")
                                 .url("${openApiProperties.servers.dev}$KAKAO_LOGIN_PATH")
+                        )
+                        .responses(
+                            ApiResponses()
+                                .addApiResponse("302", ApiResponse().description("OAuth2 제공자 인증 페이지로 리다이렉트"))
+                        )
+                )
+            )
+            openApi.path(
+                GOOGLE_LOGIN_PATH,
+                PathItem().get(
+                    Operation()
+                        .tags(listOf("Auth"))
+                        .summary("구글 로그인 시작 - 링크 클릭용")
+                        .description(
+                            "이 엔드포인트는 API 호출용이 아니라 브라우저 이동용입니다.\n\n" +
+                                "- [Local 구글 로그인 시작](${openApiProperties.servers.local}$GOOGLE_LOGIN_PATH)\n" +
+                                "- [Develop 구글 로그인 시작](${openApiProperties.servers.dev}$GOOGLE_LOGIN_PATH)"
+                        )
+                        .externalDocs(
+                            ExternalDocumentation()
+                                .description("Develop 구글 로그인 시작")
+                                .url("${openApiProperties.servers.dev}$GOOGLE_LOGIN_PATH")
                         )
                         .responses(
                             ApiResponses()
