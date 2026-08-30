@@ -7,6 +7,7 @@ import com.peakda.server.common.image.ImageResizer
 import com.peakda.server.common.security.cookie.CookieProperties
 import com.peakda.server.common.security.cookie.CookieUtils
 import com.peakda.server.common.security.jwt.JwtProperties
+import com.peakda.server.common.security.jwt.TokenResponse
 import com.peakda.server.common.security.principal.SignupSessionPrincipal
 import com.peakda.server.common.storage.ObjectStorage
 import com.peakda.server.common.storage.ObjectKeyUrlResolver
@@ -91,12 +92,17 @@ class AuthService(
         )
     }
 
+    /**
+     * 회원가입을 마치고 토큰을 발급한다.
+     * 웹은 쿠키로 내려 주고 null 을 돌려주며, 앱은 쿠키를 쓸 수 없으므로 토큰을 그대로 돌려준다.
+     */
     @Transactional
     fun completeSignup(
         principal: SignupSessionPrincipal,
         request: SignupCompleteRequest,
         response: HttpServletResponse,
-    ) {
+        bearerAuthenticated: Boolean,
+    ): TokenResponse? {
         validateNickname(request.nickname)
         if (userRepository.existsByNickname(request.nickname)) {
             throw AuthException(ErrorCode.NICKNAME_DUPLICATED)
@@ -124,6 +130,7 @@ class AuthService(
         signupSessionRepository.delete(signupSession)
 
         val tokenResponse = tokenIssueService.issue(user)
+        if (bearerAuthenticated) return tokenResponse
 
         val signupTokenCookie = CookieUtils.deleteSignupTokenCookie(cookieProperties)
         val accessTokenCookie = CookieUtils.createAccessTokenCookie(
@@ -140,6 +147,7 @@ class AuthService(
         response.addHeader("Set-Cookie", signupTokenCookie.toString())
         response.addHeader("Set-Cookie", accessTokenCookie.toString())
         response.addHeader("Set-Cookie", refreshTokenCookie.toString())
+        return null
     }
 
     /** 쿠키의 Refresh Token 으로 새 토큰 쌍을 발급해 다시 쿠키로 내린다. */

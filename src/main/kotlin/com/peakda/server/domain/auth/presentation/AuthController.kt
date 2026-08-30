@@ -3,6 +3,9 @@ package com.peakda.server.domain.auth.presentation
 import com.peakda.server.common.response.ApiResponse
 import com.peakda.server.common.security.principal.PrincipalDetails
 import com.peakda.server.common.security.principal.SignupSessionPrincipal
+import com.peakda.server.common.security.jwt.BearerTokens
+import com.peakda.server.domain.auth.app.application.AppAuthService
+import com.peakda.server.domain.auth.app.presentation.response.AppTokenResponse
 import com.peakda.server.domain.auth.application.AppleLoginService
 import com.peakda.server.domain.auth.application.AuthService
 import com.peakda.server.domain.auth.presentation.request.AppleLoginRequest
@@ -24,6 +27,7 @@ import org.springframework.web.multipart.MultipartFile
 class AuthController(
     private val authService: AuthService,
     private val appleLoginService: AppleLoginService,
+    private val appAuthService: AppAuthService,
 ) : AuthControllerDocs {
 
     override fun appleLogin(
@@ -61,10 +65,16 @@ class AuthController(
     override fun completeSignup(
         principal: SignupSessionPrincipal,
         request: SignupCompleteRequest,
+        httpRequest: HttpServletRequest,
         response: HttpServletResponse,
-    ): ResponseEntity<ApiResponse<Unit>> {
-        authService.completeSignup(principal, request, response)
-        return ResponseEntity.ok(ApiResponse.success(HttpStatus.OK))
+    ): ResponseEntity<ApiResponse<AppTokenResponse?>> {
+        val issued = authService.completeSignup(
+            principal = principal,
+            request = request,
+            response = response,
+            bearerAuthenticated = BearerTokens.from(httpRequest) != null,
+        )
+        return ResponseEntity.ok(ApiResponse.success(HttpStatus.OK, issued?.let(appAuthService::tokens)))
     }
 
     override fun refresh(

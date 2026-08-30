@@ -5,6 +5,7 @@ import com.peakda.server.common.openapi.ApiErrorResponses
 import com.peakda.server.common.response.ApiResponse
 import com.peakda.server.common.security.principal.PrincipalDetails
 import com.peakda.server.common.security.principal.SignupSessionPrincipal
+import com.peakda.server.domain.auth.app.presentation.response.AppTokenResponse
 import com.peakda.server.domain.auth.presentation.request.AppleLoginRequest
 import com.peakda.server.domain.auth.presentation.response.AppleLoginResponse
 import com.peakda.server.domain.auth.presentation.response.UserInfoResponse
@@ -118,7 +119,9 @@ interface AuthControllerDocs {
 
     @Operation(
         summary = "소셜 회원가입 완료",
-        description = "signup-token 쿠키와 닉네임으로 회원가입을 완료하고 access-token, refresh-token 쿠키를 발급합니다.",
+        description = "가입 세션 토큰과 닉네임으로 회원가입을 완료한다. " +
+            "웹은 signup-token 쿠키로 호출하면 access-token, refresh-token 쿠키를 발급받고 응답 본문은 비어 있다. " +
+            "앱은 가입 세션 토큰을 Authorization: Bearer 로 보내면 쿠키 대신 응답 본문으로 토큰을 받는다.",
         security = [SecurityRequirement(name = "signupTokenCookie")],
     )
     @ApiErrorResponses(
@@ -133,8 +136,10 @@ interface AuthControllerDocs {
         @AuthenticationPrincipal principal: SignupSessionPrincipal,
         @Valid @RequestBody request: SignupCompleteRequest,
         @Parameter(hidden = true)
+        httpRequest: HttpServletRequest,
+        @Parameter(hidden = true)
         response: HttpServletResponse,
-    ): ResponseEntity<ApiResponse<Unit>>
+    ): ResponseEntity<ApiResponse<AppTokenResponse?>>
 
     @Operation(
         summary = "토큰 재발급",
