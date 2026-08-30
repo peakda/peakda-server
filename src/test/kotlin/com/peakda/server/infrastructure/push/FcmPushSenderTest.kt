@@ -15,14 +15,21 @@ import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Test
 import org.mockito.ArgumentMatchers.any
 import org.mockito.Mockito.mock
+import org.mockito.Mockito.never
+import org.mockito.Mockito.times
 import org.mockito.Mockito.verify
 import org.mockito.Mockito.`when`
+import java.time.Duration
 
 class FcmPushSenderTest {
 
     private val messaging = mock(FirebaseMessaging::class.java)
     private val deviceTokenService = mock(DeviceTokenService::class.java)
-    private val sender = FcmPushSender(messaging, deviceTokenService)
+    private val properties = FcmProperties(
+        enabled = true,
+        retry = FcmProperties.Retry(maxAttempts = 2, initialBackoff = Duration.ofMillis(1)),
+    )
+    private val sender = FcmPushSender(messaging, deviceTokenService, properties)
 
     @Test
     fun `FCM data는 문서 필드를 문자열로 만들고 null 필드는 생략한다`() {
@@ -62,23 +69,37 @@ class FcmPushSenderTest {
     }
 
     @Test
-    fun `일시 장애로 실패한 토큰은 삭제하지 않는다`() {
-        val response = batchResponse(failure(MessagingErrorCode.UNAVAILABLE))
-        `when`(messaging.sendEachForMulticast(anyMessage())).thenReturn(response)
+    fun `일시 장애로 실패한 토큰은 삭제하지 않고 다시 보낸다`() {
+        val failed = batchResponse(failure(MessagingErrorCode.UNAVAILABLE))
+        val succeeded = batchResponse(success())
+        `when`(messaging.sendEachForMulticast(anyMessage())).thenReturn(failed, succeeded)
 
         sender.send(deviceTokens("token-1"), PAYLOAD)
 
-        verify(deviceTokenService).deleteInvalid(emptyList())
+        verify(messaging, times(2)).sendEachForMulticast(anyMessage())
+        verify(deviceTokenService, never()).deleteInvalid(listOf("token-1"))
     }
 
     @Test
-    fun `멀티캐스트 호출 자체가 실패하면 토큰을 삭제하지 않는다`() {
+    fun `재시도 한도를 넘기면 토큰을 남기고 포기한다`() {
+        val failed = batchResponse(failure(MessagingErrorCode.INTERNAL))
+        `when`(messaging.sendEachForMulticast(anyMessage())).thenReturn(failed)
+
+        sender.send(deviceTokens("token-1"), PAYLOAD)
+
+        verify(messaging, times(3)).sendEachForMulticast(anyMessage())
+        verify(deviceTokenService, never()).deleteInvalid(listOf("token-1"))
+    }
+
+    @Test
+    fun `멀티캐스트 호출 자체가 실패하면 묶음 전체를 재시도한다`() {
         val exception = mock(FirebaseMessagingException::class.java)
         `when`(messaging.sendEachForMulticast(anyMessage())).thenThrow(exception)
 
         sender.send(deviceTokens("token-1"), PAYLOAD)
 
-        verify(deviceTokenService).deleteInvalid(emptyList())
+        verify(messaging, times(3)).sendEachForMulticast(anyMessage())
+        verify(deviceTokenService, never()).deleteInvalid(listOf("token-1"))
     }
 
     private fun deviceTokens(vararg tokens: String): List<DeviceToken> =
