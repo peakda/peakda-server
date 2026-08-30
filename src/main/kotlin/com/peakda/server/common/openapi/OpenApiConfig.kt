@@ -45,6 +45,7 @@ class OpenApiConfig(
                     .addSecuritySchemes("accessTokenCookie", cookieSecurityScheme("access-token"))
                     .addSecuritySchemes("refreshTokenCookie", cookieSecurityScheme("refresh-token"))
                     .addSecuritySchemes("signupTokenCookie", cookieSecurityScheme("signup-token"))
+                    .addSecuritySchemes("bearerToken", bearerSecurityScheme())
             )
     }
 
@@ -216,6 +217,14 @@ class OpenApiConfig(
                 )
             )
         }
+
+    /** 앱은 쿠키를 쓸 수 없어 같은 토큰을 Authorization 헤더로 보낸다. */
+    private fun bearerSecurityScheme(): SecurityScheme =
+        SecurityScheme()
+            .type(SecurityScheme.Type.HTTP)
+            .scheme("bearer")
+            .bearerFormat("JWT")
+            .description("앱 전용. /api/auth/app/token 으로 받은 액세스 토큰 또는 가입 세션 토큰을 넣는다.")
 
     private fun cookieSecurityScheme(name: String): SecurityScheme {
         return SecurityScheme()
