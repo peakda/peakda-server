@@ -1,10 +1,9 @@
 package com.peakda.server.domain.auth.oauth.handler
 
-import com.peakda.server.domain.auth.application.RefreshTokenService
+import com.peakda.server.domain.auth.application.TokenIssueService
 import com.peakda.server.common.security.cookie.CookieProperties
 import com.peakda.server.common.security.cookie.CookieUtils
 import com.peakda.server.common.security.jwt.JwtProperties
-import com.peakda.server.common.security.jwt.JwtTokenGenerator
 import com.peakda.server.common.security.principal.OAuth2SignupPrincipal
 import com.peakda.server.common.security.principal.PrincipalDetails
 import jakarta.servlet.http.HttpServletRequest
@@ -13,17 +12,15 @@ import org.slf4j.LoggerFactory
 import org.springframework.beans.factory.annotation.Value
 import org.springframework.security.authentication.DisabledException
 import org.springframework.security.core.Authentication
-import org.springframework.security.core.GrantedAuthority
 import org.springframework.security.core.context.SecurityContextHolder
 import org.springframework.security.web.authentication.AuthenticationSuccessHandler
 import org.springframework.stereotype.Component
 
 @Component
 class OAuth2AuthenticationSuccessHandler(
-    private val jwtTokenGenerator: JwtTokenGenerator,
     private val cookieProperties: CookieProperties,
     private val jwtProperties: JwtProperties,
-    private val refreshTokenService: RefreshTokenService,
+    private val tokenIssueService: TokenIssueService,
     private val oAuth2AuthenticationFailureHandler: OAuth2AuthenticationFailureHandler,
 ) : AuthenticationSuccessHandler {
 
@@ -67,15 +64,7 @@ class OAuth2AuthenticationSuccessHandler(
 
         log.info("OAuth2 authentication successful. userId={}, status={}", userId, user.status)
 
-        val authorities = principal.authorities.map(GrantedAuthority::getAuthority)
-
-        val tokenResponse = jwtTokenGenerator.generateToken(
-            userId = userId,
-            email = user.email,
-            authorities = authorities
-        )
-
-        refreshTokenService.saveRefreshToken(userId, tokenResponse.refreshToken)
+        val tokenResponse = tokenIssueService.issue(user)
 
         val accessTokenCookie = CookieUtils.createAccessTokenCookie(
             token = tokenResponse.accessToken,
