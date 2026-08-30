@@ -40,6 +40,8 @@ class SecurityConfig(
             "/oauth2/**",
             "/login/oauth2/**",
             "/api/auth/refresh",
+            "/api/auth/app/token",
+            "/api/auth/app/token/refresh",
             "/api/auth/oauth/apple"
         )
     }

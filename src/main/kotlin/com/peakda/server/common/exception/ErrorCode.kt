@@ -14,6 +14,8 @@ enum class ErrorCode(
 
     REFRESH_TOKEN_EXPIRED(HttpStatus.UNAUTHORIZED, "리프레시 토큰이 만료되었습니다."),
     REFRESH_TOKEN_INVALID(HttpStatus.UNAUTHORIZED, "리프레시 토큰이 유효하지 않습니다."),
+    AUTH_CODE_INVALID(HttpStatus.UNAUTHORIZED, "인증 코드가 유효하지 않거나 만료되었습니다."),
+    SIGNUP_SESSION_EXPIRED(HttpStatus.UNAUTHORIZED, "회원가입 세션이 만료되었습니다."),
 
     OAUTH2_PROVIDER_NOT_SUPPORTED(HttpStatus.BAD_REQUEST, "지원하지 않는 소셜 로그인입니다."),
     APPLE_TOKEN_INVALID(HttpStatus.UNAUTHORIZED, "Apple 인증 토큰이 유효하지 않습니다."),

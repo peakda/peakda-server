@@ -4,6 +4,7 @@ import com.peakda.server.domain.auth.signup.application.SignupSessionService
 import com.peakda.server.domain.user.repository.UserRepository
 import com.peakda.server.common.security.cookie.CookieProperties
 import com.peakda.server.common.security.cookie.CookieUtils
+import com.peakda.server.common.security.jwt.BearerTokens
 import com.peakda.server.common.security.jwt.JwtTokenProvider
 import com.peakda.server.common.security.principal.PrincipalDetails
 import com.peakda.server.common.security.principal.SignupSessionPrincipal
@@ -36,8 +37,10 @@ class JwtAuthenticationFilter(
         filterChain.doFilter(request, response)
     }
 
+    /** 앱은 Bearer 헤더로, 웹은 쿠키로 인증한다. 둘 다 오면 헤더를 우선한다. */
     private fun authenticateUser(request: HttpServletRequest) {
-        val token = CookieUtils.getAccessTokenFromCookies(request.cookies, cookieProperties)
+        val token = BearerTokens.from(request)
+            ?: CookieUtils.getAccessTokenFromCookies(request.cookies, cookieProperties)
         if (token != null && jwtTokenProvider.validateToken(token)) {
             val userId = jwtTokenProvider.getUserIdFromToken(token)
             if (userId != null) {
@@ -51,7 +54,9 @@ class JwtAuthenticationFilter(
     }
 
     private fun authenticateSignupSession(request: HttpServletRequest) {
-        val token = CookieUtils.getSignupTokenFromCookies(request.cookies, cookieProperties) ?: return
+        val token = BearerTokens.from(request)
+            ?: CookieUtils.getSignupTokenFromCookies(request.cookies, cookieProperties)
+            ?: return
         val signupSession = signupSessionService.findValidByToken(token) ?: return
         val principal = SignupSessionPrincipal(signupSession)
         val auth = UsernamePasswordAuthenticationToken(principal, null, principal.authorities)

@@ -5,6 +5,7 @@ import com.peakda.server.common.openapi.ApiErrorResponses
 import com.peakda.server.common.response.ApiResponse
 import com.peakda.server.common.security.principal.PrincipalDetails
 import com.peakda.server.common.security.principal.SignupSessionPrincipal
+import com.peakda.server.domain.auth.app.presentation.response.AppTokenResponse
 import com.peakda.server.domain.auth.presentation.request.AppleLoginRequest
 import com.peakda.server.domain.auth.presentation.response.AppleLoginResponse
 import com.peakda.server.domain.auth.presentation.response.UserInfoResponse
@@ -52,7 +53,7 @@ interface AuthControllerDocs {
     @Operation(
         summary = "내 정보 조회",
         description = "access-token 쿠키로 현재 로그인한 사용자의 정보를 조회합니다.",
-        security = [SecurityRequirement(name = "accessTokenCookie")],
+        security = [SecurityRequirement(name = "accessTokenCookie"), SecurityRequirement(name = "bearerToken")],
     )
     @ApiErrorResponses(ErrorCode.UNAUTHORIZED, ErrorCode.RESOURCE_NOT_FOUND)
     @GetMapping("/me")
@@ -64,7 +65,7 @@ interface AuthControllerDocs {
     @Operation(
         summary = "회원가입 닉네임 중복 확인",
         description = "소셜 로그인 후 발급된 signup-token 쿠키로 닉네임 사용 가능 여부를 확인합니다.",
-        security = [SecurityRequirement(name = "signupTokenCookie")],
+        security = [SecurityRequirement(name = "signupTokenCookie"), SecurityRequirement(name = "bearerToken")],
     )
     @ApiErrorResponses(ErrorCode.NICKNAME_INVALID, ErrorCode.UNAUTHORIZED)
     @GetMapping("/signup/nickname/check")
@@ -80,7 +81,7 @@ interface AuthControllerDocs {
         description = "signup-token 쿠키로 인증된 사용자가 회원가입 완료 전에 프로필 이미지를 업로드한다. " +
             "이미지는 temp 영역에 저장되며, 가입 완료 시 정식 영역으로 이관된다. " +
             "응답으로 받은 profileImageKey 를 /signup/complete 의 profileImageUrl 로 전달해야 한다.",
-        security = [SecurityRequirement(name = "signupTokenCookie")],
+        security = [SecurityRequirement(name = "signupTokenCookie"), SecurityRequirement(name = "bearerToken")],
         requestBody = SwaggerRequestBody(
             required = true,
             content = [
@@ -118,8 +119,10 @@ interface AuthControllerDocs {
 
     @Operation(
         summary = "소셜 회원가입 완료",
-        description = "signup-token 쿠키와 닉네임으로 회원가입을 완료하고 access-token, refresh-token 쿠키를 발급합니다.",
-        security = [SecurityRequirement(name = "signupTokenCookie")],
+        description = "가입 세션 토큰과 닉네임으로 회원가입을 완료한다. " +
+            "웹은 signup-token 쿠키로 호출하면 access-token, refresh-token 쿠키를 발급받고 응답 본문은 비어 있다. " +
+            "앱은 가입 세션 토큰을 Authorization: Bearer 로 보내면 쿠키 대신 응답 본문으로 토큰을 받는다.",
+        security = [SecurityRequirement(name = "signupTokenCookie"), SecurityRequirement(name = "bearerToken")],
     )
     @ApiErrorResponses(
         ErrorCode.INVALID_REQUEST,
@@ -133,8 +136,10 @@ interface AuthControllerDocs {
         @AuthenticationPrincipal principal: SignupSessionPrincipal,
         @Valid @RequestBody request: SignupCompleteRequest,
         @Parameter(hidden = true)
+        httpRequest: HttpServletRequest,
+        @Parameter(hidden = true)
         response: HttpServletResponse,
-    ): ResponseEntity<ApiResponse<Unit>>
+    ): ResponseEntity<ApiResponse<AppTokenResponse?>>
 
     @Operation(
         summary = "토큰 재발급",
@@ -157,7 +162,7 @@ interface AuthControllerDocs {
     @Operation(
         summary = "로그아웃",
         description = "서버에 저장된 refresh token을 삭제하고 access-token, refresh-token 쿠키를 만료시킵니다.",
-        security = [SecurityRequirement(name = "accessTokenCookie")],
+        security = [SecurityRequirement(name = "accessTokenCookie"), SecurityRequirement(name = "bearerToken")],
     )
     @ApiErrorResponses(ErrorCode.UNAUTHORIZED)
     @PostMapping("/logout")

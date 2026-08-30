@@ -1,29 +1,33 @@
 package com.peakda.server.domain.auth.oauth.handler
 
-import com.peakda.server.domain.auth.application.RefreshTokenService
 import com.peakda.server.common.security.cookie.CookieProperties
 import com.peakda.server.common.security.cookie.CookieUtils
 import com.peakda.server.common.security.jwt.JwtProperties
-import com.peakda.server.common.security.jwt.JwtTokenGenerator
 import com.peakda.server.common.security.principal.OAuth2SignupPrincipal
 import com.peakda.server.common.security.principal.PrincipalDetails
+import com.peakda.server.domain.auth.app.application.AppLoginProperties
+import com.peakda.server.domain.auth.app.application.AuthorizationCodePayload
+import com.peakda.server.domain.auth.app.application.AuthorizationCodeService
+import com.peakda.server.domain.auth.application.TokenIssueService
+import com.peakda.server.domain.auth.oauth.model.OAuth2ClientKind
 import jakarta.servlet.http.HttpServletRequest
 import jakarta.servlet.http.HttpServletResponse
 import org.slf4j.LoggerFactory
 import org.springframework.beans.factory.annotation.Value
 import org.springframework.security.authentication.DisabledException
 import org.springframework.security.core.Authentication
-import org.springframework.security.core.GrantedAuthority
 import org.springframework.security.core.context.SecurityContextHolder
+import org.springframework.security.oauth2.core.endpoint.OAuth2ParameterNames
 import org.springframework.security.web.authentication.AuthenticationSuccessHandler
 import org.springframework.stereotype.Component
 
 @Component
 class OAuth2AuthenticationSuccessHandler(
-    private val jwtTokenGenerator: JwtTokenGenerator,
     private val cookieProperties: CookieProperties,
     private val jwtProperties: JwtProperties,
-    private val refreshTokenService: RefreshTokenService,
+    private val tokenIssueService: TokenIssueService,
+    private val authorizationCodeService: AuthorizationCodeService,
+    private val appLoginProperties: AppLoginProperties,
     private val oAuth2AuthenticationFailureHandler: OAuth2AuthenticationFailureHandler,
 ) : AuthenticationSuccessHandler {
 
@@ -37,11 +41,18 @@ class OAuth2AuthenticationSuccessHandler(
         response: HttpServletResponse,
         authentication: Authentication
     ) {
+        val clientKind = OAuth2ClientKind.ofState(request.getParameter(OAuth2ParameterNames.STATE))
         val principal = authentication.principal
 
         if (principal is OAuth2SignupPrincipal) {
             val signupSession = principal.getSignupSession()
-            log.info("OAuth2 signup required. signupSessionId={}", signupSession.id)
+            log.info("OAuth2 signup required. signupSessionId={}, client={}", signupSession.id, clientKind)
+
+            if (clientKind == OAuth2ClientKind.APP) {
+                sendCode(response, AuthorizationCodePayload.SignupRequired(signupSession.token))
+                return
+            }
+
             val signupTokenCookie = CookieUtils.createSignupTokenCookie(signupSession.token, cookieProperties)
             val accessTokenCookie = CookieUtils.deleteAccessTokenCookie(cookieProperties)
             val refreshTokenCookie = CookieUtils.deleteRefreshTokenCookie(cookieProperties)
@@ -65,17 +76,19 @@ class OAuth2AuthenticationSuccessHandler(
         val user = principal.getUser()
         val userId = requireNotNull(user.id)
 
-        log.info("OAuth2 authentication successful. userId={}, status={}", userId, user.status)
-
-        val authorities = principal.authorities.map(GrantedAuthority::getAuthority)
-
-        val tokenResponse = jwtTokenGenerator.generateToken(
-            userId = userId,
-            email = user.email,
-            authorities = authorities
+        log.info(
+            "OAuth2 authentication successful. userId={}, status={}, client={}",
+            userId, user.status, clientKind,
         )
 
-        refreshTokenService.saveRefreshToken(userId, tokenResponse.refreshToken)
+        // 앱에는 토큰을 바로 주지 않는다. 딥링크 쿼리에 실리는 값이라 일회성 코드만 넘기고,
+        // 토큰은 앱이 교환 API 를 호출할 때 발급한다.
+        if (clientKind == OAuth2ClientKind.APP) {
+            sendCode(response, AuthorizationCodePayload.Authenticated(userId))
+            return
+        }
+
+        val tokenResponse = tokenIssueService.issue(user)
 
         val accessTokenCookie = CookieUtils.createAccessTokenCookie(
             token = tokenResponse.accessToken,
@@ -94,5 +107,14 @@ class OAuth2AuthenticationSuccessHandler(
         response.addHeader("Set-Cookie", signupTokenCookie.toString())
 
         response.sendRedirect(redirectUri)
+    }
+
+    private fun sendCode(response: HttpServletResponse, payload: AuthorizationCodePayload) {
+        AppLoginRedirect.send(
+            response = response,
+            redirectUri = appLoginProperties.redirectUri,
+            parameter = AppLoginRedirect.CODE,
+            value = authorizationCodeService.issue(payload),
+        )
     }
 }
