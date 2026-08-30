@@ -28,6 +28,16 @@ class DeviceTokenService(
         deviceTokenRepository.deleteByUserId(userId)
     }
 
+    /**
+     * FCM 이 무효(UNREGISTERED·INVALID_ARGUMENT)로 응답한 토큰을 삭제한다.
+     * 발송 어댑터는 비동기 리스너와 배치 스레드에서 트랜잭션 밖으로 실행되므로,
+     * 삭제 트랜잭션 경계를 이 서비스가 연다.
+     */
+    fun deleteInvalid(tokens: Collection<String>): Int {
+        if (tokens.isEmpty()) return 0
+        return deviceTokenRepository.deleteByTokenIn(tokens)
+    }
+
     companion object {
         private const val MAX_DEVICES_PER_USER = 10
     }

@@ -5,7 +5,9 @@ import com.peakda.server.domain.notification.repository.DeviceTokenRepository
 import com.peakda.server.domain.user.entity.User
 import com.peakda.server.domain.user.repository.UserRepository
 import org.junit.jupiter.api.Test
+import org.mockito.ArgumentMatchers.anyCollection
 import org.mockito.Mockito.inOrder
+import org.mockito.Mockito.never
 import org.mockito.Mockito.mock
 import org.mockito.Mockito.verify
 import org.mockito.Mockito.`when`
@@ -57,6 +59,20 @@ class DeviceTokenServiceTest {
         service.deleteAllByUser(USER_ID)
 
         verify(deviceTokenRepository).deleteByUserId(USER_ID)
+    }
+
+    @Test
+    fun `무효 토큰 삭제는 한 번의 일괄 삭제로 위임한다`() {
+        service.deleteInvalid(listOf(TOKEN, "other-token"))
+
+        verify(deviceTokenRepository).deleteByTokenIn(listOf(TOKEN, "other-token"))
+    }
+
+    @Test
+    fun `삭제할 무효 토큰이 없으면 레포지토리를 호출하지 않는다`() {
+        service.deleteInvalid(emptyList())
+
+        verify(deviceTokenRepository, never()).deleteByTokenIn(anyCollection())
     }
 
     companion object {
