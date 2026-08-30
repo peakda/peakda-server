@@ -73,5 +73,6 @@ data class SchedulerProperties(
     data class NotificationSchedulerProps(
         val bloomTimingAlert: JobProps = JobProps(),
         val noticeDispatch: FixedDelayJobProps = FixedDelayJobProps(),
+        val deviceTokenCleanup: JobProps = JobProps(),
     )
 }

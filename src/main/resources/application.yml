@@ -229,6 +229,7 @@ external:
     notification:
       bloom-timing-alert: { cron: "0 0 8 * * *", enabled: true }
       notice-dispatch: { fixed-delay: 30s, enabled: true }
+      device-token-cleanup: { cron: "0 30 3 * * *", enabled: true }
 
 peakda:
   festival: { ending-soon-days: 7 }

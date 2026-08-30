@@ -21,6 +21,8 @@ import org.springframework.transaction.annotation.Transactional
 import org.testcontainers.containers.PostgreSQLContainer
 import org.testcontainers.junit.jupiter.Container
 import org.testcontainers.junit.jupiter.Testcontainers
+import java.time.Instant
+import java.time.temporal.ChronoUnit
 import java.util.concurrent.CountDownLatch
 import java.util.concurrent.Executors
 import java.util.concurrent.TimeUnit
@@ -84,6 +86,29 @@ class DeviceTokenRepositoryTest {
         assertThatThrownBy {
             repository.upsert(1L, "a".repeat(1025), DevicePlatform.ANDROID.name)
         }.isInstanceOf(DataIntegrityViolationException::class.java)
+    }
+
+    @Test
+    @Transactional
+    fun `deleteByTokenIn 은 지정한 토큰만 한 번에 지운다`() {
+        for (i in 1..3) {
+            repository.upsert(1L, "token-$i", DevicePlatform.ANDROID.name)
+        }
+
+        val deleted = repository.deleteByTokenIn(listOf("token-1", "token-3"))
+
+        assertThat(deleted).isEqualTo(2)
+        assertThat(repository.findByUserId(1L).map { it.token }).containsExactly("token-2")
+    }
+
+    @Test
+    @Transactional
+    fun `deleteUpdatedBefore 는 기준 시각 이전에 갱신된 토큰만 지운다`() {
+        repository.upsert(1L, "token-a", DevicePlatform.ANDROID.name)
+
+        assertThat(repository.deleteUpdatedBefore(Instant.now().minus(1, ChronoUnit.DAYS))).isEqualTo(0)
+        assertThat(repository.deleteUpdatedBefore(Instant.now().plus(1, ChronoUnit.DAYS))).isEqualTo(1)
+        assertThat(repository.findByUserId(1L)).isEmpty()
     }
 
     @Test
