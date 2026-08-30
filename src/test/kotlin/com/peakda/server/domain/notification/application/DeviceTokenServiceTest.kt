@@ -11,12 +11,15 @@ import org.mockito.Mockito.never
 import org.mockito.Mockito.mock
 import org.mockito.Mockito.verify
 import org.mockito.Mockito.`when`
+import java.time.Instant
+import java.time.temporal.ChronoUnit
 
 class DeviceTokenServiceTest {
 
     private val deviceTokenRepository = mock(DeviceTokenRepository::class.java)
     private val userRepository = mock(UserRepository::class.java)
-    private val service = DeviceTokenService(deviceTokenRepository, userRepository)
+    private val properties = DeviceTokenProperties()
+    private val service = DeviceTokenService(deviceTokenRepository, userRepository, properties)
 
     init {
         `when`(userRepository.findByIdForUpdate(USER_ID)).thenReturn(mock(User::class.java))
@@ -73,6 +76,15 @@ class DeviceTokenServiceTest {
         service.deleteInvalid(emptyList())
 
         verify(deviceTokenRepository, never()).deleteByTokenIn(anyCollection())
+    }
+
+    @Test
+    fun `보관 기간이 지난 토큰은 마지막 갱신 시각 기준으로 정리한다`() {
+        val now = Instant.parse("2026-08-30T00:00:00Z")
+
+        service.deleteStale(now)
+
+        verify(deviceTokenRepository).deleteUpdatedBefore(now.minus(270, ChronoUnit.DAYS))
     }
 
     companion object {

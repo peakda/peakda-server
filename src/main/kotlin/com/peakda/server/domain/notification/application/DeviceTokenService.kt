@@ -6,18 +6,21 @@ import com.peakda.server.domain.user.exception.UserNotFoundException
 import com.peakda.server.domain.user.repository.UserRepository
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
+import java.time.Instant
+import java.time.temporal.ChronoUnit
 
 @Service
 @Transactional
 class DeviceTokenService(
     private val deviceTokenRepository: DeviceTokenRepository,
     private val userRepository: UserRepository,
+    private val properties: DeviceTokenProperties,
 ) {
 
     fun register(userId: Long, token: String, platform: DevicePlatform) {
         userRepository.findByIdForUpdate(userId) ?: throw UserNotFoundException()
         deviceTokenRepository.upsert(userId, token, platform.name)
-        deviceTokenRepository.deleteExceeding(userId, MAX_DEVICES_PER_USER)
+        deviceTokenRepository.deleteExceeding(userId, properties.maxPerUser)
     }
 
     fun unregister(userId: Long, token: String) {
@@ -38,7 +41,10 @@ class DeviceTokenService(
         return deviceTokenRepository.deleteByTokenIn(tokens)
     }
 
-    companion object {
-        private const val MAX_DEVICES_PER_USER = 10
-    }
+    /**
+     * 마지막 등록·갱신이 보관 기간을 지난 토큰을 정리한다.
+     * FCM 이 미사용 토큰을 스스로 무효화하므로 서버도 같은 주기로 지운다.
+     */
+    fun deleteStale(now: Instant = Instant.now()): Int =
+        deviceTokenRepository.deleteUpdatedBefore(now.minus(properties.retentionDays, ChronoUnit.DAYS))
 }

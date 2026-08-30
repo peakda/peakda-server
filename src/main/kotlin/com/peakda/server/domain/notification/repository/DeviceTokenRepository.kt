@@ -4,6 +4,7 @@ import com.peakda.server.domain.notification.entity.DeviceToken
 import org.springframework.data.jpa.repository.JpaRepository
 import org.springframework.data.jpa.repository.Modifying
 import org.springframework.data.jpa.repository.Query
+import java.time.Instant
 
 interface DeviceTokenRepository : JpaRepository<DeviceToken, Long> {
 
@@ -21,6 +22,14 @@ interface DeviceTokenRepository : JpaRepository<DeviceToken, Long> {
     fun deleteByTokenIn(tokens: Collection<String>): Int
 
     fun deleteByUserId(userId: Long)
+
+    /**
+     * [threshold] 이전에 마지막으로 등록·갱신된 토큰을 삭제한다.
+     * FCM 이 장기 미사용 토큰을 스스로 무효화하므로 서버도 같은 주기로 정리한다.
+     */
+    @Modifying
+    @Query("DELETE FROM DeviceToken d WHERE d.updatedAt < :threshold")
+    fun deleteUpdatedBefore(threshold: Instant): Int
 
     /**
      * 디바이스 토큰을 멱등하게 등록한다. 이미 등록된 토큰이면 소유자와 플랫폼을 갱신하므로
