@@ -96,6 +96,9 @@ app:
     allowed-origins: ${CORS_ALLOWED_ORIGINS}
   oauth2:
     redirect-uri: ${OAUTH2_REDIRECT_URI}
+    app:
+      redirect-uri: ${OAUTH2_APP_REDIRECT_URI:peakda://auth/callback}
+      code-ttl: 60s
   apple:
     client-id: ${APPLE_CLIENT_ID}
   openapi:
