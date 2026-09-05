@@ -16,5 +16,22 @@ override.tf.json
 terraform.rc
 .terraform.lock.hcl.bak
 
+# Environment-specific Terraform inputs. Keep reviewed examples only.
+*.tfvars
+*.tfvars.json
+!*.tfvars.example
+
+# One-time local credential handoff files. Never commit provider secrets.
+*.credentials.json
+
+# Figma에서 추출한 운영 seed payload와 원본 이미지. prod 반영 후 폐기 가능하며
+# 디자인 원문/대용량 바이너리를 저장소에 커밋하지 않는다.
+content/figma/
+
+# Database migration artifacts can contain user data.
+*.dump
+*.dump.list
+sanitize.log
+
 # 운영 메모. 인스턴스 ID·IP 같은 환경 고유 값이 들어가 로컬에만 둔다.
 README.md

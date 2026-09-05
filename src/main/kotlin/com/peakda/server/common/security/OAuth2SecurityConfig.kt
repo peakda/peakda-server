@@ -28,4 +28,3 @@ class OAuth2SecurityConfig(
             .failureHandler(oAuth2AuthenticationFailureHandler)
     }
 }
-

@@ -31,7 +31,6 @@ spring:
             authorization-grant-type: authorization_code
             redirect-uri: "{baseUrl}/login/oauth2/code/{registrationId}"
             scope:
-              - profile_nickname
               - profile_image
               - account_email
             client-name: Kakao
@@ -99,8 +98,6 @@ app:
     app:
       redirect-uri: ${OAUTH2_APP_REDIRECT_URI:peakda://auth/callback}
       code-ttl: 60s
-  apple:
-    client-id: ${APPLE_CLIENT_ID}
   openapi:
     servers:
       local: http://localhost:8080
@@ -116,8 +113,9 @@ app:
     bucket: ${STORAGE_BUCKET}
     endpoint: ${STORAGE_ENDPOINT}
     region: ${STORAGE_REGION:auto}
-    access-key: ${STORAGE_ACCESS_KEY}
-    secret-key: ${STORAGE_SECRET_KEY}
+    # 운영(ECS)은 task role/기본 자격증명 체인을 사용한다. 로컬·dev는 명시적 키를 넣을 수 있다.
+    access-key: ${STORAGE_ACCESS_KEY:}
+    secret-key: ${STORAGE_SECRET_KEY:}
     path-style-access: ${STORAGE_PATH_STYLE_ACCESS:true}
     presigned-url-ttl-seconds: ${STORAGE_PRESIGNED_URL_TTL_SECONDS:604800}
 

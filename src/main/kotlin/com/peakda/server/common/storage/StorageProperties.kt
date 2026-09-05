@@ -5,10 +5,10 @@ import org.springframework.boot.context.properties.ConfigurationProperties
 @ConfigurationProperties(prefix = "app.storage")
 data class StorageProperties(
     val bucket: String,
-    val endpoint: String,
+    val endpoint: String = "https://s3.amazonaws.com",
     val region: String = "auto",
-    val accessKey: String,
-    val secretKey: String,
+    val accessKey: String = "",
+    val secretKey: String = "",
     val pathStyleAccess: Boolean = true,
     val presignedUrlTtlSeconds: Long = 604800,
 )
