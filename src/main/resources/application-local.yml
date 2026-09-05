@@ -11,8 +11,50 @@ spring:
       hibernate:
         show_sql: true
         format_sql: true
+  data:
+    redis:
+      host: localhost
+      port: 6383
+
+app:
+  jwt:
+    secret: ${JWT_SECRET}
+  cookie:
+    domain:
+    secure: false
+    same-site: Lax
+
+# 로컬 스케줄러 검증용. enabled 와 검증할 잡 하나만 true 로 바꿔서 사용.
+external:
+  scheduler:
+    enabled: false
+    kto:
+      kor-service: { cron: "0/30 * * * * *", enabled: false }
+      durunubi:    { cron: "0/30 * * * * *", enabled: false }
+      tats-cnctr:  { cron: "0/30 * * * * *", enabled: false }
+      data-lab:    { cron: "0/30 * * * * *", enabled: false }
+      photo:       { cron: "0/30 * * * * *", enabled: false }
+    kma:
+      vilage-fcst:
+        cron: "0/30 * * * * *"
+        enabled: false
+        grids:
+          - { name: "서울", nx: 60, ny: 127 }
+      mid-fcst:    { cron: "0/30 * * * * *", enabled: false }
+    pubdata:
+      festival:    { cron: "0/30 * * * * *", enabled: false }
+    notification:
+      bloom-timing-alert: { cron: "0/30 * * * * *", enabled: false }
+      notice-dispatch: { fixed-delay: 30s, enabled: false }
+      device-token-cleanup: { cron: "0/30 * * * * *", enabled: false }
+
+springdoc:
+  swagger-ui:
+    persist-authorization: true
+    groups-order: ASC
 
 logging:
   level:
     org.hibernate.SQL: DEBUG
     org.hibernate.orm.jdbc.bind: TRACE
+    com.peakda.server.infrastructure.scheduler: DEBUG

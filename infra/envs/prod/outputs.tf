@@ -1,0 +1,11 @@
+output "app_url" { value = "https://${local.app_domain}" }
+output "ecr_repository_url" { value = data.aws_ecr_repository.app.repository_url }
+output "ecs_cluster_name" { value = aws_ecs_cluster.this.name }
+output "ecs_service_name" { value = aws_ecs_service.this.name }
+output "github_deploy_role_arn" { value = aws_iam_role.github_deploy.arn }
+output "parameter_path" { value = module.config.path_prefix }
+output "rds_endpoint" { value = aws_db_instance.this.address }
+output "redis_endpoint" { value = aws_elasticache_replication_group.this.primary_endpoint_address }
+output "migration_task_definition_arn" { value = aws_ecs_task_definition.migration.arn }
+output "migration_subnet_ids" { value = module.network.public_subnet_ids }
+output "migration_security_group_id" { value = aws_security_group.migration.id }

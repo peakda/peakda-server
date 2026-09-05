@@ -1,0 +1,58 @@
+package com.peakda.server.domain.spot.application
+
+import com.peakda.server.domain.spot.entity.Plant
+import com.peakda.server.domain.spot.entity.PlantStatus
+import com.peakda.server.domain.spot.exception.PlantSuggestionDuplicateException
+import com.peakda.server.domain.spot.exception.PlantSuggestionRateLimitException
+import com.peakda.server.domain.spot.presentation.response.PlantResponse
+import com.peakda.server.domain.spot.repository.PlantRepository
+import org.springframework.stereotype.Service
+import org.springframework.transaction.annotation.Transactional
+import java.time.Instant
+
+@Service
+@Transactional
+class PlantService(
+    private val plantRepository: PlantRepository,
+    private val plantSuggestionRateLimiter: PlantSuggestionRateLimiter,
+) {
+
+    @Transactional(readOnly = true)
+    fun listActive(): List<PlantResponse> =
+        plantRepository.findAllByStatusOrderBySortOrderAscIdAsc(PlantStatus.ACTIVE).map { it.toResponse() }
+
+    @Transactional(readOnly = true)
+    fun search(keyword: String): List<PlantResponse> {
+        val normalized = PlantNameNormalizer.normalize(keyword)
+        if (normalized.isEmpty()) return emptyList()
+        return plantRepository
+            .findAllByStatusAndNameContainingIgnoreCaseOrderBySortOrderAscIdAsc(PlantStatus.ACTIVE, normalized)
+            .map { it.toResponse() }
+    }
+
+    fun suggest(command: SuggestPlantCommand): PlantResponse {
+        val name = PlantNameNormalizer.normalize(command.name)
+        if (name.isEmpty()) throw PlantSuggestionDuplicateException()
+        if (!plantSuggestionRateLimiter.tryAcquire(command.userId)) throw PlantSuggestionRateLimitException()
+        if (plantRepository.existsByNameIgnoreCase(name)) throw PlantSuggestionDuplicateException()
+
+        val saved = plantRepository.save(
+            Plant(
+                name = name,
+                sortOrder = 0,
+                status = PlantStatus.ACTIVE,
+                suggestedByUserId = command.userId,
+                approvedAt = Instant.now(),
+            )
+        )
+        return saved.toResponse()
+    }
+
+    private fun Plant.toResponse() = PlantResponse(
+        id = requireNotNull(id),
+        name = name,
+        status = status,
+        seasons = seasons.sorted(),
+    )
+
+}

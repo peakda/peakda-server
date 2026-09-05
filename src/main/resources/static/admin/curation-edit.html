@@ -1,0 +1,131 @@
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>큐레이션 편집 - PEAKDA</title>
+    <link rel="icon" href="/favicon.ico">
+    <link rel="stylesheet" href="/admin/css/app.css">
+  </head>
+  <body data-page="curations">
+    <div id="app-shell" class="app-shell is-loading">
+      <aside id="app-sidebar" class="app-sidebar"></aside>
+      <div class="app-workspace">
+        <header id="app-header" class="app-header"></header>
+        <main id="page-content" class="page-content">
+          <form id="curation-form" class="editor-form">
+            <section class="panel">
+              <div class="panel-header">
+                <div>
+                  <p class="eyebrow">Editorial</p>
+                  <h1 id="form-title">큐레이션 작성</h1>
+                  <p>주차 기준으로 전체 상태를 저장합니다. 챕터는 최대 3개까지 등록할 수 있습니다.</p>
+                </div>
+                <div class="inline-actions">
+                  <a class="button button-secondary" href="/admin/curations.html">목록</a>
+                  <button id="delete-button" class="button button-danger" type="button" hidden>삭제</button>
+                  <button id="save-button" class="button button-primary" type="submit">저장</button>
+                </div>
+              </div>
+
+              <div class="panel-body form-grid">
+                <label class="field">
+                  <span class="field__label">상태</span>
+                  <select id="status" class="field__control" required>
+                    <option value="DRAFT">임시저장</option>
+                    <option value="PUBLISHED">발행</option>
+                  </select>
+                </label>
+                <label class="field">
+                  <span class="field__label">주차 라벨</span>
+                  <input id="week-label" class="field__control" maxlength="100" required>
+                </label>
+                <label class="field">
+                  <span class="field__label">시작일</span>
+                  <input id="week-start-date" class="field__control" type="date" required>
+                </label>
+                <label class="field">
+                  <span class="field__label">종료일</span>
+                  <input id="week-end-date" class="field__control" type="date" required>
+                </label>
+              </div>
+
+              <div class="panel-body form-grid">
+                <label class="field">
+                  <span class="field__label">제목</span>
+                  <input id="title" class="field__control" maxlength="200" required>
+                </label>
+                <label class="field">
+                  <span class="field__label">부제</span>
+                  <input id="subtitle" class="field__control" maxlength="300">
+                </label>
+                <label class="field">
+                  <span class="field__label">도입글</span>
+                  <textarea id="intro" class="field__control" maxlength="5000" rows="5"></textarea>
+                </label>
+              </div>
+            </section>
+
+            <section class="panel">
+              <div class="panel-header">
+                <div>
+                  <h2>히어로 이미지</h2>
+                  <p>업로드 응답의 objectKey를 저장하고 previewUrl은 화면 미리보기에만 사용합니다.</p>
+                </div>
+              </div>
+              <div class="panel-body image-editor">
+                <label class="field">
+                  <span class="field__label">저장 이미지 키</span>
+                  <input id="hero-image-url" class="field__control" maxlength="2000">
+                </label>
+                <label class="field">
+                  <span class="field__label">이미지 업로드</span>
+                  <input id="hero-image-file" class="field__control" type="file" accept="image/jpeg,image/png,image/webp">
+                </label>
+                <div id="hero-preview" class="image-preview" aria-live="polite"></div>
+              </div>
+            </section>
+
+            <section class="panel">
+              <div class="panel-header">
+                <div>
+                  <h2>챕터</h2>
+                  <p>MAIN, RHYTHM_REVERSE, EDGE_BLEED 레이아웃을 사용할 수 있습니다.</p>
+                </div>
+                <button id="add-chapter" class="button button-secondary" type="button">챕터 추가</button>
+              </div>
+              <div id="chapters" class="panel-body editor-stack"></div>
+            </section>
+
+            <section class="panel">
+              <div class="panel-header">
+                <div>
+                  <h2>당일치기 추천</h2>
+                  <p>요청 배열 순서대로 추천 카드 순서가 저장됩니다.</p>
+                </div>
+                <button id="add-recommendation" class="button button-secondary" type="button">추천 추가</button>
+              </div>
+              <div id="recommendations" class="panel-body editor-stack"></div>
+            </section>
+
+            <section class="panel">
+              <div class="panel-body form-grid">
+                <label class="field">
+                  <span class="field__label">다음 주 예고 오버라인</span>
+                  <input id="next-teaser-overline" class="field__control" maxlength="100">
+                </label>
+                <label class="field">
+                  <span class="field__label">다음 주 예고 본문</span>
+                  <textarea id="next-teaser-body" class="field__control" maxlength="1000" rows="4"></textarea>
+                </label>
+              </div>
+            </section>
+          </form>
+        </main>
+      </div>
+    </div>
+    <div id="toast-region" class="toast-region" aria-live="polite"></div>
+    <div id="modal-root" class="modal-root"></div>
+    <script type="module" src="/admin/js/curation-edit.js"></script>
+  </body>
+</html>

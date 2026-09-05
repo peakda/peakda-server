@@ -1,0 +1,68 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link rel="stylesheet" href="css/app.css">
+  <title>식물 제안 검수 | PEAKDA Admin</title>
+</head>
+<body data-page="plants">
+  <div id="app-shell" class="app-shell">
+    <aside id="app-sidebar" class="app-sidebar" aria-label="관리자 메뉴"></aside>
+    <div class="app-workspace">
+      <header id="app-header" class="app-header"></header>
+      <main id="page-content" class="page-content" tabindex="-1">
+        <section class="page-section" aria-labelledby="plants-title">
+          <div class="page-toolbar">
+            <div>
+              <h1 id="plants-title">식물 제안 검수</h1>
+              <p class="page-description">사용자가 제안한 식물을 확인하고 표시 정보를 정리합니다.</p>
+            </div>
+            <div class="filters" role="search">
+              <label class="field">
+                <span>상태</span>
+                <select id="plants-status" name="status">
+                  <option value="">전체</option>
+                  <option value="PENDING">대기</option>
+                  <option value="ACTIVE" selected>승인</option>
+                  <option value="REJECTED">거절</option>
+                </select>
+              </label>
+              <label class="field">
+                <span>페이지 크기</span>
+                <select id="plants-size" name="size">
+                  <option value="10">10개</option>
+                  <option value="20" selected>20개</option>
+                  <option value="50">50개</option>
+                </select>
+              </label>
+            </div>
+          </div>
+
+          <div id="plants-table-region" class="table-region" aria-live="polite">
+            <table class="data-table editable-table">
+              <caption>사용자 제안 식물 목록</caption>
+              <thead>
+                <tr>
+                  <th scope="col">식물</th>
+                  <th scope="col">정렬</th>
+                  <th scope="col">계절</th>
+                  <th scope="col">개화 카테고리</th>
+                  <th scope="col">제안자</th>
+                  <th scope="col">상태</th>
+                  <th scope="col">작업</th>
+                </tr>
+              </thead>
+              <tbody id="plants-tbody"></tbody>
+            </table>
+          </div>
+          <nav id="plants-pagination" class="pagination" aria-label="식물 목록 페이지"></nav>
+        </section>
+      </main>
+    </div>
+  </div>
+  <div id="toast-region" class="toast-region" aria-live="polite" aria-atomic="true"></div>
+  <div id="modal-root"></div>
+  <script type="module" src="js/plants.js"></script>
+</body>
+</html>

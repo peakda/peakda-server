@@ -36,9 +36,21 @@ out/
 ### VS Code ###
 .vscode/
 
+### macOS ###
+.DS_Store
+
 ### Kotlin ###
 .kotlin
 
-### Claude ###
+### AI Agent ###
 .claude/
+.codex/
 CLAUDE.md
+AGENTS.md
+/docs/
+/graphify-out/
+/.agents/
+/.antigravitycli/
+.omc/
+/.omx/
+/.migration-artifacts/

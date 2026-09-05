@@ -1,0 +1,29 @@
+package com.peakda.server.infrastructure.external.pubdata.festival
+
+import com.fasterxml.jackson.databind.ObjectMapper
+import com.peakda.server.infrastructure.external.datagokr.DataGoKrBody
+import com.peakda.server.infrastructure.external.datagokr.DataGoKrErrorDecoder
+import com.peakda.server.infrastructure.external.common.ExternalApiResilienceExecutor
+import com.peakda.server.infrastructure.external.datagokr.getDataGoKrBody
+import com.peakda.server.infrastructure.external.pubdata.festival.response.FestivalItem
+import org.springframework.beans.factory.annotation.Qualifier
+import org.springframework.stereotype.Component
+import org.springframework.web.client.RestClient
+
+@Component
+class FestivalClient(
+    @param:Qualifier("festivalRestClient") private val restClient: RestClient,
+    private val objectMapper: ObjectMapper,
+    private val errorDecoder: DataGoKrErrorDecoder,
+    private val resilience: ExternalApiResilienceExecutor,
+) {
+    fun list(params: Map<String, Any?>): DataGoKrBody<FestivalItem> {
+        return resilience.execute(PROVIDER) {
+            restClient.getDataGoKrBody<FestivalItem>(objectMapper, errorDecoder, "", params)
+        }
+    }
+
+    companion object {
+        private const val PROVIDER = "PUBDATA"
+    }
+}

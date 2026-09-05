@@ -1,0 +1,97 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link rel="stylesheet" href="css/app.css">
+  <title>스케줄러 잡 | PEAKDA Admin</title>
+  <script type="module" src="./js/jobs.js"></script>
+</head>
+<body data-page="jobs">
+  <div id="app-shell" class="app-shell">
+    <aside id="app-sidebar" class="app-sidebar" aria-label="관리자 메뉴"></aside>
+    <div class="app-workspace">
+      <header id="app-header" class="app-header"></header>
+      <main id="page-content" class="page-content" tabindex="-1">
+        <section class="page-section" aria-labelledby="jobs-title">
+          <div class="page-heading">
+            <div>
+              <p class="eyebrow">운영</p>
+              <h1 id="jobs-title">스케줄러 잡</h1>
+            </div>
+            <button type="button" class="button" id="jobs-refresh-button">새로고침</button>
+          </div>
+
+          <div class="table-wrap" aria-live="polite" aria-busy="false" id="jobs-table-wrap">
+            <table class="data-table">
+              <caption>스케줄러 잡 목록</caption>
+              <thead>
+                <tr>
+                  <th scope="col">잡 이름</th>
+                  <th scope="col">최근 상태</th>
+                  <th scope="col">최근 시작</th>
+                  <th scope="col">최근 종료</th>
+                  <th scope="col">처리</th>
+                  <th scope="col">메시지</th>
+                  <th scope="col">작업</th>
+                </tr>
+              </thead>
+              <tbody id="jobs-table-body"></tbody>
+            </table>
+          </div>
+        </section>
+
+        <section class="page-section" aria-labelledby="job-runs-title">
+          <div class="section-heading">
+            <h2 id="job-runs-title">실행 이력</h2>
+            <p class="muted">실패 행을 선택하면 상세 응답의 오류 스택을 확인할 수 있습니다.</p>
+          </div>
+          <form id="job-run-filter-form" class="toolbar" aria-label="실행 이력 필터">
+            <label class="field field-inline" for="job-name-filter">
+              <span>잡 이름</span>
+              <input id="job-name-filter" name="jobName" type="text" autocomplete="off" list="job-name-options">
+              <datalist id="job-name-options"></datalist>
+            </label>
+            <label class="field field-inline" for="job-status-filter">
+              <span>상태</span>
+              <select id="job-status-filter" name="status">
+                <option value="">전체</option>
+                <option value="RUNNING">실행중</option>
+                <option value="COMPLETED">완료</option>
+                <option value="FAILED">실패</option>
+                <option value="SKIPPED">건너뜀</option>
+              </select>
+            </label>
+            <label class="field field-inline" for="job-run-size">
+              <span>표시 수</span>
+              <input id="job-run-size" name="size" type="number" min="1" max="50" value="20" inputmode="numeric">
+            </label>
+            <button type="submit" class="button">조회</button>
+          </form>
+
+          <div class="table-wrap" aria-live="polite" aria-busy="false" id="job-runs-table-wrap">
+            <table class="data-table">
+              <caption>스케줄러 잡 실행 이력</caption>
+              <thead>
+                <tr>
+                  <th scope="col">ID</th>
+                  <th scope="col">잡 이름</th>
+                  <th scope="col">상태</th>
+                  <th scope="col">시작</th>
+                  <th scope="col">종료</th>
+                  <th scope="col">처리</th>
+                  <th scope="col">건너뜀</th>
+                </tr>
+              </thead>
+              <tbody id="job-runs-table-body"></tbody>
+            </table>
+          </div>
+          <nav id="job-runs-pagination" class="pagination" aria-label="실행 이력 페이지"></nav>
+        </section>
+      </main>
+    </div>
+  </div>
+  <div id="toast-region" class="toast-region" aria-live="polite" aria-atomic="true"></div>
+  <div id="modal-root"></div>
+</body>
+</html>

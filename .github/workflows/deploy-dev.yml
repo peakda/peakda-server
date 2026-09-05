@@ -1,0 +1,108 @@
+name: Deploy Dev (AWS)
+
+on:
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-dev
+  cancel-in-progress: false
+
+permissions:
+  id-token: write # OIDC 토큰 발급. 장기 액세스 키를 쓰지 않는다
+  contents: read
+
+jobs:
+  deploy:
+    name: Build and deploy to AWS
+    # Graviton(t4g) 대상이므로 arm64 러너에서 네이티브 빌드한다.
+    # public 저장소라 이 러너를 무료로 쓸 수 있다.
+    runs-on: ubuntu-24.04-arm
+    timeout-minutes: 30
+
+    # environment 를 지정하지 않는다.
+    # 지정하면 OIDC 토큰의 sub 가 repo:OWNER/REPO:environment:NAME 으로 바뀌어
+    # 브랜치 정보가 사라지고, IAM 신뢰 정책에서 브랜치를 제한할 수 없게 된다.
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ vars.AWS_DEPLOY_ROLE_ARN }}
+          aws-region: ap-northeast-2
+
+      - name: Login to ECR
+        id: ecr
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Build and push image
+        env:
+          REGISTRY: ${{ steps.ecr.outputs.registry }}
+          REPOSITORY: peakda-server
+          TAG: ${{ github.sha }}
+        run: |
+          docker build \
+            --tag "$REGISTRY/$REPOSITORY:$TAG" \
+            --tag "$REGISTRY/$REPOSITORY:latest" \
+            .
+          docker push "$REGISTRY/$REPOSITORY:$TAG"
+          docker push "$REGISTRY/$REPOSITORY:latest"
+
+      - name: Deploy via SSM
+        env:
+          INSTANCE_ID: ${{ vars.EC2_INSTANCE_ID }}
+          TAG: ${{ github.sha }}
+        run: |
+          COMMAND_ID=$(aws ssm send-command \
+            --instance-ids "$INSTANCE_ID" \
+            --document-name AWS-RunShellScript \
+            --comment "deploy $TAG" \
+            --parameters "commands=['/opt/peakda/deploy.sh $TAG']" \
+            --timeout-seconds 600 \
+            --query 'Command.CommandId' \
+            --output text)
+
+          echo "SSM command: $COMMAND_ID"
+
+          # send-command 는 비동기다. 완료까지 폴링하고 결과에 따라 종료 코드를 정한다.
+          for _ in $(seq 1 60); do
+            sleep 10
+            STATUS=$(aws ssm get-command-invocation \
+              --command-id "$COMMAND_ID" \
+              --instance-id "$INSTANCE_ID" \
+              --query 'Status' --output text 2>/dev/null || echo Pending)
+            echo "상태: $STATUS"
+            case "$STATUS" in
+              Success) break ;;
+              Failed|Cancelled|TimedOut) break ;;
+            esac
+          done
+
+          echo "--- 배포 로그 ---"
+          aws ssm get-command-invocation \
+            --command-id "$COMMAND_ID" \
+            --instance-id "$INSTANCE_ID" \
+            --query 'StandardOutputContent' --output text
+
+          if [ "$STATUS" != "Success" ]; then
+            echo "--- 오류 ---"
+            aws ssm get-command-invocation \
+              --command-id "$COMMAND_ID" \
+              --instance-id "$INSTANCE_ID" \
+              --query 'StandardErrorContent' --output text
+            exit 1
+          fi
+
+      - name: Verify health
+        run: |
+          for _ in $(seq 1 10); do
+            if curl -fsS --max-time 10 "https://${{ vars.APP_DOMAIN }}/actuator/health" > /dev/null; then
+              echo "헬스체크 통과"
+              exit 0
+            fi
+            sleep 10
+          done
+          echo "외부 헬스체크 실패"
+          exit 1

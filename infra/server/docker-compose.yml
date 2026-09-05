@@ -1,0 +1,130 @@
+# peakda develop 서버 구성.
+#
+# PostgreSQL·Redis 포트를 호스트에 노출하지 않는다. 컨테이너 네트워크 안에서만
+# 접근하고, 외부로 열리는 것은 Caddy 의 80/443 뿐이다.
+# 데이터는 ./data 이며 별도 EBS 볼륨이 마운트된 경로다.
+
+services:
+  caddy:
+    image: caddy:2-alpine
+    container_name: peakda-caddy
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy-data:/data # 발급받은 인증서. 재시작마다 재발급하면 LE 한도에 걸린다
+      - caddy-config:/config
+    environment:
+      APP_DOMAIN: ${APP_DOMAIN}
+    depends_on:
+      - app
+    restart: unless-stopped
+
+  app:
+    image: ${ECR_IMAGE}
+    container_name: peakda-app
+    env_file: .env
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_started
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://localhost:8080/actuator/health/readiness"]
+      interval: 10s
+      timeout: 3s
+      retries: 12
+      start_period: 90s
+    # 2GB 호스트에서 다른 컨테이너를 밀어내지 않도록 상한을 둔다.
+    mem_limit: 1200m
+    restart: unless-stopped
+
+  postgres:
+    image: postgres:18
+    container_name: peakda-postgres
+    # 루프백에만 바인딩한다. 보안 그룹이 5432 를 열지 않으므로 외부에서 직접
+    # 닿을 수 없고, SSM 포트포워딩으로 터널을 뚫었을 때만 접근된다.
+    #   aws ssm start-session --target <instance-id> \
+    #     --document-name AWS-StartPortForwardingSession \
+    #     --parameters '{"portNumber":["5432"],"localPortNumber":["15432"]}'
+    ports:
+      - "127.0.0.1:5432:5432"
+    environment:
+      POSTGRES_DB: peakda
+      POSTGRES_USER: peakda
+      POSTGRES_PASSWORD: ${SPRING_DATASOURCE_PASSWORD}
+      PGDATA: /var/lib/postgresql/data/pgdata
+    command:
+      - postgres
+      - -c
+      - shared_buffers=256MB
+      - -c
+      - max_connections=30
+      - -c
+      - log_min_duration_statement=1000
+    volumes:
+      - ./data/postgres:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U peakda -d peakda"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    mem_limit: 400m
+    restart: unless-stopped
+
+  redis:
+    image: redis:8.2.1-alpine
+    container_name: peakda-redis
+    command:
+      - redis-server
+      - --appendonly
+      - "yes"
+      - --maxmemory
+      - 128mb
+      - --maxmemory-policy
+      - allkeys-lru
+    volumes:
+      - ./data/redis:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+    mem_limit: 200m
+    restart: unless-stopped
+
+  alloy:
+    image: grafana/alloy:v1.18.0
+    container_name: peakda-alloy
+    command:
+      - run
+      - --storage.path=/var/lib/alloy/data
+      - /etc/alloy/config.alloy
+    environment:
+      GRAFANA_CLOUD_PROM_URL: ${GRAFANA_CLOUD_PROM_URL}
+      GRAFANA_CLOUD_PROM_USER: ${GRAFANA_CLOUD_PROM_USER}
+      GRAFANA_CLOUD_LOKI_URL: ${GRAFANA_CLOUD_LOKI_URL}
+      GRAFANA_CLOUD_LOKI_USER: ${GRAFANA_CLOUD_LOKI_USER}
+      GRAFANA_CLOUD_API_KEY: ${GRAFANA_CLOUD_API_KEY}
+      PEAKDA_ENV: ${SPRING_PROFILES_ACTIVE}
+    volumes:
+      # 설정과 호스트 파일시스템은 읽기 전용으로 열어 수집기 침해가 호스트 변경으로 번지지 않게 한다.
+      - ./alloy-config.alloy:/etc/alloy/config.alloy:ro
+      - /:/rootfs:ro
+      - /proc:/host/proc:ro
+      - /sys:/host/sys:ro
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - /sys/fs/cgroup:/sys/fs/cgroup:ro
+      - /var/lib/docker:/var/lib/docker:ro
+      # 원격 전송이 잠시 막혀도 수집 상태를 보존해 재기동 후 유실을 줄인다.
+      - alloy-data:/var/lib/alloy/data
+    # 수집기 폭주가 2GB 호스트의 앱 메모리를 밀어내지 않도록 상한을 강제한다.
+    mem_limit: 200m
+    restart: unless-stopped
+
+volumes:
+  caddy-data:
+  caddy-config:
+  alloy-data:
