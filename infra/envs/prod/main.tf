@@ -565,8 +565,8 @@ resource "aws_iam_role_policy" "github_deploy" {
   policy = jsonencode({ Version = "2012-10-17", Statement = [
     { Effect = "Allow", Action = ["ecr:GetAuthorizationToken"], Resource = "*" },
     { Effect = "Allow", Action = ["ecr:BatchCheckLayerAvailability", "ecr:BatchGetImage", "ecr:CompleteLayerUpload", "ecr:GetDownloadUrlForLayer", "ecr:InitiateLayerUpload", "ecr:PutImage", "ecr:UploadLayerPart"], Resource = data.aws_ecr_repository.app.arn },
-    { Effect = "Allow", Action = ["ecs:RegisterTaskDefinition"], Resource = "*" },
-    { Effect = "Allow", Action = ["ecs:UpdateService", "ecs:DescribeServices", "ecs:DescribeTaskDefinition", "ecs:ListTasks", "ecs:DescribeTasks"], Resource = [aws_ecs_cluster.this.arn, aws_ecs_service.this.arn, "arn:aws:ecs:${var.region}:${local.account_id}:task-definition/${local.name_prefix}:*"] },
+    { Effect = "Allow", Action = ["ecs:RegisterTaskDefinition", "ecs:DescribeTaskDefinition"], Resource = "*" },
+    { Effect = "Allow", Action = ["ecs:UpdateService", "ecs:DescribeServices", "ecs:ListTasks", "ecs:DescribeTasks"], Resource = [aws_ecs_cluster.this.arn, aws_ecs_service.this.arn, "arn:aws:ecs:${var.region}:${local.account_id}:task-definition/${local.name_prefix}:*"] },
     { Effect = "Allow", Action = ["iam:PassRole"], Resource = [aws_iam_role.execution.arn, aws_iam_role.task.arn] }
   ] })
 }
