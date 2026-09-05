@@ -111,3 +111,18 @@ variable "app_secret_names" {
     "PUBDATA_FESTIVAL_SERVICE_KEY",
   ]
 }
+variable "vercel_apex_ip" {
+  description = "peakda.com A 레코드가 가리킬 Vercel IP. Vercel 프로젝트 Domains 화면이 표시하는 값을 그대로 넣는다. 빈 문자열이면 레코드를 만들지 않는다"
+  type        = string
+  default     = ""
+}
+variable "vercel_www_cname" {
+  description = "www.peakda.com CNAME 대상. Vercel 프로젝트마다 고유한 값이므로 Domains 화면 값을 그대로 넣는다. 빈 문자열이면 레코드를 만들지 않는다"
+  type        = string
+  default     = ""
+}
+variable "vercel_verification_txt" {
+  description = "_vercel TXT 소유 확인 값. Vercel 이 요구할 때만 채운다"
+  type        = string
+  default     = ""
+}

@@ -35,3 +35,11 @@ app_secret_names = [
   "KMA_SERVICE_KEY",
   "PUBDATA_FESTIVAL_SERVICE_KEY",
 ]
+
+# 웹 프론트엔드(Vercel) 커스텀 도메인 연결.
+# Vercel 프로젝트 Settings -> Domains 화면이 표시하는 값을 그대로 넣는다.
+# CNAME 대상과 A 레코드 IP 모두 프로젝트마다 다르므로 추측하지 않는다.
+# 빈 문자열이면 해당 레코드를 만들지 않는다. 자세한 절차는 이 디렉터리의 README.md 참고.
+vercel_apex_ip          = "" # 예: 216.198.79.1
+vercel_www_cname        = "" # 예: d1d4fc829fe7bc7c.vercel-dns-017.com
+vercel_verification_txt = "" # Vercel 이 소유 확인을 요구할 때만

@@ -626,3 +626,48 @@ resource "aws_cloudwatch_metric_alarm" "unhealthy_hosts" {
   }
   alarm_actions = [aws_sns_topic.alerts.arn]
 }
+
+# ---------------------------------------------------------------------------
+# 웹 프론트엔드 도메인 (Vercel)
+#
+# apex(peakda.com)와 www 를 Vercel 프로젝트에 연결한다. 대표 도메인은 www 이고
+# apex -> www 리다이렉트는 Vercel 프로젝트 설정에서 건다.
+#
+# 두 값 모두 Vercel 프로젝트 Settings -> Domains 가 표시하는 값을 그대로 넣는다.
+# 특히 CNAME 대상은 프로젝트마다 고유하므로(예: d1d4fc829fe7bc7c.vercel-dns-017.com)
+# 추측해서 채우지 않는다. 값이 비어 있으면 레코드를 만들지 않는다.
+#
+# apex 는 Route53 에서 CNAME 을 쓸 수 없고 Vercel 은 AWS 리소스가 아니라
+# alias 대상도 될 수 없으므로 A 레코드로만 연결한다.
+# ---------------------------------------------------------------------------
+
+resource "aws_route53_record" "web_apex" {
+  count = var.vercel_apex_ip == "" ? 0 : 1
+
+  zone_id = data.aws_route53_zone.root.zone_id
+  name    = var.domain_name
+  type    = "A"
+  ttl     = 300
+  records = [var.vercel_apex_ip]
+}
+
+resource "aws_route53_record" "web_www" {
+  count = var.vercel_www_cname == "" ? 0 : 1
+
+  zone_id = data.aws_route53_zone.root.zone_id
+  name    = "www.${var.domain_name}"
+  type    = "CNAME"
+  ttl     = 300
+  records = [var.vercel_www_cname]
+}
+
+# 도메인이 다른 Vercel 계정에서 이미 쓰이는 경우에만 요구되는 소유 확인 레코드.
+resource "aws_route53_record" "web_verification" {
+  count = var.vercel_verification_txt == "" ? 0 : 1
+
+  zone_id = data.aws_route53_zone.root.zone_id
+  name    = "_vercel.${var.domain_name}"
+  type    = "TXT"
+  ttl     = 60
+  records = [var.vercel_verification_txt]
+}
