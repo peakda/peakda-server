@@ -9,7 +9,17 @@ services:
     ports:
       - "5439:5432"
     volumes:
-      - peakda-postgres-data:/var/lib/postgresql/data
+      - peakda-postgres-data:/var/lib/postgresql
+
+  redis:
+    image: redis:8.2.1-alpine
+    container_name: peakda-redis
+    ports:
+      - "6383:6379"
+    volumes:
+      - peakda-redis-data:/data
+    command: ["redis-server", "--appendonly", "yes"]
 
 volumes:
   peakda-postgres-data:
+  peakda-redis-data:

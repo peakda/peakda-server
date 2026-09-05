@@ -1,5 +1,326 @@
+server:
+  # 리버스 프록시(Caddy) 뒤에서 동작한다. X-Forwarded-* 를 반영하지 않으면
+  # 리다이렉트 URL 과 OAuth {baseUrl} 이 http 로 생성되어,
+  # HTTPS 페이지에서 mixed content 로 차단되고 소셜 로그인도 깨진다.
+  forward-headers-strategy: framework
+
 spring:
   application:
     name: peakda-server
+
   jpa:
     open-in-view: false
+
+  liquibase:
+    change-log: classpath:db/changelog/db.changelog-master.yaml
+
+  servlet:
+    multipart:
+      enabled: true
+      max-file-size: 10MB
+      max-request-size: 55MB
+
+  security:
+    oauth2:
+      client:
+        registration:
+          kakao:
+            client-id: ${KAKAO_CLIENT_ID}
+            client-secret: ${KAKAO_CLIENT_SECRET}
+            client-authentication-method: client_secret_post
+            authorization-grant-type: authorization_code
+            redirect-uri: "{baseUrl}/login/oauth2/code/{registrationId}"
+            scope:
+              - profile_image
+              - account_email
+            client-name: Kakao
+          naver:
+            client-id: ${NAVER_CLIENT_ID}
+            client-secret: ${NAVER_CLIENT_SECRET}
+            client-authentication-method: client_secret_post
+            authorization-grant-type: authorization_code
+            redirect-uri: "{baseUrl}/login/oauth2/code/{registrationId}"
+            scope:
+              - name
+              - email
+              - profile_image
+            client-name: Naver
+          google:
+            client-id: ${GOOGLE_CLIENT_ID}
+            client-secret: ${GOOGLE_CLIENT_SECRET}
+            authorization-grant-type: authorization_code
+            redirect-uri: "{baseUrl}/login/oauth2/code/{registrationId}"
+            scope:
+              - openid
+              - profile
+              - email
+            client-name: Google
+        provider:
+          kakao:
+            authorization-uri: https://kauth.kakao.com/oauth/authorize
+            token-uri: https://kauth.kakao.com/oauth/token
+            user-info-uri: https://kapi.kakao.com/v2/user/me
+            user-name-attribute: id
+          naver:
+            authorization-uri: https://nid.naver.com/oauth2.0/authorize
+            token-uri: https://nid.naver.com/oauth2.0/token
+            user-info-uri: https://openapi.naver.com/v1/nid/me
+            user-name-attribute: response
+          google:
+            authorization-uri: https://accounts.google.com/o/oauth2/v2/auth
+            token-uri: https://oauth2.googleapis.com/token
+            user-info-uri: https://www.googleapis.com/oauth2/v3/userinfo
+            user-name-attribute: sub
+
+app:
+  push:
+    enabled: ${FCM_ENABLED:false}
+    project-id: ${FCM_PROJECT_ID:}
+    service-account-location: ${FCM_SERVICE_ACCOUNT_LOCATION:}
+    service-account-base64: ${FCM_SERVICE_ACCOUNT_BASE64:}
+  jwt:
+    secret: ${JWT_SECRET}
+    access-token-validity-in-seconds: 1800
+    refresh-token-validity-in-seconds: 604800
+  cookie:
+    domain: ${COOKIE_DOMAIN}
+    secure: ${COOKIE_SECURE}
+    same-site: ${COOKIE_SAME_SITE}
+    path: /
+    access-token-name: access-token
+    refresh-token-name: refresh-token
+    signup-token-name: signup-token
+    signup-token-validity-in-seconds: 900
+  cors:
+    allowed-origins: ${CORS_ALLOWED_ORIGINS}
+  oauth2:
+    redirect-uri: ${OAUTH2_REDIRECT_URI}
+    app:
+      redirect-uri: ${OAUTH2_APP_REDIRECT_URI:peakda://auth/callback}
+      code-ttl: 60s
+  openapi:
+    servers:
+      local: http://localhost:8080
+      dev: ${PEAKDA_SERVER_DEV}
+  spot:
+    matcher:
+      radius-meters: ${SPOT_MATCHER_RADIUS_METERS:50.0}
+    plant-suggestion:
+      rate-limit:
+        max-per-window: ${PLANT_SUGGESTION_RATE_LIMIT_MAX:5}
+        window: ${PLANT_SUGGESTION_RATE_LIMIT_WINDOW:24h}
+  storage:
+    bucket: ${STORAGE_BUCKET}
+    endpoint: ${STORAGE_ENDPOINT}
+    region: ${STORAGE_REGION:auto}
+    # 운영(ECS)은 task role/기본 자격증명 체인을 사용한다. 로컬·dev는 명시적 키를 넣을 수 있다.
+    access-key: ${STORAGE_ACCESS_KEY:}
+    secret-key: ${STORAGE_SECRET_KEY:}
+    path-style-access: ${STORAGE_PATH_STYLE_ACCESS:true}
+    presigned-url-ttl-seconds: ${STORAGE_PRESIGNED_URL_TTL_SECONDS:604800}
+
+external:
+  data-go-kr:
+    mobile-app: peakda
+    connect-timeout: 3s
+    read-timeout: 5s
+  quota:
+    enabled: ${EXTERNAL_QUOTA_ENABLED:false}
+    services:
+      KTO.KorService2: { daily-limit: 10000 }
+      KTO.TatsCnctrRateService: { daily-limit: 10000 }
+      KTO.DataLabService: { daily-limit: 10000 }
+      KTO.PhotoGalleryService1: { daily-limit: 10000 }
+      KTO.Durunubi: { daily-limit: 10000 }
+      KMA.VilageFcstInfoService: { daily-limit: 10000 }
+      KMA.MidFcstInfoService: { daily-limit: 10000 }
+      KMA.AsosDalyInfoService: { daily-limit: 10000 }
+      PUBDATA.PublicCultureFestival: { daily-limit: 10000 }
+  rate-limit:
+    enabled: ${EXTERNAL_RATE_LIMIT_ENABLED:true}
+    providers:
+      KTO: { permits: 5, period: 1s, timeout: 1s }
+      KMA: { permits: 5, period: 1s, timeout: 1s }
+      PUBDATA: { permits: 5, period: 1s, timeout: 1s }
+  resilience:
+    enabled: ${EXTERNAL_RESILIENCE_ENABLED:true}
+    providers:
+      KTO:
+        retry: { max-attempts: 5, initial-interval: 500ms, multiplier: 2.0, max-interval: 30s, jitter-factor: 0.3 }
+        circuit-breaker:
+          failure-rate-threshold: 50
+          slow-call-rate-threshold: 100
+          slow-call-duration: 10s
+          minimum-number-of-calls: 10
+          sliding-window-size: 20
+          wait-duration-in-open-state: 30s
+          permitted-number-of-calls-in-half-open-state: 3
+      KMA:
+        retry: { max-attempts: 5, initial-interval: 500ms, multiplier: 2.0, max-interval: 30s, jitter-factor: 0.3 }
+        circuit-breaker:
+          failure-rate-threshold: 50
+          slow-call-rate-threshold: 100
+          slow-call-duration: 10s
+          minimum-number-of-calls: 10
+          sliding-window-size: 20
+          wait-duration-in-open-state: 30s
+          permitted-number-of-calls-in-half-open-state: 3
+      PUBDATA:
+        retry: { max-attempts: 5, initial-interval: 500ms, multiplier: 2.0, max-interval: 30s, jitter-factor: 0.3 }
+        circuit-breaker:
+          failure-rate-threshold: 50
+          slow-call-rate-threshold: 100
+          slow-call-duration: 10s
+          minimum-number-of-calls: 10
+          sliding-window-size: 20
+          wait-duration-in-open-state: 30s
+          permitted-number-of-calls-in-half-open-state: 3
+  kto:
+    service-key: ${KTO_SERVICE_KEY}
+    base-url:
+      kor-service: https://apis.data.go.kr/B551011/KorService2
+      tats-cnctr: https://apis.data.go.kr/B551011/TatsCnctrRateService
+      data-lab: https://apis.data.go.kr/B551011/DataLabService
+      photo: https://apis.data.go.kr/B551011/PhotoGalleryService1
+      durunubi: https://apis.data.go.kr/B551011/Durunubi
+  kma:
+    service-key: ${KMA_SERVICE_KEY}
+    base-url:
+      vilage-fcst: https://apis.data.go.kr/1360000/VilageFcstInfoService_2.0
+      mid-fcst: https://apis.data.go.kr/1360000/MidFcstInfoService
+      asos-daly: https://apis.data.go.kr/1360000/AsosDalyInfoService
+      flower-observation: https://www.kma.go.kr/kma/theme
+  pubdata:
+    festival:
+      service-key: ${PUBDATA_FESTIVAL_SERVICE_KEY}
+      base-url: https://api.data.go.kr/openapi/tn_pubr_public_cltur_fstvl_api
+  scheduler:
+    enabled: ${EXTERNAL_SCHEDULER_ENABLED:false}
+    kto:
+      # 공사 콘텐츠 업데이트 시각(국문·관광사진 04:30 / 두루누비·빅데이터·집중률 07:30) 이후로 동기화한다.
+      kor-service: { cron: "0 0 5 * * *", enabled: true }
+      photo: { cron: "0 30 5 * * *", enabled: true }
+      durunubi: { cron: "0 0 8 * * *", enabled: true }
+      data-lab: { cron: "0 30 8 * * *", enabled: true }
+      tats-cnctr: { cron: "0 0 9 * * *", enabled: true }
+    kma:
+      vilage-fcst:
+        cron: "0 15 */3 * * *"
+        enabled: true
+        grids:
+          - { name: "서울", nx: 60, ny: 127 }
+          - { name: "부산", nx: 98, ny: 76 }
+          - { name: "대구", nx: 89, ny: 90 }
+          - { name: "인천", nx: 55, ny: 124 }
+          - { name: "광주", nx: 58, ny: 74 }
+          - { name: "대전", nx: 67, ny: 100 }
+      mid-fcst: { cron: "0 30 6,18 * * *", enabled: true }
+      asos-daly:
+        cron: "0 0 4 * * *"
+        enabled: true
+        backfill-from: 2026-01-01
+        max-backfill-days: 400
+      flower-observation: { cron: "0 30 4 * * *", enabled: true }
+    pubdata:
+      festival: { cron: "0 0 6 * * MON", enabled: true }
+    seasonal:
+      attraction-bloom-tagging: { cron: "0 45 5 * * *", enabled: true }
+      attraction-station-mapping: { cron: "0 15 6 * * *", enabled: true }
+      bloom-estimate: { cron: "0 0 7 * * *", enabled: true }
+    notification:
+      bloom-timing-alert: { cron: "0 0 8 * * *", enabled: true }
+      notice-dispatch: { fixed-delay: 30s, enabled: true }
+      device-token-cleanup: { cron: "0 30 3 * * *", enabled: true }
+
+peakda:
+  festival: { ending-soon-days: 7 }
+  spot:
+    favorite:
+      banner-lead-days: 7
+      photo-limit: 4
+  explore:
+    peak-now-size: 10
+    next-week-size: 5
+    festival-size: 10
+    festival-candidate-size: 200
+    curation-size: 5
+  timing:
+    tagging:
+      keyword-base-confidence: 0.5
+      keyword-exact-boost: 0.2
+      festival-confidence: 0.9
+      festival-proximity-km: 5.0
+    festival:
+      proximity-radius-km: 5.0
+      early-window-days: 3
+      late-window-days: 3
+      peak-confidence: 0.9
+      started-confidence: 0.8
+      ended-confidence: 0.7
+    observation:
+      enabled: true
+      base-confidence: 0.9
+      peak-duration-days: 7
+    calendar:
+      base-confidence: 0.4
+      early-window-days: 7
+      late-window-days: 7
+    gdd:
+      enabled: true
+      base-confidence: 0.7
+      ended-confidence: 0.35
+      # 매핑이 아직 없는 명소에 적용할 기준 지점(서울).
+      default-station-id: "108"
+      # 기본 지점(서울)에 대응하는 단기예보 격자와 중기예보 지역.
+      default-grid-x: 60
+      default-grid-y: 127
+      default-mid-region-code: SEOUL
+      forecast-horizon-days: 10
+      # 단풍은 기온 하강에 반응해 GDD 모델이 맞지 않으므로 여기에 넣지 않는다.
+      thresholds:
+        # 2026 시즌 기상청 계절관측 개화일(벚나무 9곳)과 해당 최근접 지점의 실측 일평균기온으로
+        # 역산했다. 누적을 3/1 로 늦추면 겨울이 따뜻한 남부의 과대 누적이 사라져 지점 간
+        # 변동계수가 0.38 -> 0.16 으로 줄었다. tBase 0 이 수치상 더 낮았으나(0.12) 기준온도의
+        # 의미가 사라져 과적합으로 보고 3.0 을 택했다.
+        # 표본이 1개 시즌 9곳이므로 관측이 쌓이면 재산출해야 한다.
+        CHERRY:
+          t-base: 3.0
+          accumulation-start-month: 3
+          accumulation-start-day: 1
+          start: 137.0
+          peak: 183.0
+          end: 226.0
+    fusion:
+      agreement-bonus: 0.1
+      agreement-bonus-cap: 1.0
+      tie-break-confidence-margin: 0.1
+    calendar-horizon-days: 30
+
+# 프로파일별로 다시 선언하지 않는다. dev 에서 exposure 를 덮어쓰면
+# prometheus 가 조용히 빠져 수집이 멈춘다.
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics,prometheus
+  endpoint:
+    health:
+      show-details: never
+      # 컨테이너 헬스체크와 Caddy upstream 검사가 readiness 를 쓴다.
+      probes:
+        enabled: true
+  metrics:
+    tags:
+      # 모든 메트릭에 붙는 공통 라벨. env 는 같은 Grafana 스택에서 dev/prod 를 가른다.
+      application: ${spring.application.name}
+      env: ${SPRING_PROFILES_ACTIVE:local}
+    distribution:
+      # 기본값은 count·sum·max 뿐이라 분위수를 볼 수 없다.
+      #
+      # percentiles-histogram(버킷 발행) 대신 percentiles 를 쓴다. 버킷은 태그 조합마다
+      # 수십 개 시계열을 만들어 무료 한도(10k)를 잠식하지만, 이 방식은 분위수당 1개만 는다.
+      # 대신 인스턴스 간 재집계가 불가능하다. 인스턴스가 1대라 문제되지 않으며,
+      # 여러 대로 늘리면 그때 버킷 방식으로 바꿔야 한다.
+      percentiles:
+        http.server.requests: 0.95, 0.99
+        scheduler.job.duration: 0.95

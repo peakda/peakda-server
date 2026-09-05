@@ -1,0 +1,44 @@
+spring:
+  datasource:
+    url: ${SPRING_DATASOURCE_URL}
+    username: ${SPRING_DATASOURCE_USERNAME}
+    password: ${SPRING_DATASOURCE_PASSWORD}
+    driver-class-name: org.postgresql.Driver
+    hikari:
+      maximum-pool-size: 5
+      minimum-idle: 1
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    properties:
+      hibernate:
+        show_sql: false
+        format_sql: false
+  data:
+    redis:
+      url: ${SPRING_DATA_REDIS_URL}
+
+app:
+  cookie:
+    domain: ${COOKIE_DOMAIN}
+    secure: true
+    same-site: None
+
+external:
+  scheduler:
+    notification:
+      notice-dispatch: { fixed-delay: 30s, enabled: true }
+
+logging:
+  structured:
+    format:
+      console: logstash
+  level:
+    root: INFO
+    com.peakda: DEBUG
+
+springdoc:
+  swagger-ui:
+    with-credentials: true
+    persist-authorization: true
+    groups-order: ASC

@@ -1,0 +1,73 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link rel="stylesheet" href="css/app.css">
+  <title>사용자 관리 | PEAKDA Admin</title>
+</head>
+<body data-page="users">
+  <div id="app-shell" class="app-shell">
+    <aside id="app-sidebar" class="app-sidebar" aria-label="관리자 메뉴"></aside>
+    <div class="app-workspace">
+      <header id="app-header" class="app-header"></header>
+      <main id="page-content" class="page-content" tabindex="-1">
+        <section class="page-section" aria-labelledby="users-title">
+          <div class="page-toolbar">
+            <div>
+              <h1 id="users-title">사용자 관리</h1>
+              <p class="page-description">사용자를 검색하고 계정 상태를 변경합니다.</p>
+            </div>
+            <form id="users-filter-form" class="filters" role="search">
+              <label class="field">
+                <span>검색어</span>
+                <input id="users-q" name="q" type="search" autocomplete="off" placeholder="닉네임">
+              </label>
+              <label class="field">
+                <span>상태</span>
+                <select id="users-status" name="status">
+                  <option value="">전체</option>
+                  <option value="ACTIVE">활성</option>
+                  <option value="SUSPENDED">정지</option>
+                  <option value="DEACTIVATED">탈퇴</option>
+                </select>
+              </label>
+              <label class="field">
+                <span>페이지 크기</span>
+                <select id="users-size" name="size">
+                  <option value="10">10개</option>
+                  <option value="20" selected>20개</option>
+                  <option value="50">50개</option>
+                </select>
+              </label>
+              <button type="submit" class="button button-primary">검색</button>
+            </form>
+          </div>
+
+          <div id="users-table-region" class="table-region" aria-live="polite">
+            <table class="data-table">
+              <caption>관리자 사용자 목록</caption>
+              <thead>
+                <tr>
+                  <th scope="col">사용자</th>
+                  <th scope="col">이메일</th>
+                  <th scope="col">제공자</th>
+                  <th scope="col">역할</th>
+                  <th scope="col">상태</th>
+                  <th scope="col">가입일</th>
+                  <th scope="col">작업</th>
+                </tr>
+              </thead>
+              <tbody id="users-tbody"></tbody>
+            </table>
+          </div>
+          <nav id="users-pagination" class="pagination" aria-label="사용자 목록 페이지"></nav>
+        </section>
+      </main>
+    </div>
+  </div>
+  <div id="toast-region" class="toast-region" aria-live="polite" aria-atomic="true"></div>
+  <div id="modal-root"></div>
+  <script type="module" src="js/users.js"></script>
+</body>
+</html>

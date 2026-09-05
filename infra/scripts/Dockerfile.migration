@@ -1,0 +1,10 @@
+# The dev source runs PostgreSQL 18. Use the newer client tools to read its
+# custom-format dump; data-only restore remains compatible with the Liquibase
+# schema on production PostgreSQL 16.
+FROM public.ecr.aws/docker/library/postgres:18-alpine
+
+RUN apk add --no-cache aws-cli bash
+COPY migrate-dev-to-prod.sh sanitize-migrated-data.sql migration-entrypoint.sh /opt/migration/
+RUN chmod 0755 /opt/migration/migrate-dev-to-prod.sh /opt/migration/migration-entrypoint.sh
+WORKDIR /opt/migration
+ENTRYPOINT ["/opt/migration/migration-entrypoint.sh"]

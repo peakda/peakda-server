@@ -1,0 +1,42 @@
+app:
+  jwt:
+    secret: YWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYQ==
+  cookie:
+    domain:
+    secure: false
+    same-site: Lax
+  cors:
+    allowed-origins: http://localhost:3000
+  oauth2:
+    redirect-uri: http://localhost:3000/auth/callback
+  storage:
+    bucket: peakda-test
+    endpoint: http://localhost:19000
+    region: ap-northeast-2
+    access-key: test-access-key
+    secret-key: test-secret-key
+
+external:
+  data-go-kr:
+    mobile-app: peakda-test
+    connect-timeout: 1s
+    read-timeout: 1s
+  kto:
+    service-key: test-kto-service-key
+    base-url:
+      kor-service: http://localhost:18081/kto/kor-service
+      tats-cnctr: http://localhost:18081/kto/tats-cnctr
+      data-lab: http://localhost:18081/kto/data-lab
+      photo: http://localhost:18081/kto/photo
+      durunubi: http://localhost:18081/kto/durunubi
+  kma:
+    service-key: test-kma-service-key
+    base-url:
+      vilage-fcst: http://localhost:18081/kma/vilage-fcst
+      mid-fcst: http://localhost:18081/kma/mid-fcst
+      asos-daly: http://localhost:18081/kma/asos-daly
+      flower-observation: http://localhost:18081/kma/flower
+  pubdata:
+    festival:
+      service-key: test-pubdata-festival-service-key
+      base-url: http://localhost:18081/pubdata/festival
