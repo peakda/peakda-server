@@ -1,53 +1,77 @@
-# envs/prod — production 환경 (미구성)
+# Production environment
 
-이번 마이그레이션 범위는 develop 까지다. 이 디렉터리는 **아직 apply 하지 않는다.**
-실수로 실행되는 것을 막기 위해 Terraform 파일을 두지 않고 전환 설계만 기록한다.
+## Runtime shape
 
-## 전환 시점
+- Region: `ap-northeast-2`
+- Application: ECS Fargate ARM64, `0.5 vCPU / 2 GiB` per task
+- Availability: two-task floor with availability-zone rebalancing enabled
+- Scaling: 2–8 tasks, CPU target 60%, ALB target 2,340 requests/minute/task
+- Data: private PostgreSQL 16 RDS and TLS-enabled Redis 7.1 ElastiCache
+- Edge: HTTPS ALB and Route53 at `api.peakda.com`
+- Backups: one-day RDS automated retention plus encrypted custom dumps with a
+  30-day S3 lifecycle
 
-AWS 크레딧이 만료되는 **2026-12-13** 이전에 유료 플랜 전환 여부를 결정해야 한다.
-production 구성은 그 결정과 함께 진행한다.
+The AWS free-plan account limits RDS automated retention to one day. Redis 7.1
+is the newest engine version currently offered to this account in Seoul.
 
-## 재사용할 모듈
+## Bootstrap and deployment
 
-develop 과 동일한 모듈을 파라미터만 바꿔 사용한다.
+Create infrastructure without application tasks first:
 
-| 모듈 | 재사용 | 변경점 |
-|---|---|---|
-| `network` | 그대로 | CIDR 만 분리 (예: 10.1.0.0/16). subnet 이 이미 2 AZ 라 ALB 요건을 만족한다 |
-| `registry` | **공유** | dev/prod 가 같은 ECR 저장소를 쓰고 태그로 구분한다 |
-| `config` | 그대로 | `env = "prod"` → 파라미터 경로가 `/peakda/prod/` 로 분리된다 |
-| `backup` | 그대로 | 버킷 이름만 다르다 |
-| `github-oidc` | 그대로 | `create_oidc_provider = false` (provider 는 계정당 1개), 허용 subject 를 `refs/heads/main` 으로 |
-| `dns` | 그대로 | `create_zone = false` 로 dev 가 만든 존을 참조하고 `api.peakda.com` 레코드만 추가 |
-| `app-server` | **교체** | ECS Fargate + ALB + RDS + ElastiCache 로 대체 (`ecs-service` 모듈 신규 작성) |
-
-## 컴퓨트 전환
-
-develop 은 예산 제약(월 $40.8)으로 EC2 단일 인스턴스를 쓴다.
-production 은 유료 전환 후 다음 구성으로 간다.
-
-```
-Route53 (api.peakda.com)
-  └ ALB (ACM 인증서, 2 AZ)
-      └ ECS Fargate Service (desired ≥ 2)
-            ├→ RDS PostgreSQL (자동 백업 · PITR)
-            └→ ElastiCache Redis
+```sh
+cd infra/envs/prod
+cp terraform.tfvars.example terraform.tfvars
+# Set alert_email, github_allowed_subjects and real OAuth/CORS values.
+terraform init
+terraform apply -var='desired_count=0' -var='min_capacity=0'
 ```
 
-이때 develop 의 Caddy(Let's Encrypt)는 ALB + ACM 으로 대체된다.
+Populate every `/peakda/prod/*` SecureString, push an ARM64 image, and then keep
+two tasks running:
 
-## 예상 비용
+```sh
+terraform apply \
+  -var='image_tag=<immutable-tag>' \
+  -var='desired_count=2' \
+  -var='min_capacity=2'
+```
 
-| 항목 | 월 |
-|---|---|
-| ALB | $16.4 |
-| Fargate 0.5 vCPU / 1GB × 2 | $42.0 |
-| RDS db.t4g.micro | $14.3 |
-| ElastiCache cache.t4g.micro | $9.0 |
-| 합계 | **$81.7** |
+Application revisions are deployed by `.github/workflows/deploy-prod.yml`.
+Terraform owns the service shape while the workflow registers immutable task
+definition revisions and performs the rolling update.
 
-## 참고
+## Database operations
 
-- 배포 계획: [../../../docs/aws-배포-마이그레이션-plan.md](../../../docs/aws-배포-마이그레이션-plan.md)
-- 옵저버빌리티: [../../../docs/옵저버빌리티-plan.md](../../../docs/옵저버빌리티-plan.md)
+`migration_task_definition_arn` identifies the one-off Fargate database task.
+It reaches private RDS from inside the VPC and can run in two explicit modes:
+
+- Dev-to-prod migration: restore a reviewed custom dump, remove spots whose
+  Korean name contains `테스트` and their dependent data, verify references,
+  and upload the pre-restore dump and sanitization log to encrypted S3.
+- Hash-pinned SQL job: download a SQL artifact from the private migration
+  prefix, verify `DATABASE_JOB_SHA256`, and run as `READ_ONLY` or as `APPLY`
+  with the additional `DATABASE_JOB_CONFIRM=PROD_DATABASE_APPLY` guard.
+
+Generated dumps, SQL payloads, Figma exports, Terraform variable files, state,
+and plans are ignored. The reusable migration scripts and Terraform lock file
+remain versioned because they contain no environment data or credentials.
+
+## Portfolio performance baseline
+
+These numbers are deliberately separated into capacity hypotheses and test
+targets. Do not report a target as a measured result.
+
+| Metric | Current hypothesis or target | Basis |
+| --- | ---: | --- |
+| Base scaling threshold | about 78 RPS total | 2 tasks × 2,340 requests/minute/task ÷ 60 |
+| Eight-task scaling threshold | about 312 RPS total | 8 tasks × 39 RPS/task; not a proven maximum |
+| Steady read target | 100 RPS for 15 minutes | p95 < 300 ms, p99 < 700 ms, errors < 1% |
+| Promotional spike target | 200 RPS for 5 minutes | p95 < 500 ms, errors < 1%, scale-out verified |
+| Transactional write target | 20 TPS for 10 minutes | p95 < 500 ms, errors < 1%, no pool exhaustion |
+| Recovery target | one task loss without outage | healthy target remains; replacement becomes healthy within 180 seconds |
+
+The first load-test report must record the image tag, task count, endpoint mix,
+test duration, achieved RPS/TPS, p50/p95/p99, error rate, CPU, memory, DB
+connections, Redis latency, and scale-out timestamps. RDS `db.t4g.micro` is the
+expected first bottleneck, so measured results must be interpreted with burst
+credits and connection-pool saturation visible.
