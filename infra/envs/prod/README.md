@@ -40,6 +40,36 @@ Application revisions are deployed by `.github/workflows/deploy-prod.yml`.
 Terraform owns the service shape while the workflow registers immutable task
 definition revisions and performs the rolling update.
 
+## Frontend custom domain
+
+The frontend team owns the Vercel project, production domain assignment, apex
+redirect, and TLS certificates. This repository owns the Route53 records and
+the backend's post-login redirect.
+
+- Set `vercel_apex_ip` and `vercel_www_cname` to the values shown by that Vercel
+  project. Set `vercel_verification_txt` only if Vercel requests verification.
+- Keep Route53 nameservers; the API and frontend share the hosted zone.
+- Verify `https://www.peakda.com` returns the frontend successfully and
+  `https://peakda.com` redirects to HTTPS `www` with valid certificates.
+- Only then set `oauth2_redirect_uri` in the ignored production variable file
+  to `https://www.peakda.com/auth/callback`. Review the Terraform plan, retaining
+  the current application image and rejecting unrelated infrastructure changes.
+- Terraform ignores the ECS service's `task_definition` attribute. Applying a
+  new task definition does not switch the running service; deploy the intended
+  application revision through the production workflow and verify its image,
+  OAuth redirect, running count, and public readiness endpoint.
+
+Existing CORS origins include the old Vercel address and both custom domains;
+the cookie domain is `.peakda.com`. The provider-facing OAuth callback remains
+`https://api.peakda.com/login/oauth2/code/{provider}`. Frontend SDK origins and
+provider service/homepage URLs are separate settings for the respective owners
+to check; do not replace the backend OAuth callback with the frontend URL.
+
+Before switching, record the active ECS task-definition revision and image
+digest. To roll back a failed application/domain cutover, redeploy that known
+revision and restore the previous OAuth redirect in Terraform configuration.
+Retain working DNS records unless DNS itself is the cause of the failure.
+
 ## Database operations
 
 `migration_task_definition_arn` identifies the one-off Fargate database task.
