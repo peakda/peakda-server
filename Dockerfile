@@ -7,7 +7,7 @@ RUN chmod +x gradlew && ./gradlew --no-daemon dependencies > /dev/null 2>&1 || t
 
 COPY src src
 RUN ./gradlew --no-daemon bootJar -x test \
-    && cp build/libs/*-SNAPSHOT.jar app.jar
+    && cp build/libs/app.jar app.jar
 
 FROM eclipse-temurin:21-jre
 WORKDIR /app
