@@ -4,6 +4,7 @@ import com.peakda.server.common.security.SecurityExceptionConfig
 import com.peakda.server.common.security.filter.JwtAuthenticationFilter
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
+import org.springframework.http.HttpMethod
 import org.springframework.security.access.hierarchicalroles.RoleHierarchy
 import org.springframework.security.access.hierarchicalroles.RoleHierarchyImpl
 import org.springframework.security.config.Customizer
@@ -42,7 +43,6 @@ class SecurityConfig(
             "/api/auth/refresh",
             "/api/auth/app/token",
             "/api/auth/app/token/refresh",
-            "/api/auth/oauth/apple"
         )
     }
 
@@ -75,6 +75,12 @@ class SecurityConfig(
             }
             .authorizeHttpRequests {
                 it.requestMatchers(*PUBLIC_URLS).permitAll()
+                    .requestMatchers(
+                        HttpMethod.GET,
+                        "/api/curations",
+                        "/api/curations/**",
+                        "/api/festivals/**",
+                    ).permitAll()
                     .requestMatchers(
                         "/api/auth/signup/nickname/check",
                         "/api/auth/signup/complete",

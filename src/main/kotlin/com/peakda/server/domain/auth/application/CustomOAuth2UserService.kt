@@ -53,8 +53,6 @@ class CustomOAuth2UserService(
         OAuth2LoginType.KAKAO -> KakaoOAuth2UserInfo(attributes)
         OAuth2LoginType.NAVER -> NaverOAuth2UserInfo(attributes)
         OAuth2LoginType.GOOGLE -> GoogleOAuth2UserInfo(attributes)
-        OAuth2LoginType.APPLE ->
-            throw OAuth2AuthenticationException("아직 지원하지 않는 소셜 로그인입니다: ${type.provider}")
     }
 
 }
