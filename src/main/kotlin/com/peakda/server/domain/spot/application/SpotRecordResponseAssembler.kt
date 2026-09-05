@@ -75,7 +75,7 @@ class SpotRecordResponseAssembler(
         val spot = context.spotsById.getValue(record.spotId)
         val user = context.usersById.getValue(record.userId)
         val plants = context.plantsByRecordId[recordId].orEmpty()
-        val cover = context.photosByRecordId[recordId]?.firstOrNull()
+        val photos = context.photosByRecordId[recordId].orEmpty().map { it.toEntry() }
         return SpotRecordSummaryResponse(
             id = recordId,
             spotId = spot.id!!,
@@ -85,7 +85,8 @@ class SpotRecordResponseAssembler(
             bloomStage = record.bloomStage,
             memo = record.memo,
             plants = plants.map { it.toSummary() },
-            coverPhoto = cover?.toEntry(),
+            coverPhoto = photos.firstOrNull(),
+            photos = photos,
             status = record.status,
             publishedAt = record.publishedAt,
             createdAt = record.createdAt,

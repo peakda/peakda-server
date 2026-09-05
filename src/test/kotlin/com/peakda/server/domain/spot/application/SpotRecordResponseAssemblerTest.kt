@@ -6,6 +6,7 @@ import com.peakda.server.domain.spot.entity.ReactionType
 import com.peakda.server.domain.spot.entity.Spot
 import com.peakda.server.domain.spot.entity.SpotRecord
 import com.peakda.server.domain.spot.entity.SpotRecordReaction
+import com.peakda.server.domain.spot.entity.SpotRecordPhoto
 import com.peakda.server.domain.spot.entity.SpotRecordStatus
 import com.peakda.server.domain.spot.entity.SpotType
 import com.peakda.server.domain.spot.repository.PlantRepository
@@ -85,6 +86,53 @@ class SpotRecordResponseAssemblerTest {
         verify(spotRecordReactionRepository).countsBySpotRecordIdIn(listOf(101L, 102L, 103L))
         verify(spotRecordReactionRepository).findByUserIdAndSpotRecordIdIn(VIEWER_ID, listOf(101L, 102L, 103L))
         verify(spotRecordReactionRepository, never()).countsBySpotRecordId(anyLong())
+    }
+
+    @Test
+    fun `목록 사진은 기록별로 정렬해 모두 반환하고 대표 사진과 같은 항목을 공유한다`() {
+        val records = listOf(record(102L), record(101L))
+        stubCommon(records)
+        val photos = listOf(
+            SpotRecordPhoto(102L, "second-2", 2),
+            SpotRecordPhoto(101L, "first-2", 2),
+            SpotRecordPhoto(102L, "second-1", 1),
+            SpotRecordPhoto(101L, "first-1", 1),
+        )
+        `when`(spotRecordPhotoRepository.findBySpotRecordIdIn(listOf(102L, 101L))).thenReturn(photos)
+        `when`(spotRecordPhotoUploader.presignedUrlOf("first-1")).thenReturn("url-first-1")
+        `when`(spotRecordPhotoUploader.presignedUrlOf("first-2")).thenReturn("url-first-2")
+        `when`(spotRecordPhotoUploader.presignedUrlOf("second-1")).thenReturn("url-second-1")
+        `when`(spotRecordPhotoUploader.presignedUrlOf("second-2")).thenReturn("url-second-2")
+        `when`(spotRecordReactionRepository.countsBySpotRecordIdIn(listOf(102L, 101L))).thenReturn(emptyList())
+        `when`(spotRecordReactionRepository.findByUserIdAndSpotRecordIdIn(VIEWER_ID, listOf(102L, 101L)))
+            .thenReturn(emptyList())
+
+        val responses = assembler.assembleSummaries(records, VIEWER_ID)
+
+        assertThat(responses.map { it.id }).containsExactly(102L, 101L)
+        assertThat(responses[0].photos.map { it.objectKey }).containsExactly("second-1", "second-2")
+        assertThat(responses[1].photos.map { it.objectKey }).containsExactly("first-1", "first-2")
+        assertThat(responses[0].coverPhoto).isSameAs(responses[0].photos.first())
+        assertThat(responses[1].coverPhoto).isSameAs(responses[1].photos.first())
+        verify(spotRecordPhotoRepository).findBySpotRecordIdIn(listOf(102L, 101L))
+        verify(spotRecordPhotoUploader).presignedUrlOf("first-1")
+        verify(spotRecordPhotoUploader).presignedUrlOf("first-2")
+        verify(spotRecordPhotoUploader).presignedUrlOf("second-1")
+        verify(spotRecordPhotoUploader).presignedUrlOf("second-2")
+    }
+
+    @Test
+    fun `사진이 없는 목록 기록은 빈 사진 목록과 null 대표 사진을 반환한다`() {
+        val record = record(101L)
+        stubCommon(listOf(record))
+        `when`(spotRecordReactionRepository.countsBySpotRecordIdIn(listOf(101L))).thenReturn(emptyList())
+        `when`(spotRecordReactionRepository.findByUserIdAndSpotRecordIdIn(VIEWER_ID, listOf(101L)))
+            .thenReturn(emptyList())
+
+        val response = assembler.assembleSummaries(listOf(record), VIEWER_ID).single()
+
+        assertThat(response.photos).isEmpty()
+        assertThat(response.coverPhoto).isNull()
     }
 
     private fun stubCommon(records: List<SpotRecord>) {
