@@ -15,5 +15,10 @@ output "public_subnet_azs" {
 
 output "app_security_group_id" {
   description = "앱 서버 보안 그룹 ID"
-  value       = aws_security_group.app.id
+  value       = try(aws_security_group.app[0].id, null)
+}
+
+output "private_subnet_ids" {
+  description = "Private subnet IDs for production data services"
+  value       = aws_subnet.private[*].id
 }

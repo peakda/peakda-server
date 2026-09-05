@@ -1,0 +1,84 @@
+name: Deploy Production (AWS)
+
+on:
+  workflow_dispatch:
+    inputs:
+      image_tag:
+        description: "Image tag (defaults to the checked-out commit SHA)"
+        required: false
+        type: string
+
+concurrency:
+  group: deploy-production
+  cancel-in-progress: false
+
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  deploy:
+    name: Test, build and deploy
+    runs-on: ubuntu-24.04-arm
+    timeout-minutes: 45
+    environment: production
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+
+      - name: Test
+        run: ./gradlew test --no-daemon
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ vars.AWS_DEPLOY_ROLE_ARN }}
+          aws-region: ap-northeast-2
+
+      - name: Login to ECR
+        id: ecr
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Build and push ARM64 image
+        env:
+          REGISTRY: ${{ steps.ecr.outputs.registry }}
+          REPOSITORY: peakda-server
+          TAG: ${{ inputs.image_tag || github.sha }}
+        run: |
+          docker buildx build --platform linux/arm64 \
+            --tag "$REGISTRY/$REPOSITORY:$TAG" \
+            --push .
+
+      - name: Register task definition and update service
+        env:
+          CLUSTER: peakda-prod
+          SERVICE: peakda-prod
+          TAG: ${{ inputs.image_tag || github.sha }}
+          REPOSITORY: ${{ steps.ecr.outputs.registry }}/peakda-server
+        run: |
+          aws ecs describe-task-definition --task-definition "$SERVICE" \
+            --query taskDefinition > task-definition.json
+          jq --arg image "$REPOSITORY:$TAG" \
+            '.containerDefinitions[0].image = $image |
+             del(.taskDefinitionArn, .revision, .status, .requiresAttributes,
+                 .compatibilities, .registeredAt, .registeredBy)' \
+            task-definition.json > task-definition-new.json
+          REVISION=$(aws ecs register-task-definition \
+            --cli-input-json file://task-definition-new.json \
+            --query 'taskDefinition.taskDefinitionArn' --output text)
+          aws ecs update-service --cluster "$CLUSTER" --service "$SERVICE" \
+            --task-definition "$REVISION" --force-new-deployment >/dev/null
+          aws ecs wait services-stable --cluster "$CLUSTER" --services "$SERVICE"
+
+      - name: Verify public health endpoint
+        env:
+          APP_DOMAIN: ${{ vars.APP_DOMAIN || 'api.peakda.com' }}
+        run: |
+          curl --fail --silent --show-error --retry 12 --retry-delay 5 \
+            "https://$APP_DOMAIN/actuator/health/readiness"

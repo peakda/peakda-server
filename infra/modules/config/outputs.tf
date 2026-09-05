@@ -7,3 +7,8 @@ output "secret_names" {
   description = "값 주입이 필요한 SecureString 파라미터 이름"
   value       = var.secret_names
 }
+
+output "secret_arns" {
+  description = "SecureString ARNs keyed by parameter name"
+  value       = { for name, parameter in aws_ssm_parameter.secret : name => parameter.arn }
+}

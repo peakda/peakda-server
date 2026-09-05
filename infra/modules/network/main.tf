@@ -63,7 +63,39 @@ resource "aws_route_table_association" "public" {
   route_table_id = aws_route_table.public.id
 }
 
+# Production data tier. These subnets intentionally have no default route (no NAT
+# gateway): RDS and Redis are not reachable from the internet.
+resource "aws_subnet" "private" {
+  count = var.create_private_subnets ? 2 : 0
+
+  vpc_id            = aws_vpc.this.id
+  cidr_block        = cidrsubnet(var.vpc_cidr, 8, count.index + 101)
+  availability_zone = data.aws_availability_zones.available.names[count.index]
+
+  tags = {
+    Name = "${var.name_prefix}-private-${data.aws_availability_zones.available.names[count.index]}"
+    Tier = "private"
+  }
+}
+
+resource "aws_route_table" "private" {
+  count  = var.create_private_subnets ? 1 : 0
+  vpc_id = aws_vpc.this.id
+
+  tags = {
+    Name = "${var.name_prefix}-private-rt"
+  }
+}
+
+resource "aws_route_table_association" "private" {
+  count = length(aws_subnet.private)
+
+  subnet_id      = aws_subnet.private[count.index].id
+  route_table_id = aws_route_table.private[0].id
+}
+
 resource "aws_security_group" "app" {
+  count       = var.create_app_security_group ? 1 : 0
   name        = "${var.name_prefix}-app-sg"
   description = "peakda app server - HTTP/HTTPS inbound only"
   vpc_id      = aws_vpc.this.id
@@ -79,7 +111,8 @@ resource "aws_security_group" "app" {
 
 # Caddy 가 Let's Encrypt HTTP-01 챌린지에 80 을 쓰고, 서비스 트래픽은 443 으로 받는다.
 resource "aws_vpc_security_group_ingress_rule" "http" {
-  security_group_id = aws_security_group.app.id
+  count             = var.create_app_security_group ? 1 : 0
+  security_group_id = aws_security_group.app[0].id
 
   # 보안 그룹 규칙 description 에는 작은따옴표를 쓸 수 없다 (허용 문자셋 제한).
   description = "HTTP for ACME challenge and HTTPS redirect"
@@ -90,7 +123,8 @@ resource "aws_vpc_security_group_ingress_rule" "http" {
 }
 
 resource "aws_vpc_security_group_ingress_rule" "https" {
-  security_group_id = aws_security_group.app.id
+  count             = var.create_app_security_group ? 1 : 0
+  security_group_id = aws_security_group.app[0].id
   description       = "HTTPS"
   cidr_ipv4         = "0.0.0.0/0"
   from_port         = 443
@@ -100,7 +134,8 @@ resource "aws_vpc_security_group_ingress_rule" "https" {
 
 # 외부 공공 API 호출, ECR pull, SSM 통신, Grafana Cloud push 에 필요하다.
 resource "aws_vpc_security_group_egress_rule" "all" {
-  security_group_id = aws_security_group.app.id
+  count             = var.create_app_security_group ? 1 : 0
+  security_group_id = aws_security_group.app[0].id
   description       = "all outbound"
   cidr_ipv4         = "0.0.0.0/0"
   ip_protocol       = "-1"

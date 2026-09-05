@@ -1,0 +1,37 @@
+# Copy to terraform.tfvars locally; never commit real values.
+region                 = "ap-northeast-2"
+domain_name            = "peakda.com"
+subdomain              = "api"
+alert_email            = "replace@example.com"
+github_allowed_subjects = ["repo:OWNER/REPOSITORY:environment:production"]
+
+# Phase 1: leave desired/min at 0 while creating RDS, Redis, SSM and buckets.
+desired_count = 0
+min_capacity  = 0
+
+# Phase 2: set these to 2 after image and all SecureString values are ready.
+# desired_count = 2
+# min_capacity  = 2
+image_tag                = "replace-with-git-sha"
+migration_image_tag      = "replace-with-migration-tag"
+migration_source_s3_uri  = "s3://peakda-prod-storage-ACCOUNT_ID/migration/dev-source.dump"
+
+app_parameters = {
+  # FCM_PROJECT_ID is intentionally plain; service-account credentials remain SecureString.
+  FCM_PROJECT_ID       = "peakda"
+  STORAGE_PRESIGNED_URL_TTL_SECONDS = "3600"
+}
+
+app_secret_names = [
+  "GOOGLE_CLIENT_ID",
+  "GOOGLE_CLIENT_SECRET",
+  "KAKAO_CLIENT_ID",
+  "KAKAO_CLIENT_SECRET",
+  "NAVER_CLIENT_ID",
+  "NAVER_CLIENT_SECRET",
+  "JWT_SECRET",
+  "FCM_SERVICE_ACCOUNT_BASE64",
+  "KTO_SERVICE_KEY",
+  "KMA_SERVICE_KEY",
+  "PUBDATA_FESTIVAL_SERVICE_KEY",
+]
