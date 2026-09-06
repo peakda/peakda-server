@@ -31,7 +31,8 @@ interface FeedControllerDocs {
     @Operation(
         summary = "피드 조회",
         description = "게시된 스팟 기록을 filter 로 필터링해 최신순으로 조회한다. " +
-            "all=전체, interest=관심 꽃(사용자 관심 카테고리와 겹치는 식물이 태깅된 기록), following=팔로잉 중인 사용자의 기록.",
+            "all=전체, interest=관심 꽃(사용자 관심 카테고리와 겹치는 식물이 태깅된 기록), following=팔로잉 중인 사용자의 기록. " +
+            "각 기록에는 대표 사진 coverPhoto와 sortOrder 오름차순의 전체 사진 목록 photos가 포함된다.",
         security = [SecurityRequirement(name = "accessTokenCookie")],
     )
     @ApiErrorResponses(

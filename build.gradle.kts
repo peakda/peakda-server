@@ -7,7 +7,7 @@ plugins {
 }
 
 group = "com.peakda"
-version = "0.0.1-SNAPSHOT"
+version = "1.0.0"
 description = "Seasonal travel timing guide service"
 
 java {
@@ -71,4 +71,8 @@ allOpen {
 
 tasks.withType<Test> {
 	useJUnitPlatform()
+}
+
+tasks.bootJar {
+	archiveFileName.set("app.jar")
 }

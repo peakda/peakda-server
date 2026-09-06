@@ -50,8 +50,12 @@ spring:
             client-secret: ${GOOGLE_CLIENT_SECRET}
             authorization-grant-type: authorization_code
             redirect-uri: "{baseUrl}/login/oauth2/code/{registrationId}"
+            # openid 를 넣으면 Spring Security 가 OIDC 플로우로 처리해
+            # oidcUserService 를 찾는다. 등록된 것이 없어 기본 OidcUserService 가 돌고
+            # CustomOAuth2UserService 가 건너뛰어져, 성공 핸들러에서 DefaultOidcUser 를
+            # PrincipalDetails 로 캐스팅하다 터진다. 카카오·네이버와 같은 비-OIDC 경로로 맞춘다.
+            # sub 는 아래 provider 의 user-info-uri(v3)가 동일하게 내려주므로 식별자는 그대로다.
             scope:
-              - openid
               - profile
               - email
             client-name: Google
