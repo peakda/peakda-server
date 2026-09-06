@@ -42,7 +42,7 @@ app_parameters = {
   COOKIE_SAME_SITE = "None"
 
   CORS_ALLOWED_ORIGINS = "https://peakda.vercel.app,https://peakda.com,https://www.peakda.com"
-  OAUTH2_REDIRECT_URI  = "https://peakda.vercel.app/auth/callback"
+  OAUTH2_REDIRECT_URI  = "https://www.peakda.com/auth/callback"
 
   # Grafana Cloud 수집 엔드포인트. 시크릿이 아니라 계정 식별자라 여기에 값을 둔다.
   # 토큰만 SecureString 으로 분리한다.
