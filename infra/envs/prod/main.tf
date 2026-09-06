@@ -249,6 +249,27 @@ resource "aws_lb_target_group" "this" {
     healthy_threshold   = 2
     unhealthy_threshold = 3
   }
+
+  # OAuth2 로그인 임시 대응.
+  #
+  # oauth2Login 이 authorizationRequestRepository 를 지정하지 않아 Spring 기본값인
+  # HttpSessionOAuth2AuthorizationRequestRepository 를 쓴다. 인가 요청이 서블릿
+  # 세션에 저장되는데 세션은 태스크 로컬 메모리라(Spring Session 미사용) 태스크가
+  # 2대 이상이면 /oauth2/authorization/* 과 /login/oauth2/code/* 가 서로 다른
+  # 태스크로 갈라져 authorization_request_not_found 로 로그인이 깨진다.
+  #
+  # 근본 해결은 쿠키 기반 AuthorizationRequestRepository 로 교체하는 것이고,
+  # 그때 이 블록을 지우면 된다. 태스크를 1대로 줄이는 방법도 있으나 이중화가
+  # 사라지고, desired_count=1 에서는 maximumPercent 150 이 floor(1.5)=1 이 되어
+  # 롤링 배포가 진행되지 못한다.
+  #
+  # 로그인 왕복만 버티면 되므로 유지 시간은 짧게 둔다. 길면 태스크 간 부하가
+  # 한쪽으로 쏠린다.
+  stickiness {
+    type            = "lb_cookie"
+    enabled         = true
+    cookie_duration = 3600
+  }
 }
 resource "aws_acm_certificate" "this" {
   domain_name       = local.app_domain
