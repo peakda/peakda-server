@@ -60,11 +60,13 @@ resource "aws_lambda_function" "credential_refresh" {
   runtime       = "python3.13"
   handler       = "db_credential_refresh.handler"
   # Use bash infra/scripts/terraform-prod.sh plan (or apply/validate) to package first.
-  filename                       = "${path.module}/build/db-credential-refresh.zip"
-  source_code_hash               = fileexists("${path.module}/build/db-credential-refresh.zip") ? filebase64sha256("${path.module}/build/db-credential-refresh.zip") : null
-  timeout                        = 30
-  memory_size                    = 128
-  reserved_concurrent_executions = 1
+  filename         = "${path.module}/build/db-credential-refresh.zip"
+  source_code_hash = fileexists("${path.module}/build/db-credential-refresh.zip") ? filebase64sha256("${path.module}/build/db-credential-refresh.zip") : null
+  timeout          = 30
+  memory_size      = 128
+  # Low-quota accounts cannot reserve concurrency without violating AWS's
+  # unreserved minimum. Duplicate invocations reconcile against ECS deployments;
+  # a racing update can conservatively cause an extra rollout, not skip rotation.
   environment {
     variables = {
       SECRET_ARN  = aws_db_instance.this.master_user_secret[0].secret_arn
