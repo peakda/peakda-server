@@ -250,21 +250,9 @@ resource "aws_lb_target_group" "this" {
     unhealthy_threshold = 3
   }
 
-  # OAuth2 로그인 임시 대응.
-  #
-  # oauth2Login 이 authorizationRequestRepository 를 지정하지 않아 Spring 기본값인
-  # HttpSessionOAuth2AuthorizationRequestRepository 를 쓴다. 인가 요청이 서블릿
-  # 세션에 저장되는데 세션은 태스크 로컬 메모리라(Spring Session 미사용) 태스크가
-  # 2대 이상이면 /oauth2/authorization/* 과 /login/oauth2/code/* 가 서로 다른
-  # 태스크로 갈라져 authorization_request_not_found 로 로그인이 깨진다.
-  #
-  # 근본 해결은 쿠키 기반 AuthorizationRequestRepository 로 교체하는 것이고,
-  # 그때 이 블록을 지우면 된다. 태스크를 1대로 줄이는 방법도 있으나 이중화가
-  # 사라지고, desired_count=1 에서는 maximumPercent 150 이 floor(1.5)=1 이 되어
-  # 롤링 배포가 진행되지 못한다.
-  #
-  # 로그인 왕복만 버티면 되므로 유지 시간은 짧게 둔다. 길면 태스크 간 부하가
-  # 한쪽으로 쏠린다.
+  # Redis 기반 인가 요청 저장소로 전환한 서버는 stickiness 에 의존하지 않는다.
+  # 기존 HttpSession 기반 서버와의 롤링 배포 호환성을 위해 당분간 유지한다.
+  # 전체 전환 후 별도 변경으로 해제할 수 있다.
   stickiness {
     type            = "lb_cookie"
     enabled         = true
