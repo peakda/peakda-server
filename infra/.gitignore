@@ -33,5 +33,8 @@ content/figma/
 *.dump.list
 sanitize.log
 
+# Local Python verification artifacts.
+__pycache__/
+
 # 운영 메모. 인스턴스 ID·IP 같은 환경 고유 값이 들어가 로컬에만 둔다.
 README.md
