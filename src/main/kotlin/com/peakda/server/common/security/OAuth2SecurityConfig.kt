@@ -1,5 +1,6 @@
 package com.peakda.server.common.security
 
+import com.peakda.server.common.security.oauth2.RedisOAuth2AuthorizationRequestRepository
 import com.peakda.server.domain.auth.application.CustomOAuth2UserService
 import com.peakda.server.domain.auth.oauth.handler.AppAwareAuthorizationRequestResolver
 import com.peakda.server.domain.auth.oauth.handler.OAuth2AuthenticationFailureHandler
@@ -14,12 +15,14 @@ class OAuth2SecurityConfig(
     private val oAuth2AuthenticationSuccessHandler: OAuth2AuthenticationSuccessHandler,
     private val oAuth2AuthenticationFailureHandler: OAuth2AuthenticationFailureHandler,
     private val appAwareAuthorizationRequestResolver: AppAwareAuthorizationRequestResolver,
+    private val authorizationRequestRepository: RedisOAuth2AuthorizationRequestRepository,
 ) {
 
     fun configure(oauth2: OAuth2LoginConfigurer<HttpSecurity>) {
         oauth2
             .authorizationEndpoint { endpoint ->
                 endpoint.authorizationRequestResolver(appAwareAuthorizationRequestResolver)
+                    .authorizationRequestRepository(authorizationRequestRepository)
             }
             .userInfoEndpoint { userInfo ->
                 userInfo.userService(customOAuth2UserService)
