@@ -7,20 +7,26 @@ import com.peakda.server.infrastructure.external.kma.asosdaly.AsosStationCatalog
 import com.peakda.server.infrastructure.external.kma.asosdaly.response.AsosDalyItem
 import com.peakda.server.infrastructure.scheduler.SchedulerProperties
 import com.peakda.server.infrastructure.scheduler.SchedulerTime.KST
+import com.peakda.server.infrastructure.scheduler.JobLogger
+import com.peakda.server.infrastructure.scheduler.NoOpSchedulerJobLock
+import com.peakda.server.infrastructure.scheduler.SchedulerJobSuccessGauge
 import com.peakda.server.infrastructure.scheduler.kmaFixture
 import com.peakda.server.infrastructure.scheduler.testErrorDecoder
 import com.peakda.server.infrastructure.scheduler.testJobLogger
 import com.peakda.server.infrastructure.scheduler.testObjectMapper
 import com.peakda.server.infrastructure.scheduler.testResilience
+import com.peakda.server.infrastructure.scheduler.history.SchedulerJobRunRecorder
 import org.assertj.core.api.Assertions.assertThat
 import org.hamcrest.Matchers.startsWith
 import org.junit.jupiter.api.Test
 import org.mockito.Mockito
+import io.micrometer.core.instrument.simple.SimpleMeterRegistry
 import org.springframework.core.io.ByteArrayResource
 import org.springframework.http.MediaType
 import org.springframework.test.web.client.match.MockRestRequestMatchers.queryParam
 import org.springframework.test.web.client.match.MockRestRequestMatchers.requestTo
 import org.springframework.test.web.client.response.MockRestResponseCreators.withSuccess
+import org.springframework.test.web.client.response.MockRestResponseCreators.withServerError
 import java.time.LocalDate
 
 class AsosDalySyncJobTest {
@@ -82,6 +88,112 @@ class AsosDalySyncJobTest {
 
         fixture.server.verify()
         assertThat(syncService.pages.flatten()).extracting<String> { it.stnId }.containsExactly("108", "112")
+    }
+
+    @Test
+    fun `한 지점 조회 실패 후에도 나머지 지점을 처리하고 잡은 실패로 기록한다`() {
+        val yesterday = LocalDate.now(KST).minusDays(1)
+        fixture.server.expect(requestTo(startsWith("https://example.test/asos/getWthrDataList?")))
+            .andExpect(queryParam("stnIds", "108"))
+            .andRespond(withServerError())
+        fixture.server.expect(requestTo(startsWith("https://example.test/asos/getWthrDataList?")))
+            .andExpect(queryParam("stnIds", "112"))
+            .andRespond(withSuccess(successJson("112"), MediaType.APPLICATION_JSON))
+
+        val recorder = RecordingRecorder()
+        val registry = SimpleMeterRegistry()
+        val jobLogger = JobLogger(recorder, registry, NoOpSchedulerJobLock, SchedulerJobSuccessGauge(registry))
+        val job = AsosDalySyncJob(
+            fixture.client,
+            syncService,
+            catalog,
+            enabled(jobEnabled = true, backfillFrom = yesterday),
+            jobLogger,
+        )
+
+        job.run()
+
+        fixture.server.verify()
+        assertThat(syncService.pages.flatten()).extracting<String> { it.stnId }.containsExactly("112")
+        assertThat(recorder.events).hasSize(2)
+        assertThat(recorder.events[0]).isEqualTo("start:${AsosDalySyncJob.JOB_NAME}")
+        assertThat(recorder.events[1]).startsWith("fail:1:IllegalStateException:")
+        assertThat(recorder.events[1]).contains("108")
+        assertThat(registry.counter("scheduler.job.failure_total", "job", AsosDalySyncJob.JOB_NAME).count())
+            .isEqualTo(1.0)
+        assertThat(registry.counter("scheduler.job.success_total", "job", AsosDalySyncJob.JOB_NAME).count())
+            .isZero()
+    }
+
+    @Test
+    fun `모든 지점 조회가 실패해도 각 지점을 시도하고 실패로 기록한다`() {
+        val yesterday = LocalDate.now(KST).minusDays(1)
+        for (stationId in listOf("108", "112")) {
+            fixture.server.expect(requestTo(startsWith("https://example.test/asos/getWthrDataList?")))
+                .andExpect(queryParam("stnIds", stationId))
+                .andRespond(withServerError())
+        }
+
+        val recorder = RecordingRecorder()
+        val registry = SimpleMeterRegistry()
+        val jobLogger = JobLogger(recorder, registry, NoOpSchedulerJobLock, SchedulerJobSuccessGauge(registry))
+        val job = AsosDalySyncJob(
+            fixture.client,
+            syncService,
+            catalog,
+            enabled(jobEnabled = true, backfillFrom = yesterday),
+            jobLogger,
+        )
+
+        job.run()
+
+        fixture.server.verify()
+        assertThat(syncService.pages).isEmpty()
+        assertThat(recorder.events).hasSize(2)
+        assertThat(recorder.events[0]).isEqualTo("start:${AsosDalySyncJob.JOB_NAME}")
+        assertThat(recorder.events[1]).startsWith("fail:1:IllegalStateException:")
+        assertThat(recorder.events[1]).contains("108", "112")
+        assertThat(registry.counter("scheduler.job.failure_total", "job", AsosDalySyncJob.JOB_NAME).count())
+            .isEqualTo(1.0)
+        assertThat(registry.counter("scheduler.job.success_total", "job", AsosDalySyncJob.JOB_NAME).count())
+            .isZero()
+    }
+
+    @Test
+    fun `quota 초과는 이후 지점 처리를 중단하고 실행 이력을 skip으로 기록한다`() {
+        val yesterday = LocalDate.now(KST).minusDays(1)
+        fixture.server.expect(requestTo(startsWith("https://example.test/asos/getWthrDataList?")))
+            .andExpect(queryParam("stnIds", "108"))
+            .andRespond(withSuccess(quotaJson(), MediaType.APPLICATION_JSON))
+
+        val recorder = RecordingRecorder()
+        val registry = SimpleMeterRegistry()
+        val jobLogger = JobLogger(recorder, registry, NoOpSchedulerJobLock, SchedulerJobSuccessGauge(registry))
+        val job = AsosDalySyncJob(
+            fixture.client,
+            syncService,
+            catalog,
+            enabled(jobEnabled = true, backfillFrom = yesterday),
+            jobLogger,
+        )
+
+        job.run()
+
+        fixture.server.verify()
+        assertThat(syncService.pages).isEmpty()
+        assertThat(recorder.events).containsExactly(
+            "start:${AsosDalySyncJob.JOB_NAME}",
+            "skipExisting:1:quota_exhausted",
+        )
+        assertThat(registry.counter("scheduler.job.failure_total", "job", AsosDalySyncJob.JOB_NAME).count())
+            .isZero()
+        assertThat(
+            registry.counter(
+                "scheduler.job.skip_total",
+                "job", AsosDalySyncJob.JOB_NAME,
+                "reason", JobLogger.SKIP_QUOTA_EXHAUSTED,
+            ).count(),
+        ).isEqualTo(1.0)
     }
 
     @Test
@@ -176,7 +288,37 @@ class AsosDalySyncJobTest {
         }
     }
 
+    private class RecordingRecorder : SchedulerJobRunRecorder {
+        val events = mutableListOf<String>()
+
+        override fun start(jobName: String): Long? {
+            events += "start:$jobName"
+            return 1L
+        }
+
+        override fun complete(runId: Long?, processedCount: Int?, totalCount: Int?) {
+            events += "complete:$runId:$processedCount:$totalCount"
+        }
+
+        override fun fail(runId: Long?, throwable: Throwable) {
+            events += "fail:$runId:${throwable::class.simpleName}:${throwable.message}"
+        }
+
+        override fun skip(jobName: String, reason: String) {
+            events += "skip:$jobName:$reason"
+        }
+
+        override fun skipExisting(runId: Long?, reason: String) {
+            events += "skipExisting:$runId:$reason"
+        }
+    }
+
     companion object {
+        private fun quotaJson() = """
+            { "response": { "header": { "resultCode": "22", "resultMsg": "QUOTA_EXCEEDED" },
+              "body": { "items": { "item": [] }, "totalCount": 0 } } }
+        """.trimIndent()
+
         private fun successJson(stationId: String) = """
             { "response": { "header": { "resultCode": "00", "resultMsg": "NORMAL_SERVICE" },
               "body": { "items": { "item": [

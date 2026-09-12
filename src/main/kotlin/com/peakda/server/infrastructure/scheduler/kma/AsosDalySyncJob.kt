@@ -47,6 +47,7 @@ class AsosDalySyncJob(
         var processed = 0
         var syncedStations = 0
         var skippedStations = 0
+        val failedStations = mutableListOf<String>()
 
         for (stationId in stationIds) {
             val range = resolveBackfillRange(
@@ -79,9 +80,17 @@ class AsosDalySyncJob(
             } catch (e: ExternalApiException) {
                 if (e.errorCode == ErrorCode.EXTERNAL_API_QUOTA_EXCEEDED) throw e
                 log.warn("[scheduler] job={} stationId={} status=FAILED error={}", JOB_NAME, stationId, e.message, e)
+                failedStations += stationId
             } catch (e: Exception) {
                 log.warn("[scheduler] job={} stationId={} status=FAILED error={}", JOB_NAME, stationId, e.message, e)
+                failedStations += stationId
             }
+        }
+
+        if (failedStations.isNotEmpty()) {
+            throw IllegalStateException(
+                "ASOS daily observation sync failed for stations: ${failedStations.joinToString(", ")}",
+            )
         }
 
         return mapOf(
