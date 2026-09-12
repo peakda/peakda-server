@@ -96,6 +96,21 @@ class SeasonalBloomEstimateRepositoryTest {
         assertThat(estimate.peakStartDate).isEqualTo(TODAY.plusDays(7))
     }
 
+    @Test
+    fun `관측 기반 추정기를 사용한 개화 추정치를 저장한다`() {
+        val estimate = estimate(
+            attractionId = 300L,
+            bloomCategory = BloomCategory.CHERRY,
+            peakStartDate = TODAY,
+        ).apply { chosenEstimator = Estimator.OBSERVATION }
+
+        repository.saveAndFlush(estimate)
+
+        assertThat(repository.findAll()).anySatisfy {
+            assertThat(it.chosenEstimator).isEqualTo(Estimator.OBSERVATION)
+        }
+    }
+
     private fun estimate(
         attractionId: Long,
         bloomCategory: BloomCategory,
