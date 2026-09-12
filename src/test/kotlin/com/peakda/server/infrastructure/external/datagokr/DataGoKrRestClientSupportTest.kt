@@ -8,9 +8,11 @@ import org.assertj.core.api.Assertions.assertThatThrownBy
 import org.junit.jupiter.api.Test
 import org.springframework.http.HttpHeaders
 import org.springframework.http.HttpStatus
+import org.springframework.http.MediaType
 import org.springframework.test.web.client.MockRestServiceServer
 import org.springframework.test.web.client.match.MockRestRequestMatchers.requestTo
 import org.springframework.test.web.client.response.MockRestResponseCreators.withStatus
+import org.springframework.test.web.client.response.MockRestResponseCreators.withSuccess
 import org.springframework.web.client.RestClient
 import java.time.Duration
 import java.time.ZoneOffset
@@ -21,6 +23,38 @@ class DataGoKrRestClientSupportTest {
 
     private val errorDecoder = DataGoKrErrorDecoder()
     private val objectMapper = jacksonObjectMapper()
+
+    @Test
+    fun `표준데이터의 최상위 header body와 기존 response wrapper를 모두 읽는다`() {
+        val response = """{"header":{"resultCode":"00","resultMsg":"NORMAL SERVICE."},"body":{"items":{"item":[{"id":"festival-1"}]},"numOfRows":1,"pageNo":1,"totalCount":1305}}"""
+        for (payload in listOf(response, """{"response":$response}""")) {
+            val builder = RestClient.builder().baseUrl("https://example.test")
+            val server = MockRestServiceServer.bindTo(builder).build()
+            server.expect(requestTo("https://example.test/probe"))
+                .andRespond(withSuccess(payload, MediaType.APPLICATION_JSON))
+
+            val result = builder.build().getDataGoKrBody<TestItem>(objectMapper, errorDecoder, "/probe")
+
+            assertThat(result.items).containsExactly(TestItem("festival-1"))
+            assertThat(result.totalCount).isEqualTo(1305)
+            assertThat(result.pageNo).isEqualTo(1)
+            server.verify()
+        }
+    }
+
+    @Test
+    fun `wrapper 없는 오류 응답도 인증 오류로 처리한다`() {
+        val builder = RestClient.builder().baseUrl("https://example.test")
+        val server = MockRestServiceServer.bindTo(builder).build()
+        server.expect(requestTo("https://example.test/probe"))
+            .andRespond(withSuccess("""{"header":{"resultCode":"30","resultMsg":"UNREGISTERED KEY"}}""", MediaType.APPLICATION_JSON))
+
+        assertThatThrownBy {
+            builder.build().getDataGoKrBody<TestItem>(objectMapper, errorDecoder, "/probe")
+        }.isInstanceOfSatisfying(ExternalApiException::class.java) {
+            assertThat(it.errorCode).isEqualTo(ErrorCode.EXTERNAL_API_AUTH_FAILED)
+        }
+    }
 
     @Test
     fun `HTTP 429 응답은 transient ExternalApiException 으로 매핑된다`() {

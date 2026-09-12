@@ -46,7 +46,13 @@ inline fun <reified T : Any> RestClient.getDataGoKrBody(
 
     errorDecoder.throwIfXmlError(rawBody)
 
-    val envelope = objectMapper.readValue<DataGoKrEnvelope<T>>(rawBody)
+    // 전국 표준데이터 API는 response wrapper 없이 header/body를 반환한다.
+    val root = objectMapper.readTree(rawBody)
+    val envelope = if (root.has("response")) {
+        objectMapper.readValue<DataGoKrEnvelope<T>>(rawBody)
+    } else {
+        DataGoKrEnvelope(objectMapper.readValue<DataGoKrResponse<T>>(rawBody))
+    }
     return errorDecoder.decode(envelope)
 }
 
