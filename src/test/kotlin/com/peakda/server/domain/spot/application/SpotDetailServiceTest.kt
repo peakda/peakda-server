@@ -23,6 +23,8 @@ import org.assertj.core.api.Assertions.assertThatThrownBy
 import org.junit.jupiter.api.Test
 import org.mockito.ArgumentMatchers.anyList
 import org.mockito.Mockito.mock
+import org.mockito.Mockito.never
+import org.mockito.Mockito.verify
 import org.mockito.Mockito.`when`
 import org.springframework.data.domain.PageImpl
 import org.springframework.data.domain.PageRequest
@@ -112,6 +114,23 @@ class SpotDetailServiceTest {
 
         assertThat(response.favorite.favorited).isFalse()
         assertThat(response.favorite.notifyEnabled).isFalse()
+    }
+
+    @Test
+    fun `비로그인 상세는 기록 assembler에 null viewer를 전달하고 찜을 조회하지 않는다`() {
+        attractionSpot(primaryImageUrl = "https://img/primary.jpg")
+        stubRecords(count = 0, preview = emptyList())
+        stubEstimates()
+
+        val response = service.getDetail(SPOT_ID, null)
+
+        assertThat(response.favorite.favorited).isFalse()
+        assertThat(response.favorite.notifyEnabled).isFalse()
+        verify(assembler).assembleSummaries(emptyList(), null)
+        verify(spotFavoriteRepository, never()).findByUserIdAndSpotId(
+            org.mockito.ArgumentMatchers.anyLong(),
+            org.mockito.ArgumentMatchers.anyLong(),
+        )
     }
 
     @Test

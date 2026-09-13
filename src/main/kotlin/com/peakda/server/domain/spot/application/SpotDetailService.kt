@@ -36,7 +36,7 @@ class SpotDetailService(
 ) {
 
     @Transactional(readOnly = true)
-    fun getDetail(spotId: Long, userId: Long): SpotDetailResponse {
+    fun getDetail(spotId: Long, userId: Long?): SpotDetailResponse {
         val spot = spotRepository.findById(spotId).orElseThrow { SpotNotFoundException() }
 
         val recordCount = spotRecordRepository.countBySpotIdAndStatus(spotId, SpotRecordStatus.PUBLISHED)
@@ -84,8 +84,8 @@ class SpotDetailService(
         return representative.toBanner(baseDate)
     }
 
-    private fun resolveFavorite(spotId: Long, userId: Long): FavoriteState {
-        val favorite = spotFavoriteRepository.findByUserIdAndSpotId(userId, spotId)
+    private fun resolveFavorite(spotId: Long, userId: Long?): FavoriteState {
+        val favorite = userId?.let { spotFavoriteRepository.findByUserIdAndSpotId(it, spotId) }
         return FavoriteState(
             favorited = favorite != null,
             notifyEnabled = favorite?.notifyEnabled ?: false,
@@ -105,7 +105,6 @@ class SpotDetailService(
 
     companion object {
         private const val PREVIEW_SIZE = 3
-
         private fun statusRank(status: BloomStatus): Int = when (status) {
             BloomStatus.PEAK -> 0
             BloomStatus.STARTED -> 1

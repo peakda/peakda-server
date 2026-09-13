@@ -18,14 +18,14 @@ class PlantController(
 ) : PlantControllerDocs {
 
     override fun list(
-        principal: PrincipalDetails,
+        principal: PrincipalDetails?,
     ): ResponseEntity<ApiResponse<List<PlantResponse>>> {
         val response = plantService.listActive()
         return ResponseEntity.ok(ApiResponse.success(HttpStatus.OK, response))
     }
 
     override fun search(
-        principal: PrincipalDetails,
+        principal: PrincipalDetails?,
         keyword: String,
     ): ResponseEntity<ApiResponse<List<PlantResponse>>> {
         val response = plantService.search(keyword)

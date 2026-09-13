@@ -21,12 +21,12 @@ class SearchController(
 ) : SearchControllerDocs {
 
     override fun searchSpots(
-        principal: PrincipalDetails,
+        principal: PrincipalDetails?,
         query: String,
         category: BloomCategory?,
         pageRequest: PageRequest,
     ): ResponseEntity<ApiResponse<PageResponse<SpotSearchItem>>> {
-        val response = searchService.searchSpots(requireNotNull(principal.getUser().id), query, pageRequest, category)
+        val response = searchService.searchSpots(principal?.getUser()?.id, query, pageRequest, category)
         return ResponseEntity.ok(ApiResponse.success(HttpStatus.OK, response))
     }
 

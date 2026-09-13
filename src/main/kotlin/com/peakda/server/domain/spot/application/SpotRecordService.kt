@@ -141,16 +141,16 @@ class SpotRecordService(
 
     /** 본인 기록은 DRAFT/PUBLISHED 상관없이 조회 가능. 타인 기록은 PUBLISHED 만 노출하고, DRAFT 는 404 로 응답해 존재 자체를 숨긴다. */
     @Transactional(readOnly = true)
-    fun get(recordId: Long, userId: Long): SpotRecordResponse {
+    fun get(recordId: Long, userId: Long?): SpotRecordResponse {
         val record = spotRecordRepository.findById(recordId).orElseThrow { SpotRecordNotFoundException() }
         if (record.userId != userId && record.status != SpotRecordStatus.PUBLISHED) throw SpotRecordNotFoundException()
         return responseAssembler.assemble(record, userId)
     }
 
     @Transactional(readOnly = true)
-    fun listBySpot(spotId: Long, userId: Long, pageRequest: PageRequest): PageResponse<SpotRecordSummaryResponse> {
+    fun listBySpot(spotId: Long, userId: Long?, pageRequest: PageRequest): PageResponse<SpotRecordSummaryResponse> {
         val pageable = pageRequest.toPageable(Sort.by(Sort.Direction.DESC, "createdAt"))
-        val page = spotRecordRepository.findBySpotId(spotId, pageable)
+        val page = spotRecordRepository.findBySpotIdAndStatus(spotId, SpotRecordStatus.PUBLISHED, pageable)
         val summariesById = responseAssembler.assembleSummaries(page.content, userId).associateBy { it.id }
         return page.map { record -> summariesById.getValue(requireNotNull(record.id)) }.toPageResponse()
     }

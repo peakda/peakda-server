@@ -51,17 +51,17 @@ class SpotController(
     }
 
     override fun getSpotDetail(
-        principal: PrincipalDetails,
+        principal: PrincipalDetails?,
         id: Long,
     ): ResponseEntity<ApiResponse<SpotDetailResponse>> {
-        val userId = requireNotNull(principal.getUser().id)
+        val userId = principal?.getUser()?.id
         val response = spotDetailService.getDetail(id, userId)
         return ResponseEntity.ok(ApiResponse.success(HttpStatus.OK, response))
     }
 
     @RecordLocationUsage(service = LocationServiceType.SPOT_PREVIEW, coordinateParams = ["lat", "lng"])
     override fun preview(
-        principal: PrincipalDetails,
+        principal: PrincipalDetails?,
         spotIds: List<Long>,
         category: BloomCategory?,
         categories: List<BloomCategory>?,
@@ -70,7 +70,7 @@ class SpotController(
         lng: Double?,
     ): ResponseEntity<ApiResponse<SpotPreviewResponse>> {
         val mergedCategories = (listOfNotNull(category) + categories.orEmpty()).distinct().ifEmpty { null }
-        val userId = requireNotNull(principal.getUser().id)
+        val userId = principal?.getUser()?.id
         val response = spotPreviewService.preview(spotIds, mergedCategories, status, lat, lng, userId)
         return ResponseEntity.ok(ApiResponse.success(HttpStatus.OK, response))
     }
