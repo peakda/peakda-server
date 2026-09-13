@@ -36,7 +36,6 @@ class AuthController(
 
     override fun checkNickname(
         value: String,
-        principal: SignupSessionPrincipal,
     ): ResponseEntity<ApiResponse<NicknameCheckResponse>> {
         val result = authService.checkNickname(value)
         return ResponseEntity.ok(ApiResponse.success(HttpStatus.OK, result))
