@@ -57,14 +57,14 @@ class SearchService(
 ) {
 
     @Transactional(readOnly = true)
-    fun searchSpots(userId: Long, query: String, pageRequest: PageRequest, category: BloomCategory? = null): PageResponse<SpotSearchItem> {
+    fun searchSpots(userId: Long?, query: String, pageRequest: PageRequest, category: BloomCategory? = null): PageResponse<SpotSearchItem> {
         val q = query.trim()
         if (q.isEmpty()) return emptyPage(pageRequest)
         val pageable = pageRequest.toPageable(Sort.by(Sort.Direction.ASC, "name"))
         val page = spotRepository.findByVisibleTrueAndNameContainingIgnoreCase(q, pageable)
         val spots = page.content
         val spotIds = spots.mapNotNull { it.id }
-        val favoritesBySpot = if (spotIds.isEmpty()) emptyMap() else {
+        val favoritesBySpot = if (userId == null || spotIds.isEmpty()) emptyMap() else {
             spotFavoriteRepository.findByUserIdAndSpotIdIn(userId, spotIds).associateBy { it.spotId }
         }
         val bloomBySpot = bloomBySpot(spots, category)

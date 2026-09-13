@@ -53,7 +53,7 @@ class ExploreService(
 ) {
 
     @Transactional(readOnly = true)
-    fun explore(userId: Long, category: BloomCategory?, today: LocalDate): ExploreResponse {
+    fun explore(userId: Long?, category: BloomCategory?, today: LocalDate): ExploreResponse {
         val baseDate = seasonalBloomEstimateRepository.findLatestBaseDate()
         val peakNow = findSection(
             baseDate = baseDate,
@@ -81,7 +81,7 @@ class ExploreService(
 
     @Transactional(readOnly = true)
     fun spots(
-        userId: Long,
+        userId: Long?,
         section: ExploreSection,
         category: BloomCategory?,
         pageRequest: PageRequest,
@@ -140,7 +140,7 @@ class ExploreService(
         return ExploreSpotSectionData(page, representativeByAttraction)
     }
 
-    private fun loadSpotAssembly(sections: List<ExploreSpotSectionData>, userId: Long): ExploreSpotAssembly {
+    private fun loadSpotAssembly(sections: List<ExploreSpotSectionData>, userId: Long?): ExploreSpotAssembly {
         val attractionIds = sections.flatMap { it.page.content }.distinct()
         if (attractionIds.isEmpty()) return ExploreSpotAssembly(emptyMap(), emptyMap(), emptyMap())
         val attractionsById = attractionRepository.findAllById(attractionIds)
@@ -157,7 +157,7 @@ class ExploreService(
             .sortedBy { it.second }
             .groupBy({ it.first }, { it.second })
             .mapValues { (_, spotIds) -> spotIds.first() }
-        val favoritesBySpot = if (spotIdByAttraction.isEmpty()) {
+        val favoritesBySpot = if (userId == null || spotIdByAttraction.isEmpty()) {
             emptyMap()
         } else {
             spotFavoriteRepository.findByUserIdAndSpotIdIn(userId, spotIdByAttraction.values.toList())

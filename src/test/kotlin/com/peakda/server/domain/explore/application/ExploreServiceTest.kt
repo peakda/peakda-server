@@ -93,6 +93,32 @@ class ExploreServiceTest {
     }
 
     @Test
+    fun `비로그인 탐색은 스팟을 반환하되 찜을 조회하지 않는다`() {
+        `when`(seasonalBloomEstimateRepository.findLatestBaseDate()).thenReturn(BASE_DATE)
+        `when`(
+            seasonalBloomEstimateRepository.findAttractionIdsByBaseDateAndStatus(BASE_DATE, BloomStatus.PEAK, peakPageable),
+        ).thenReturn(PageImpl(listOf(1L), peakPageable, 1))
+        `when`(
+            seasonalBloomEstimateRepository.findAttractionIdsByBaseDateAndStatus(BASE_DATE, BloomStatus.STARTED, nextWeekPageable),
+        ).thenReturn(PageImpl(emptyList(), nextWeekPageable, 0))
+        `when`(seasonalBloomEstimateRepository.findByBaseDateAndAttractionIdIn(BASE_DATE, listOf(1L)))
+            .thenReturn(listOf(estimate(1L, BloomCategory.CHERRY, BloomStatus.PEAK)))
+        `when`(attractionRepository.findAllById(listOf(1L))).thenReturn(listOf(attraction(1L, "남산")))
+        `when`(spotRepository.findByTypeAndAttractionIdIn(SpotType.ATTRACTION, listOf(1L)))
+            .thenReturn(listOf(spot(101L, 1L)))
+        stubFestivalAndCuration()
+
+        val response = service.explore(null, category = null, today = TODAY)
+
+        assertThat(response.peakNow.single().favorited).isFalse()
+        assertThat(response.peakNow.single().notifyEnabled).isFalse()
+        verify(spotFavoriteRepository, never()).findByUserIdAndSpotIdIn(
+            org.mockito.ArgumentMatchers.anyLong(),
+            org.mockito.ArgumentMatchers.anyList(),
+        )
+    }
+
+    @Test
     fun `절정과 다음 주 섹션은 각각 PEAK와 STARTED 상태로 정해진 크기만큼 조회한다`() {
         stubEmptyExplore()
 

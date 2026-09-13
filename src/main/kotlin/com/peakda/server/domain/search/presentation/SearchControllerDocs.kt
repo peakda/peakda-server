@@ -26,16 +26,14 @@ interface SearchControllerDocs {
 
     @Operation(
         summary = "스팟 검색",
-        description = "스팟명 부분일치(대소문자 무시)로 검색한다. 비공개(visible=false) 스팟은 제외된다.",
-        security = [SecurityRequirement(name = "accessTokenCookie")],
+        description = "스팟명 부분일치(대소문자 무시)로 검색한다. 비공개(visible=false) 스팟은 제외된다. 비로그인 조회가 가능하며 찜·알림 상태는 false이다.",
     )
     @ApiErrorResponses(
         ErrorCode.INVALID_REQUEST,
-        ErrorCode.UNAUTHORIZED,
     )
     @GetMapping("/spots")
     fun searchSpots(
-        @AuthenticationPrincipal principal: PrincipalDetails,
+        @AuthenticationPrincipal principal: PrincipalDetails?,
         @Parameter(description = "검색어", example = "남산")
         @RequestParam("q") query: String,
         @Parameter(description = "개화 신호가 있는 꽃 카테고리로 결과를 제한한다", example = "CHERRY")
@@ -64,10 +62,6 @@ interface SearchControllerDocs {
         summary = "인기 검색 (트렌딩 스팟)",
         description = "찜이 많은 순 상위 스팟 목록. 최근 검색어는 서버에 저장하지 않으므로(결정 H) " +
             "찜 수를 대체 인기 신호로 쓴다.",
-        security = [SecurityRequirement(name = "accessTokenCookie")],
-    )
-    @ApiErrorResponses(
-        ErrorCode.UNAUTHORIZED,
     )
     @GetMapping("/trending")
     fun trending(): ResponseEntity<ApiResponse<TrendingSpotsResponse>>

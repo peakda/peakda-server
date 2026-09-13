@@ -24,20 +24,20 @@ class FeedController(
 ) : FeedControllerDocs {
 
     override fun list(
-        principal: PrincipalDetails,
+        principal: PrincipalDetails?,
         filter: FeedFilter,
         pageRequest: PageRequest,
     ): ResponseEntity<ApiResponse<PageResponse<SpotRecordSummaryResponse>>> {
-        val userId = requireNotNull(principal.getUser().id)
+        val userId = principal?.getUser()?.id
         val response = feedService.list(userId, filter, pageRequest)
         return ResponseEntity.ok(ApiResponse.success(HttpStatus.OK, response))
     }
 
     override fun get(
-        principal: PrincipalDetails,
+        principal: PrincipalDetails?,
         id: Long,
     ): ResponseEntity<ApiResponse<SpotRecordResponse>> {
-        val userId = requireNotNull(principal.getUser().id)
+        val userId = principal?.getUser()?.id
         val response = feedService.detail(id, userId)
         return ResponseEntity.ok(ApiResponse.success(HttpStatus.OK, response))
     }

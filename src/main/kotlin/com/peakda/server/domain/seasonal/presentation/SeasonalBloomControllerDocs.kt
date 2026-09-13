@@ -11,7 +11,6 @@ import com.peakda.server.domain.seasonal.presentation.response.BloomMapResponse
 import com.peakda.server.domain.seasonal.presentation.response.BloomPeakListResponse
 import io.swagger.v3.oas.annotations.Operation
 import io.swagger.v3.oas.annotations.Parameter
-import io.swagger.v3.oas.annotations.security.SecurityRequirement
 import io.swagger.v3.oas.annotations.tags.Tag
 import org.springframework.format.annotation.DateTimeFormat
 import org.springframework.http.ResponseEntity
@@ -32,11 +31,9 @@ interface SeasonalBloomControllerDocs {
             "동네형은 주소 첫 토큰으로 권역을 판정하고, 판정 불가한 주소는 권역 필터가 걸리면 제외한다. " +
             "date(방문예정일)로 그날 기준 명소형 상태를 재계산할 수 있다. 필터 UI 의 시기 탭은 status 를 쓴다. " +
             "date 는 방문예정일 기반 재계산용이며 동네형은 최근 관측값을 유지하므로 미래 날짜에서는 두 기준이 섞인다.",
-        security = [SecurityRequirement(name = "accessTokenCookie")],
     )
     @ApiErrorResponses(
         ErrorCode.INVALID_REQUEST,
-        ErrorCode.UNAUTHORIZED,
     )
     @GetMapping
     fun map(
@@ -75,11 +72,9 @@ interface SeasonalBloomControllerDocs {
     @Operation(
         summary = "지금이 절정인 명소 리스트",
         description = "최신 산출일 기준 status=PEAK 명소를 조회한다. category 로 특정 꽃만 필터할 수 있다.",
-        security = [SecurityRequirement(name = "accessTokenCookie")],
     )
     @ApiErrorResponses(
         ErrorCode.INVALID_REQUEST,
-        ErrorCode.UNAUTHORIZED,
     )
     @GetMapping("/peak")
     fun peak(
@@ -90,11 +85,9 @@ interface SeasonalBloomControllerDocs {
     @Operation(
         summary = "예상 만개 캘린더",
         description = "단일 명소×카테고리의 향후 일별 예상 상태 타임라인과 대표 절정 구간(올해 만개 시기/지속일)을 온디맨드로 계산한다.",
-        security = [SecurityRequirement(name = "accessTokenCookie")],
     )
     @ApiErrorResponses(
         ErrorCode.INVALID_REQUEST,
-        ErrorCode.UNAUTHORIZED,
         ErrorCode.ATTRACTION_NOT_FOUND,
     )
     @GetMapping("/calendar")

@@ -34,13 +34,13 @@ class SpotRecordResponseAssembler(
     private val objectKeyUrlResolver: ObjectKeyUrlResolver,
 ) {
 
-    fun assemble(record: SpotRecord, viewerId: Long): SpotRecordResponse {
+    fun assemble(record: SpotRecord, viewerId: Long?): SpotRecordResponse {
         val recordId = requireNotNull(record.id) { "record.id must not be null" }
         val context = loadContext(listOf(record), viewerId)
         return buildResponse(record, context, recordId)
     }
 
-    fun assembleSummaries(records: List<SpotRecord>, viewerId: Long): List<SpotRecordSummaryResponse> {
+    fun assembleSummaries(records: List<SpotRecord>, viewerId: Long?): List<SpotRecordSummaryResponse> {
         if (records.isEmpty()) return emptyList()
         val context = loadContext(records, viewerId)
         return records.map { record ->
@@ -95,7 +95,7 @@ class SpotRecordResponseAssembler(
         )
     }
 
-    private fun loadContext(records: List<SpotRecord>, viewerId: Long): AssemblyContext {
+    private fun loadContext(records: List<SpotRecord>, viewerId: Long?): AssemblyContext {
         val recordIds = records.mapNotNull { it.id }
         val spotIds = records.map { it.spotId }.toSet()
         val userIds = records.map { it.userId }.toSet()
@@ -114,9 +114,11 @@ class SpotRecordResponseAssembler(
         val countsByRecordId = spotRecordReactionRepository.countsBySpotRecordIdIn(recordIds)
             .groupBy { it.spotRecordId }
             .mapValues { (_, counts) -> counts.map { ReactionCount(it.reactionType, it.count) } }
-        val mineByRecordId = spotRecordReactionRepository.findByUserIdAndSpotRecordIdIn(viewerId, recordIds)
-            .groupBy { it.spotRecordId }
-            .mapValues { (_, reactions) -> reactions.map { it.reactionType }.toSet() }
+        val mineByRecordId = viewerId?.let {
+            spotRecordReactionRepository.findByUserIdAndSpotRecordIdIn(it, recordIds)
+                .groupBy { reaction -> reaction.spotRecordId }
+                .mapValues { (_, reactions) -> reactions.map { reaction -> reaction.reactionType }.toSet() }
+        }.orEmpty()
         val reactionsByRecordId = recordIds.associateWith { recordId ->
             ReactionSummary(
                 counts = countsByRecordId[recordId].orEmpty(),

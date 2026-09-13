@@ -44,6 +44,23 @@ class SpotRecordPhotoRepositoryTest {
 
     @Test
     @Transactional
+    fun `공개 스팟 기록 목록은 임시저장과 다른 스팟을 제외하고 개수를 계산한다`() {
+        val published = saveRecord(spotId = SPOT_ID, visitedDate = LocalDate.of(2026, 3, 10))
+        saveRecord(spotId = SPOT_ID, visitedDate = null, status = SpotRecordStatus.DRAFT)
+        saveRecord(spotId = OTHER_SPOT_ID, visitedDate = LocalDate.of(2026, 3, 10))
+
+        val page = spotRecordRepository.findBySpotIdAndStatus(
+            SPOT_ID,
+            SpotRecordStatus.PUBLISHED,
+            org.springframework.data.domain.PageRequest.of(0, 1),
+        )
+
+        assertThat(page.content.map { it.id }).containsExactly(published)
+        assertThat(page.totalElements).isEqualTo(1)
+    }
+
+    @Test
+    @Transactional
     fun `스팟별 최근 게시 기록 사진을 상한만큼 방문일 최신순으로 조회한다`() {
         val older = saveRecord(spotId = SPOT_ID, visitedDate = LocalDate.of(2026, 3, 1))
         val newer = saveRecord(spotId = SPOT_ID, visitedDate = LocalDate.of(2026, 3, 20))

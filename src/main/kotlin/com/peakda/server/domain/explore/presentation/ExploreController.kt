@@ -24,21 +24,21 @@ class ExploreController(
 ) : ExploreControllerDocs {
 
     override fun explore(
-        principal: PrincipalDetails,
+        principal: PrincipalDetails?,
         category: BloomCategory?,
     ): ResponseEntity<ApiResponse<ExploreResponse>> {
-        val userId = requireNotNull(principal.getUser().id)
+        val userId = principal?.getUser()?.id
         val response = exploreService.explore(userId, category, LocalDate.now(KST))
         return ResponseEntity.ok(ApiResponse.success(HttpStatus.OK, response))
     }
 
     override fun spots(
-        principal: PrincipalDetails,
+        principal: PrincipalDetails?,
         section: ExploreSection,
         category: BloomCategory?,
         pageRequest: PageRequest,
     ): ResponseEntity<ApiResponse<PageResponse<ExploreSpotItem>>> {
-        val userId = requireNotNull(principal.getUser().id)
+        val userId = principal?.getUser()?.id
         val response = exploreService.spots(userId, section, category, pageRequest)
         return ResponseEntity.ok(ApiResponse.success(HttpStatus.OK, response))
     }

@@ -70,6 +70,25 @@ class FeedServiceTest {
     }
 
     @Test
+    fun `익명 사용자는 전체 피드를 조회할 수 있다`() {
+        val record = record(1L)
+        val pageable = SpringPageRequest.of(0, 20, sort)
+        `when`(spotRecordRepository.findByStatus(SpotRecordStatus.PUBLISHED, pageable))
+            .thenReturn(PageImpl(listOf(record), pageable, 1))
+        `when`(responseAssembler.assembleSummaries(listOf(record), null)).thenReturn(listOf(summary(1L)))
+
+        val response = service.list(null, FeedFilter.ALL, PageRequest(page = 0, size = 20))
+
+        assertThat(response.content).extracting<Long> { it.id }.containsExactly(1L)
+    }
+
+    @Test
+    fun `익명 사용자가 개인화 피드를 요청하면 인증 오류를 반환한다`() {
+        assertThatThrownBy { service.list(null, FeedFilter.FOLLOWING, PageRequest(page = 0, size = 20)) }
+            .isInstanceOf(com.peakda.server.common.exception.AuthorizationException::class.java)
+    }
+
+    @Test
     fun `following 필터는 팔로잉이 없으면 빈 페이지를 반환한다`() {
         `when`(followRepository.findFollowingIds(USER_ID)).thenReturn(emptyList())
 
