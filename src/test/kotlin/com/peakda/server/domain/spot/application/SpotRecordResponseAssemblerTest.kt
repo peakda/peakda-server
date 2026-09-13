@@ -89,6 +89,18 @@ class SpotRecordResponseAssemblerTest {
     }
 
     @Test
+    fun `익명 조회는 집계만 반환하고 내 리액션을 조회하지 않는다`() {
+        val record = record(101L)
+        stubCommon(listOf(record))
+        `when`(spotRecordReactionRepository.countsBySpotRecordIdIn(listOf(101L))).thenReturn(emptyList())
+
+        val response = assembler.assembleSummaries(listOf(record), null).single()
+
+        assertThat(response.reactions.myReactions).isEmpty()
+        verify(spotRecordReactionRepository, never()).findByUserIdAndSpotRecordIdIn(anyLong(), org.mockito.ArgumentMatchers.anyList())
+    }
+
+    @Test
     fun `목록 사진은 기록별로 정렬해 모두 반환하고 대표 사진과 같은 항목을 공유한다`() {
         val records = listOf(record(102L), record(101L))
         stubCommon(records)

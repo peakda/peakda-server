@@ -20,6 +20,7 @@ import com.peakda.server.domain.user.repository.UserRepository
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Test
 import org.mockito.Mockito.mock
+import org.mockito.Mockito.never
 import org.mockito.Mockito.times
 import org.mockito.Mockito.verify
 import org.mockito.Mockito.`when`
@@ -61,6 +62,24 @@ class SearchServiceTest {
 
         assertThat(response.content).isEmpty()
         assertThat(response.totalElements).isEqualTo(0)
+    }
+
+    @Test
+    fun `비로그인 스팟 검색은 찜을 조회하지 않고 기본 상태를 반환한다`() {
+        val spot = spot(100L, "남산타워")
+        val pageable = SpringPageRequest.of(0, 20, Sort.by(Sort.Direction.ASC, "name"))
+        `when`(spotRepository.findByVisibleTrueAndNameContainingIgnoreCase("남산", pageable))
+            .thenReturn(PageImpl(listOf(spot), pageable, 1))
+        `when`(spotThumbnailResolver.resolve(listOf(spot))).thenReturn(emptyMap())
+
+        val response = service.searchSpots(null, "남산", PageRequest(page = 0, size = 20))
+
+        assertThat(response.content.single().favorited).isFalse()
+        assertThat(response.content.single().notifyEnabled).isFalse()
+        verify(spotFavoriteRepository, never()).findByUserIdAndSpotIdIn(
+            org.mockito.ArgumentMatchers.anyLong(),
+            org.mockito.ArgumentMatchers.anyList(),
+        )
     }
 
     @Test

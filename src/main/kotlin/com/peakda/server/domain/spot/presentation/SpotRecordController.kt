@@ -99,20 +99,20 @@ class SpotRecordController(
     }
 
     override fun get(
-        principal: PrincipalDetails,
+        principal: PrincipalDetails?,
         id: Long,
     ): ResponseEntity<ApiResponse<SpotRecordResponse>> {
-        val userId = requireNotNull(principal.getUser().id)
+        val userId = principal?.getUser()?.id
         val response = spotRecordService.get(id, userId)
         return ResponseEntity.ok(ApiResponse.success(HttpStatus.OK, response))
     }
 
     override fun listBySpot(
-        principal: PrincipalDetails,
+        principal: PrincipalDetails?,
         spotId: Long,
         pageRequest: PageRequest,
     ): ResponseEntity<ApiResponse<PageResponse<SpotRecordSummaryResponse>>> {
-        val userId = requireNotNull(principal.getUser().id)
+        val userId = principal?.getUser()?.id
         val response = spotRecordService.listBySpot(spotId, userId, pageRequest)
         return ResponseEntity.ok(ApiResponse.success(HttpStatus.OK, response))
     }

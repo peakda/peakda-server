@@ -156,25 +156,26 @@ interface SpotRecordControllerDocs {
         @PathVariable("id") id: Long,
     ): ResponseEntity<ApiResponse<Unit>>
 
-    @Operation(summary = "스팟 기록 상세 조회", security = [SecurityRequirement(name = "accessTokenCookie")])
-    @ApiErrorResponses(ErrorCode.UNAUTHORIZED, ErrorCode.SPOT_RECORD_NOT_FOUND)
+    @Operation(
+        summary = "스팟 기록 상세 조회",
+        description = "비로그인은 게시된 기록만 조회 가능하며 내 반응은 빈 목록이다. 인증된 작성자는 본인의 비공개 기록도 조회할 수 있다.",
+    )
+    @ApiErrorResponses(ErrorCode.SPOT_RECORD_NOT_FOUND)
     @GetMapping("/{id}")
     fun get(
         @Parameter(hidden = true)
-        @AuthenticationPrincipal principal: PrincipalDetails,
+        @AuthenticationPrincipal principal: PrincipalDetails?,
         @PathVariable("id") id: Long,
     ): ResponseEntity<ApiResponse<SpotRecordResponse>>
 
     @Operation(
         summary = "스팟별 기록 리스트",
-        description = "특정 스팟의 모든 기록(DRAFT 포함)을 페이지 단위로 조회한다.",
-        security = [SecurityRequirement(name = "accessTokenCookie")],
+        description = "특정 스팟의 게시된 기록을 페이지 단위로 조회한다.",
     )
-    @ApiErrorResponses(ErrorCode.UNAUTHORIZED)
     @GetMapping
     fun listBySpot(
         @Parameter(hidden = true)
-        @AuthenticationPrincipal principal: PrincipalDetails,
+        @AuthenticationPrincipal principal: PrincipalDetails?,
         @RequestParam("spotId") spotId: Long,
         @Valid @ModelAttribute pageRequest: PageRequest,
     ): ResponseEntity<ApiResponse<PageResponse<SpotRecordSummaryResponse>>>

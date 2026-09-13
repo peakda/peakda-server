@@ -28,6 +28,8 @@ import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Test
 import org.mockito.ArgumentMatchers.anyList
 import org.mockito.Mockito.mock
+import org.mockito.Mockito.never
+import org.mockito.Mockito.verify
 import org.mockito.Mockito.`when`
 import org.springframework.test.util.ReflectionTestUtils
 import java.time.LocalDate
@@ -225,6 +227,35 @@ class SpotPreviewServiceTest {
         assertThat(response.items).hasSize(1)
         assertThat(response.items.first().spotId).isEqualTo(SPOT_ID)
         assertThat(response.items.first().distanceMeters).isEqualTo(0.0, org.assertj.core.data.Offset.offset(1e-6))
+    }
+
+    @Test
+    fun `비로그인 프리뷰는 찜을 조회하지 않고 기본 상태를 반환한다`() {
+        val spot = localSpot(SPOT_ID)
+        `when`(spotRepository.findAllById(listOf(SPOT_ID))).thenReturn(listOf(spot))
+        `when`(seasonalBloomEstimateRepository.findLatestBaseDate()).thenReturn(null)
+        `when`(spotRecordRepository.findBySpotIdInAndStatus(listOf(SPOT_ID), SpotRecordStatus.PUBLISHED))
+            .thenReturn(emptyList())
+        `when`(spotRecordPhotoRepository.findRecentPhotosBySpotIds(listOf(SPOT_ID), SpotRecordStatus.PUBLISHED.name, 4))
+            .thenReturn(emptyList())
+        `when`(spotRecordRepository.countBySpotIdInAndStatus(listOf(SPOT_ID), SpotRecordStatus.PUBLISHED))
+            .thenReturn(emptyList())
+
+        val item = service.preview(
+            listOf(SPOT_ID),
+            categories = null,
+            status = null,
+            lat = null,
+            lng = null,
+            userId = null,
+        ).items.single()
+
+        assertThat(item.favorited).isFalse()
+        assertThat(item.notifyEnabled).isFalse()
+        verify(spotFavoriteRepository, never()).findByUserIdAndSpotIdIn(
+            org.mockito.ArgumentMatchers.anyLong(),
+            org.mockito.ArgumentMatchers.anyList(),
+        )
     }
 
     // --- fixtures ---

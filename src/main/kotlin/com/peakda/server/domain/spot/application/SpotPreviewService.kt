@@ -56,7 +56,7 @@ class SpotPreviewService(
         status: BloomStatus?,
         lat: Double?,
         lng: Double?,
-        userId: Long,
+        userId: Long?,
     ): SpotPreviewResponse {
         val distinctIds = spotIds.distinct()
         if (distinctIds.isEmpty()) return SpotPreviewResponse(emptyList())
@@ -72,9 +72,9 @@ class SpotPreviewService(
         val recordCounts = spotRecordRepository
             .countBySpotIdInAndStatus(distinctIds, SpotRecordStatus.PUBLISHED)
             .associate { it.spotId to it.recordCount }
-        val favoriteBySpot = spotFavoriteRepository
-            .findByUserIdAndSpotIdIn(userId, distinctIds)
-            .associateBy { it.spotId }
+        val favoriteBySpot = userId?.let {
+            spotFavoriteRepository.findByUserIdAndSpotIdIn(it, distinctIds).associateBy { favorite -> favorite.spotId }
+        }.orEmpty()
 
         val items = distinctIds.mapNotNull { spotId ->
             val spot = spotsById[spotId] ?: return@mapNotNull null

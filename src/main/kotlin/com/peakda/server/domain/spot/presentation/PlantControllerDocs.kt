@@ -24,25 +24,23 @@ interface PlantControllerDocs {
     @Operation(
         summary = "활성 식물 마스터 리스트",
         description = "ACTIVE 상태의 식물을 sortOrder 오름차순으로 반환한다. (Step2 식물 칩용)",
-        security = [SecurityRequirement(name = "accessTokenCookie")],
     )
-    @ApiErrorResponses(ErrorCode.UNAUTHORIZED)
+    @ApiErrorResponses
     @GetMapping
     fun list(
         @Parameter(hidden = true)
-        @AuthenticationPrincipal principal: PrincipalDetails,
+        @AuthenticationPrincipal principal: PrincipalDetails?,
     ): ResponseEntity<ApiResponse<List<PlantResponse>>>
 
     @Operation(
         summary = "식물 검색",
         description = "ACTIVE 식물을 이름 contains (대소문자 무시) 로 검색한다. 빈 키워드는 빈 결과를 반환.",
-        security = [SecurityRequirement(name = "accessTokenCookie")],
     )
-    @ApiErrorResponses(ErrorCode.UNAUTHORIZED)
+    @ApiErrorResponses
     @GetMapping("/search")
     fun search(
         @Parameter(hidden = true)
-        @AuthenticationPrincipal principal: PrincipalDetails,
+        @AuthenticationPrincipal principal: PrincipalDetails?,
         @RequestParam("keyword") keyword: String,
     ): ResponseEntity<ApiResponse<List<PlantResponse>>>
 

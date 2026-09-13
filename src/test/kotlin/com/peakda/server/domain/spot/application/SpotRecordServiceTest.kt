@@ -68,6 +68,26 @@ class SpotRecordServiceTest {
         assertThat(result.id).isEqualTo(1L)
     }
 
+    @Test
+    fun `비로그인 사용자는 게시된 기록을 조회한다`() {
+        val record = record(1L, OWNER_ID, SpotRecordStatus.PUBLISHED)
+        `when`(spotRecordRepository.findById(1L)).thenReturn(Optional.of(record))
+        `when`(responseAssembler.assemble(record, null)).thenReturn(response(1L))
+
+        assertThat(service.get(1L, null).id).isEqualTo(1L)
+    }
+
+    @Test
+    fun `비로그인 사용자는 임시저장과 숨김 기록을 조회할 수 없다`() {
+        for (status in listOf(SpotRecordStatus.DRAFT, SpotRecordStatus.HIDDEN)) {
+            `when`(spotRecordRepository.findById(1L)).thenReturn(Optional.of(record(1L, OWNER_ID, status)))
+
+            assertThatThrownBy { service.get(1L, null) }
+                .isInstanceOf(SpotRecordNotFoundException::class.java)
+        }
+        org.mockito.Mockito.verifyNoInteractions(responseAssembler)
+    }
+
     private fun record(id: Long, userId: Long, status: SpotRecordStatus): SpotRecord {
         val record = SpotRecord(spotId = 100L, userId = userId, status = status)
         ReflectionTestUtils.setField(record, "id", id)
