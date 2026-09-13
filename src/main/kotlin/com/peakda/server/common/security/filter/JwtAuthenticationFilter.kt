@@ -29,7 +29,12 @@ class JwtAuthenticationFilter(
         response: HttpServletResponse,
         filterChain: FilterChain,
     ) {
-        if (request.requestURI.startsWith("/api/auth/signup/")) {
+        if (request.requestURI == "/api/auth/signup/nickname/check") {
+            authenticateUser(request)
+            if (SecurityContextHolder.getContext().authentication == null) {
+                authenticateSignupSession(request)
+            }
+        } else if (request.requestURI.startsWith("/api/auth/signup/")) {
             authenticateSignupSession(request)
         } else {
             authenticateUser(request)

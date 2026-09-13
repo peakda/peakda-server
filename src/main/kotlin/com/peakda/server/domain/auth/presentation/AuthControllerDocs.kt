@@ -47,17 +47,21 @@ interface AuthControllerDocs {
     ): ResponseEntity<ApiResponse<UserInfoResponse>>
 
     @Operation(
-        summary = "회원가입 닉네임 중복 확인",
-        description = "소셜 로그인 후 발급된 signup-token 쿠키로 닉네임 사용 가능 여부를 확인합니다.",
-        security = [SecurityRequirement(name = "signupTokenCookie"), SecurityRequirement(name = "bearerToken")],
+        summary = "닉네임 중복 확인",
+        description = "가입 중인 사용자와 가입을 완료한 사용자 모두 닉네임 사용 가능 여부를 확인할 수 있습니다. " +
+            "웹은 signup-token 또는 access-token 쿠키, 앱은 가입 세션 토큰 또는 accessToken을 Bearer 헤더로 보냅니다. " +
+            "현재 본인의 닉네임을 포함하여 이미 사용 중인 닉네임은 available=false를 반환합니다.",
+        security = [
+            SecurityRequirement(name = "signupTokenCookie"),
+            SecurityRequirement(name = "accessTokenCookie"),
+            SecurityRequirement(name = "bearerToken"),
+        ],
     )
     @ApiErrorResponses(ErrorCode.NICKNAME_INVALID, ErrorCode.UNAUTHORIZED)
     @GetMapping("/signup/nickname/check")
     fun checkNickname(
         @Parameter(description = "2~10자의 한글, 영문, 숫자 닉네임", example = "peakda")
         @RequestParam value: String,
-        @Parameter(hidden = true)
-        @AuthenticationPrincipal principal: SignupSessionPrincipal,
     ): ResponseEntity<ApiResponse<NicknameCheckResponse>>
 
     @Operation(
