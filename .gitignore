@@ -39,6 +39,9 @@ out/
 ### macOS ###
 .DS_Store
 
+### Local certificates and keys ###
+*.pem
+
 ### Kotlin ###
 .kotlin
 

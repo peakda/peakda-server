@@ -12,11 +12,8 @@ import com.peakda.server.domain.seasonal.presentation.response.BloomMapResponse.
 import com.peakda.server.domain.seasonal.presentation.response.BloomMapResponse.BloomSlot
 import com.peakda.server.domain.seasonal.repository.SeasonalBloomEstimateRepository
 import com.peakda.server.domain.spot.entity.Spot
-import com.peakda.server.domain.spot.entity.SpotRecord
 import com.peakda.server.domain.spot.entity.SpotRecordStatus
 import com.peakda.server.domain.spot.entity.SpotType
-import com.peakda.server.domain.spot.repository.PlantRepository
-import com.peakda.server.domain.spot.repository.SpotRecordPlantRepository
 import com.peakda.server.domain.spot.repository.SpotRecordRepository
 import com.peakda.server.domain.spot.repository.SpotRepository
 import org.springframework.stereotype.Service
@@ -28,7 +25,7 @@ import java.time.LocalDate
  *
  * - 명소형 핀: 좌표 보유 visible 명소를 [SeasonalBloomEstimate] 최신 산출일 기준으로 상속한다.
  *   이미 materialize 된 Spot 행이 있으면 spotId 를 채운다.
- * - 동네형 핀: 사용자 생성 LOCAL Spot 을 최근 게시 [SpotRecord] 신호로 산출한다 (결정 D 변환).
+ * - 동네형 핀: 사용자 생성 LOCAL Spot 을 [LocalSpotBloomResolver] 의 최근 관측 신호로 산출한다 (결정 D 변환).
  * - 방문예정일 [date] 가 주어지면 명소형 슬롯을 절정 구간 기준으로 재계산한다 (결정 C MVP 산식).
  *   동네형은 관측값이라 미래 투영이 불가하므로 최근 관측 상태를 유지한다.
  *
@@ -40,8 +37,7 @@ class SpotBloomMapService(
     private val seasonalBloomEstimateRepository: SeasonalBloomEstimateRepository,
     private val spotRepository: SpotRepository,
     private val spotRecordRepository: SpotRecordRepository,
-    private val spotRecordPlantRepository: SpotRecordPlantRepository,
-    private val plantRepository: PlantRepository,
+    private val localSpotBloomResolver: LocalSpotBloomResolver,
 ) {
     @Transactional(readOnly = true)
     fun map(
@@ -141,55 +137,17 @@ class SpotBloomMapService(
             .findBySpotIdInAndStatus(spots.mapNotNull { it.id }, SpotRecordStatus.PUBLISHED)
         if (records.isEmpty()) return emptyList()
 
-        val categoriesByRecord = categoriesByRecord(records)
-        val recordsBySpot = records.groupBy { it.spotId }
+        val signalsBySpot = localSpotBloomResolver.resolve(records)
 
         return spots.mapNotNull { spot ->
             val spotId = spot.id ?: return@mapNotNull null
-            val slots = localSlots(recordsBySpot[spotId].orEmpty(), categoriesByRecord, categories, status)
+            val slots = signalsBySpot[spotId].orEmpty()
+                .filter { categories.isNullOrEmpty() || it.category in categories }
+                .filter { status == null || it.status == status }
+                .map { BloomSlot(it.category, it.category.displayName, it.status, LOCAL_RECORD_CONFIDENCE) }
             if (slots.isEmpty()) return@mapNotNull null
             spot.toPin(slots)
         }
-    }
-
-    /** 각 기록 id 의 꽃 카테고리 집합 (식물의 bloomCategory 브릿지 경유). */
-    private fun categoriesByRecord(records: List<SpotRecord>): Map<Long, Set<BloomCategory>> {
-        val recordIds = records.mapNotNull { it.id }
-        val joins = spotRecordPlantRepository.findByIdSpotRecordIdIn(recordIds)
-        val categoryByPlant = plantRepository.findAllById(joins.map { it.plantId }.toSet())
-            .mapNotNull { plant -> plant.bloomCategory?.let { requireNotNull(plant.id) to it } }
-            .toMap()
-        return joins
-            .mapNotNull { join -> categoryByPlant[join.plantId]?.let { join.spotRecordId to it } }
-            .groupBy({ it.first }, { it.second })
-            .mapValues { (_, categories) -> categories.toSet() }
-    }
-
-    /** 한 동네형 Spot 의 카테고리별 슬롯 — 최근 관측 우선, ENDED(지는 중) 제외. */
-    private fun localSlots(
-        spotRecords: List<SpotRecord>,
-        categoriesByRecord: Map<Long, Set<BloomCategory>>,
-        categoryFilters: List<BloomCategory>?,
-        statusFilter: BloomStatus?,
-    ): List<BloomSlot> {
-        val slotByCategory = linkedMapOf<BloomCategory, BloomSlot>()
-        val recent = spotRecords.sortedWith(
-            compareByDescending<SpotRecord> { it.visitedDate ?: LocalDate.MIN }.thenByDescending { it.createdAt },
-        )
-        for (record in recent) {
-            val stage = record.bloomStage ?: continue
-            val status = BloomStageStatusMapper.toStatus(stage)
-            if (status == BloomStatus.ENDED) continue
-            val recordId = record.id ?: continue
-            val categories = categoriesByRecord[recordId].orEmpty()
-                .filter { categoryFilters.isNullOrEmpty() || it in categoryFilters }
-            for (category in categories) {
-                slotByCategory.getOrPut(category) {
-                    BloomSlot(category, category.displayName, status, LOCAL_RECORD_CONFIDENCE)
-                }
-            }
-        }
-        return slotByCategory.values.filter { statusFilter == null || it.status == statusFilter }
     }
 
     /**
