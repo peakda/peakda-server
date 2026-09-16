@@ -37,13 +37,14 @@ class SpotBloomMapServiceTest {
     private val spotRecordPlantRepository = mock(SpotRecordPlantRepository::class.java)
     private val plantRepository = mock(PlantRepository::class.java)
 
+    private val localSpotBloomResolver = LocalSpotBloomResolver(spotRecordPlantRepository, plantRepository)
+
     private val service = SpotBloomMapService(
         attractionRepository,
         seasonalBloomEstimateRepository,
         spotRepository,
         spotRecordRepository,
-        spotRecordPlantRepository,
-        plantRepository,
+        localSpotBloomResolver,
     )
 
     private val baseDate = LocalDate.of(2026, 3, 30)

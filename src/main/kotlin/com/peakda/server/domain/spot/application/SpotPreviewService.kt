@@ -1,28 +1,23 @@
 package com.peakda.server.domain.spot.application
 
-import com.peakda.server.domain.seasonal.application.BloomStageStatusMapper
+import com.peakda.server.domain.seasonal.application.LocalSpotBloomResolver
 import com.peakda.server.domain.seasonal.application.peakDurationDaysInclusive
 import com.peakda.server.domain.seasonal.entity.BloomCategory
 import com.peakda.server.domain.seasonal.entity.BloomStatus
 import com.peakda.server.domain.seasonal.entity.SeasonalBloomEstimate
 import com.peakda.server.domain.seasonal.repository.SeasonalBloomEstimateRepository
 import com.peakda.server.domain.spot.entity.Spot
-import com.peakda.server.domain.spot.entity.SpotRecord
 import com.peakda.server.domain.spot.entity.SpotRecordStatus
 import com.peakda.server.domain.spot.entity.SpotType
 import com.peakda.server.domain.spot.presentation.response.SpotPreviewResponse
 import com.peakda.server.domain.spot.presentation.response.SpotPreviewResponse.BloomBadge
 import com.peakda.server.domain.spot.presentation.response.SpotPreviewResponse.SpotPreviewItem
-import com.peakda.server.domain.spot.repository.PlantRepository
 import com.peakda.server.domain.spot.repository.SpotFavoriteRepository
 import com.peakda.server.domain.spot.repository.SpotRecordPhotoRepository
-import com.peakda.server.domain.spot.repository.SpotRecordPlantRepository
 import com.peakda.server.domain.spot.repository.SpotRecordRepository
 import com.peakda.server.domain.spot.repository.SpotRepository
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
-import java.time.LocalDate
-import java.time.ZoneOffset
 import kotlin.math.atan2
 import kotlin.math.cos
 import kotlin.math.pow
@@ -40,8 +35,7 @@ class SpotPreviewService(
     private val spotRepository: SpotRepository,
     private val seasonalBloomEstimateRepository: SeasonalBloomEstimateRepository,
     private val spotRecordRepository: SpotRecordRepository,
-    private val spotRecordPlantRepository: SpotRecordPlantRepository,
-    private val plantRepository: PlantRepository,
+    private val localSpotBloomResolver: LocalSpotBloomResolver,
     private val spotThumbnailResolver: SpotThumbnailResolver,
     private val spotRecordPhotoRepository: SpotRecordPhotoRepository,
     private val spotRecordPhotoUploader: SpotRecordPhotoUploader,
@@ -145,7 +139,7 @@ class SpotPreviewService(
         }.toMap()
     }
 
-    /** 동네형 스팟은 최근 게시 기록에서 카테고리별로 매칭되는 뱃지를 모두 반환한다. */
+    /** 동네형 스팟은 카테고리별 최근 관측 신호를 그대로 뱃지로 옮긴다. */
     private fun localBadges(
         spots: Collection<Spot>,
         categories: List<BloomCategory>?,
@@ -154,27 +148,14 @@ class SpotPreviewService(
         if (localSpotIds.isEmpty()) return emptyMap()
 
         val records = spotRecordRepository.findBySpotIdInAndStatus(localSpotIds, SpotRecordStatus.PUBLISHED)
-        if (records.isEmpty()) return emptyMap()
-
-        val categoriesByRecord = categoriesByRecord(records)
         val categorySet = categories.orEmpty().toSet()
-        val badgesBySpot = linkedMapOf<Long, MutableList<BloomBadge>>()
-        for (record in records.sortedByDescending { it.recordDate }) {
-            val stage = record.bloomStage ?: continue
-            val status = BloomStageStatusMapper.toStatus(stage)
-            if (status == BloomStatus.ENDED) continue
-            val recordId = record.id ?: continue
-            val matchedCategories = categoriesByRecord[recordId].orEmpty()
-                .filter { categorySet.isEmpty() || it in categorySet }
-                .sortedBy { it.ordinal }
-            for (category in matchedCategories) {
-                val badges = badgesBySpot.getOrPut(record.spotId) { mutableListOf() }
-                if (badges.none { it.category == category }) {
-                    badges += BloomBadge(category, category.displayName, status)
-                }
+        return localSpotBloomResolver.resolve(records)
+            .mapValues { (_, signals) ->
+                signals
+                    .filter { categorySet.isEmpty() || it.category in categorySet }
+                    .map { BloomBadge(it.category, it.category.displayName, it.status) }
             }
-        }
-        return badgesBySpot
+            .filterValues { it.isNotEmpty() }
     }
 
     /** 최근 게시 기록의 사진을 스팟당 최대 4장 조회한다. */
@@ -188,28 +169,12 @@ class SpotPreviewService(
             .mapValues { (_, photos) -> photos.take(MAX_PHOTO_COUNT).map { spotRecordPhotoUploader.presignedUrlOf(it.objectKey) } }
     }
 
-    /** 각 기록 id 의 꽃 카테고리 집합 (식물의 bloomCategory 브릿지 경유). */
-    private fun categoriesByRecord(records: List<SpotRecord>): Map<Long, Set<BloomCategory>> {
-        val recordIds = records.mapNotNull { it.id }
-        val joins = spotRecordPlantRepository.findByIdSpotRecordIdIn(recordIds)
-        val categoryByPlant = plantRepository.findAllById(joins.map { it.plantId }.toSet())
-            .mapNotNull { plant -> plant.bloomCategory?.let { requireNotNull(plant.id) to it } }
-            .toMap()
-        return joins
-            .mapNotNull { join -> categoryByPlant[join.plantId]?.let { join.spotRecordId to it } }
-            .groupBy({ it.first }, { it.second })
-            .mapValues { (_, categories) -> categories.toSet() }
-    }
-
     private fun SeasonalBloomEstimate.toBadge() = BloomBadge(
         category = bloomCategory,
         displayName = bloomCategory.displayName,
         status = status,
         peakDurationDays = peakDurationDaysInclusive(peakStartDate, peakEndDate),
     )
-
-    private val SpotRecord.recordDate: LocalDate
-        get() = visitedDate ?: createdAt.atZone(ZoneOffset.UTC).toLocalDate()
 
     /** Haversine 거리(m). 좌표가 없으면 null. */
     private fun distance(lat: Double?, lng: Double?, spotLat: Double, spotLng: Double): Double? {
