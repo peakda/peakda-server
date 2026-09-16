@@ -1,6 +1,8 @@
 package com.peakda.server.domain.spot.application
 
 import com.peakda.server.domain.attraction.repository.AttractionRepository
+import com.peakda.server.domain.seasonal.application.BloomBaseDateResolver
+import com.peakda.server.domain.seasonal.application.BloomEstimateOrdering
 import com.peakda.server.domain.seasonal.entity.BloomStatus
 import com.peakda.server.domain.seasonal.entity.SeasonalBloomEstimate
 import com.peakda.server.domain.seasonal.repository.SeasonalBloomEstimateRepository
@@ -22,6 +24,7 @@ import java.time.temporal.ChronoUnit
 @Service
 class SpotFavoriteListAssembler(
     private val seasonalBloomEstimateRepository: SeasonalBloomEstimateRepository,
+    private val bloomBaseDateResolver: BloomBaseDateResolver,
     private val spotRecordRepository: SpotRecordRepository,
     private val spotRecordPhotoRepository: SpotRecordPhotoRepository,
     private val spotRecordPhotoUploader: SpotRecordPhotoUploader,
@@ -97,15 +100,13 @@ class SpotFavoriteListAssembler(
         val attractionIds = cards.mapNotNull { it.bloomAttractionId }.distinct()
         if (attractionIds.isEmpty()) return emptyMap()
 
-        val baseDate = seasonalBloomEstimateRepository.findLatestBaseDate() ?: return emptyMap()
+        val baseDate = bloomBaseDateResolver.currentBaseDate() ?: return emptyMap()
         return seasonalBloomEstimateRepository
             .findByBaseDateAndAttractionIdIn(baseDate, attractionIds)
             .filter { it.status != BloomStatus.ENDED }
             .groupBy { it.attractionId }
             .mapValues { (_, estimates) ->
-                val ordered = estimates.sortedWith(
-                    compareBy<SeasonalBloomEstimate>({ statusRank(it.status) }, { -it.confidence }),
-                )
+                val ordered = estimates.sortedWith(BloomEstimateOrdering.REPRESENTATIVE_FIRST)
                 BloomData(
                     bloom = ordered.first().toBloom(baseDate, today),
                     categories = ordered
@@ -218,12 +219,4 @@ class SpotFavoriteListAssembler(
         val categories: List<CategoryChip>,
     )
 
-    companion object {
-        private fun statusRank(status: BloomStatus): Int = when (status) {
-            BloomStatus.PEAK -> 0
-            BloomStatus.STARTED -> 1
-            BloomStatus.PREPARING -> 2
-            BloomStatus.ENDED -> 3
-        }
-    }
 }

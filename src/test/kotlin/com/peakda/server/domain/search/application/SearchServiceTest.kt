@@ -3,7 +3,9 @@ package com.peakda.server.domain.search.application
 import com.peakda.server.common.page.PageRequest
 import com.peakda.server.common.storage.ObjectKeyUrlResolver
 import com.peakda.server.domain.auth.oauth.model.OAuth2LoginType
+import com.peakda.server.domain.seasonal.application.BloomBaseDateResolver
 import com.peakda.server.domain.seasonal.application.LocalSpotBloomResolver
+import com.peakda.server.domain.seasonal.application.estimator.UserRecordEstimatorProperties
 import com.peakda.server.domain.spot.entity.Spot
 import com.peakda.server.domain.spot.entity.SpotType
 import com.peakda.server.domain.spot.repository.SpotFavoriteCount
@@ -40,11 +42,13 @@ class SearchServiceTest {
     private val followRepository = mock(FollowRepository::class.java)
     private val spotRecordRepository = mock(SpotRecordRepository::class.java)
     private val seasonalBloomEstimateRepository = mock(SeasonalBloomEstimateRepository::class.java)
+    private val bloomBaseDateResolver = mock(BloomBaseDateResolver::class.java)
     private val spotRecordPlantRepository = mock(SpotRecordPlantRepository::class.java)
     private val plantRepository = mock(PlantRepository::class.java)
     private val spotThumbnailResolver = mock(SpotThumbnailResolver::class.java)
 
-    private val localSpotBloomResolver = LocalSpotBloomResolver(spotRecordPlantRepository, plantRepository)
+    private val localSpotBloomResolver =
+        LocalSpotBloomResolver(spotRecordPlantRepository, plantRepository, UserRecordEstimatorProperties())
 
     private val service = SearchService(
         spotRepository,
@@ -54,6 +58,7 @@ class SearchServiceTest {
         followRepository,
         spotRecordRepository,
         seasonalBloomEstimateRepository,
+        bloomBaseDateResolver,
         localSpotBloomResolver,
         spotThumbnailResolver,
     )
@@ -109,14 +114,14 @@ class SearchServiceTest {
             .thenReturn(PageImpl(spots, pageable, 20))
         `when`(spotThumbnailResolver.resolve(spots)).thenReturn(emptyMap())
         val baseDate = LocalDate.of(2026, 4, 1)
-        `when`(seasonalBloomEstimateRepository.findLatestBaseDate()).thenReturn(baseDate)
+        `when`(bloomBaseDateResolver.currentBaseDate()).thenReturn(baseDate)
         `when`(seasonalBloomEstimateRepository.findByBaseDateAndAttractionIdIn(baseDate, (1L..20L).toList()))
             .thenReturn(emptyList())
 
         service.searchSpots(1L, "남산", PageRequest(page = 0, size = 20))
 
         verify(spotFavoriteRepository, times(1)).findByUserIdAndSpotIdIn(1L, (1L..20L).toList())
-        verify(seasonalBloomEstimateRepository, times(1)).findLatestBaseDate()
+        verify(bloomBaseDateResolver, times(1)).currentBaseDate()
         verify(seasonalBloomEstimateRepository, times(1))
             .findByBaseDateAndAttractionIdIn(baseDate, (1L..20L).toList())
         verify(spotThumbnailResolver, times(1)).resolve(spots)

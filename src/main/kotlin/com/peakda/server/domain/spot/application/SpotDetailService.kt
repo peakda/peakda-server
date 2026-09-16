@@ -1,8 +1,10 @@
 package com.peakda.server.domain.spot.application
 
 import com.peakda.server.domain.attraction.repository.AttractionRepository
-import com.peakda.server.domain.seasonal.application.peakDurationDaysInclusive
+import com.peakda.server.domain.seasonal.application.BloomBaseDateResolver
+import com.peakda.server.domain.seasonal.application.BloomEstimateOrdering
 import com.peakda.server.domain.seasonal.entity.BloomStatus
+import com.peakda.server.domain.seasonal.application.peakDurationDaysInclusive
 import com.peakda.server.domain.seasonal.entity.SeasonalBloomEstimate
 import com.peakda.server.domain.seasonal.repository.SeasonalBloomEstimateRepository
 import com.peakda.server.domain.spot.entity.Spot
@@ -30,6 +32,7 @@ class SpotDetailService(
     private val spotRepository: SpotRepository,
     private val attractionRepository: AttractionRepository,
     private val seasonalBloomEstimateRepository: SeasonalBloomEstimateRepository,
+    private val bloomBaseDateResolver: BloomBaseDateResolver,
     private val spotRecordRepository: SpotRecordRepository,
     private val spotFavoriteRepository: SpotFavoriteRepository,
     private val spotRecordResponseAssembler: SpotRecordResponseAssembler,
@@ -73,13 +76,18 @@ class SpotDetailService(
         return preview.firstNotNullOfOrNull { it.coverPhoto?.url }
     }
 
-    /** 명소에 연결된 스팟만 개화 추정을 가진다. 최신 산출일 기준 가장 강한(상태 우선·신뢰도) 추정 1건을 채택한다. */
+    /**
+     * 명소에 연결된 스팟만 개화 추정을 가진다. 최신 산출일 기준 가장 신뢰도 높은 추정 1건을 채택한다.
+     *
+     * 이미 진 카테고리(ENDED)는 배너로 쓰지 않는다. 프리뷰·검색·찜 카드와 같은 기준이다.
+     */
     private fun resolveBloomBanner(spot: Spot): BloomBanner? {
         val attractionId = spot.attractionId ?: return null
-        val baseDate = seasonalBloomEstimateRepository.findLatestBaseDate() ?: return null
+        val baseDate = bloomBaseDateResolver.currentBaseDate() ?: return null
         val representative = seasonalBloomEstimateRepository
             .findByAttractionIdAndBaseDate(attractionId, baseDate)
-            .minWithOrNull(compareBy({ statusRank(it.status) }, { -it.confidence }))
+            .filter { it.status != BloomStatus.ENDED }
+            .minWithOrNull(BloomEstimateOrdering.REPRESENTATIVE_FIRST)
             ?: return null
         return representative.toBanner(baseDate)
     }
@@ -105,11 +113,5 @@ class SpotDetailService(
 
     companion object {
         private const val PREVIEW_SIZE = 3
-        private fun statusRank(status: BloomStatus): Int = when (status) {
-            BloomStatus.PEAK -> 0
-            BloomStatus.STARTED -> 1
-            BloomStatus.PREPARING -> 2
-            BloomStatus.ENDED -> 3
-        }
     }
 }

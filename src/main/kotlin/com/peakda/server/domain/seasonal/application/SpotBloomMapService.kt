@@ -35,6 +35,7 @@ import java.time.LocalDate
 class SpotBloomMapService(
     private val attractionRepository: AttractionRepository,
     private val seasonalBloomEstimateRepository: SeasonalBloomEstimateRepository,
+    private val bloomBaseDateResolver: BloomBaseDateResolver,
     private val spotRepository: SpotRepository,
     private val spotRecordRepository: SpotRecordRepository,
     private val localSpotBloomResolver: LocalSpotBloomResolver,
@@ -69,7 +70,7 @@ class SpotBloomMapService(
         region: Region?,
         date: LocalDate?,
     ): BloomMapResponse {
-        val baseDate = seasonalBloomEstimateRepository.findLatestBaseDate()
+        val baseDate = bloomBaseDateResolver.currentBaseDate()
         val pins = buildAttractionPins(minLat, maxLat, minLng, maxLng, categories, status, region, date, baseDate) +
             buildLocalPins(minLat, maxLat, minLng, maxLng, categories, status, region)
         // 하위호환: 명소형 핀만 옛 구조(attractions)로도 함께 제공한다.
