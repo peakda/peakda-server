@@ -3,6 +3,7 @@ package com.peakda.server.domain.notification.application
 import com.peakda.server.domain.notification.entity.NotificationLinkType
 import com.peakda.server.domain.notification.repository.BloomTimingAlertRepository
 import com.peakda.server.domain.notification.repository.DeviceTokenRepository
+import com.peakda.server.domain.seasonal.application.BloomBaseDateResolver
 import com.peakda.server.domain.seasonal.entity.BloomStatus
 import com.peakda.server.domain.seasonal.entity.SeasonalBloomEstimate
 import com.peakda.server.domain.seasonal.repository.SeasonalBloomEstimateRepository
@@ -26,6 +27,7 @@ import java.time.temporal.ChronoUnit
 class BloomTimingAlertService(
     private val spotFavoriteRepository: SpotFavoriteRepository,
     private val seasonalBloomEstimateRepository: SeasonalBloomEstimateRepository,
+    private val bloomBaseDateResolver: BloomBaseDateResolver,
     private val deviceTokenRepository: DeviceTokenRepository,
     private val bloomTimingAlertRepository: BloomTimingAlertRepository,
     private val pushSender: PushSender,
@@ -34,7 +36,7 @@ class BloomTimingAlertService(
 ) {
 
     fun sendDueAlerts(today: LocalDate): Int {
-        val baseDate = seasonalBloomEstimateRepository.findLatestBaseDate() ?: return 0
+        val baseDate = bloomBaseDateResolver.currentBaseDate() ?: return 0
         val windowStart = today.plusDays(1)
         val windowEnd = today.plusDays(props.leadDays)
         var sent = 0

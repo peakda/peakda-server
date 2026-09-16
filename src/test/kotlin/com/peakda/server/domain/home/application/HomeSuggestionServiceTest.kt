@@ -2,6 +2,7 @@ package com.peakda.server.domain.home.application
 
 import com.peakda.server.domain.attraction.entity.Attraction
 import com.peakda.server.domain.attraction.repository.AttractionRepository
+import com.peakda.server.domain.seasonal.application.BloomBaseDateResolver
 import com.peakda.server.domain.seasonal.entity.BloomCategory
 import com.peakda.server.domain.seasonal.entity.BloomStatus
 import com.peakda.server.domain.seasonal.entity.Estimator
@@ -19,14 +20,15 @@ class HomeSuggestionServiceTest {
 
     private val attractionRepository = mock(AttractionRepository::class.java)
     private val seasonalBloomEstimateRepository = mock(SeasonalBloomEstimateRepository::class.java)
+    private val bloomBaseDateResolver = mock(BloomBaseDateResolver::class.java)
 
-    private val service = HomeSuggestionService(attractionRepository, seasonalBloomEstimateRepository)
+    private val service = HomeSuggestionService(attractionRepository, seasonalBloomEstimateRepository, bloomBaseDateResolver)
 
     private val baseDate = LocalDate.of(2026, 3, 30)
 
     @Test
     fun `산출된 baseDate 가 없으면 available=false 이다`() {
-        `when`(seasonalBloomEstimateRepository.findLatestBaseDate()).thenReturn(null)
+        `when`(bloomBaseDateResolver.currentBaseDate()).thenReturn(null)
 
         val response = service.suggestion()
 
@@ -37,7 +39,7 @@ class HomeSuggestionServiceTest {
 
     @Test
     fun `절정 명소가 없으면 available=false 이다`() {
-        `when`(seasonalBloomEstimateRepository.findLatestBaseDate()).thenReturn(baseDate)
+        `when`(bloomBaseDateResolver.currentBaseDate()).thenReturn(baseDate)
         `when`(seasonalBloomEstimateRepository.findByBaseDateAndStatus(baseDate, BloomStatus.PEAK)).thenReturn(emptyList())
 
         val response = service.suggestion()
@@ -48,7 +50,7 @@ class HomeSuggestionServiceTest {
 
     @Test
     fun `신뢰도가 가장 높은 절정 명소로 카피를 만든다`() {
-        `when`(seasonalBloomEstimateRepository.findLatestBaseDate()).thenReturn(baseDate)
+        `when`(bloomBaseDateResolver.currentBaseDate()).thenReturn(baseDate)
         `when`(seasonalBloomEstimateRepository.findByBaseDateAndStatus(baseDate, BloomStatus.PEAK)).thenReturn(
             listOf(
                 estimate(ATTRACTION_ID_LOW, BloomCategory.AZALEA_KR, confidence = 0.7),
@@ -68,7 +70,7 @@ class HomeSuggestionServiceTest {
 
     @Test
     fun `최고 신뢰도 명소의 Attraction 행이 없으면 available=false 이다`() {
-        `when`(seasonalBloomEstimateRepository.findLatestBaseDate()).thenReturn(baseDate)
+        `when`(bloomBaseDateResolver.currentBaseDate()).thenReturn(baseDate)
         `when`(seasonalBloomEstimateRepository.findByBaseDateAndStatus(baseDate, BloomStatus.PEAK))
             .thenReturn(listOf(estimate(ATTRACTION_ID_HIGH, BloomCategory.CHERRY, confidence = 0.95)))
         `when`(attractionRepository.findById(ATTRACTION_ID_HIGH)).thenReturn(Optional.empty())

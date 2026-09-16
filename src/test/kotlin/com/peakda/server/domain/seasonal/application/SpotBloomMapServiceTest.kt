@@ -35,6 +35,7 @@ class SpotBloomMapServiceTest {
 
     private val attractionRepository = mock(AttractionRepository::class.java)
     private val seasonalBloomEstimateRepository = mock(SeasonalBloomEstimateRepository::class.java)
+    private val bloomBaseDateResolver = mock(BloomBaseDateResolver::class.java)
     private val spotRepository = mock(SpotRepository::class.java)
     private val spotRecordRepository = mock(SpotRecordRepository::class.java)
     private val spotRecordPlantRepository = mock(SpotRecordPlantRepository::class.java)
@@ -50,6 +51,7 @@ class SpotBloomMapServiceTest {
     private val service = SpotBloomMapService(
         attractionRepository,
         seasonalBloomEstimateRepository,
+        bloomBaseDateResolver,
         spotRepository,
         spotRecordRepository,
         localSpotBloomResolver,
@@ -276,13 +278,13 @@ class SpotBloomMapServiceTest {
     // --- fixtures ---
 
     private fun stubAttractions(vararg attractions: Attraction) {
-        `when`(seasonalBloomEstimateRepository.findLatestBaseDate()).thenReturn(baseDate)
+        `when`(bloomBaseDateResolver.currentBaseDate()).thenReturn(baseDate)
         `when`(attractionRepository.findVisibleInBoundingBox(MIN_LAT, MAX_LAT, MIN_LNG, MAX_LNG))
             .thenReturn(attractions.toList())
     }
 
     private fun stubNoAttractions() {
-        `when`(seasonalBloomEstimateRepository.findLatestBaseDate()).thenReturn(baseDate)
+        `when`(bloomBaseDateResolver.currentBaseDate()).thenReturn(baseDate)
         `when`(attractionRepository.findVisibleInBoundingBox(MIN_LAT, MAX_LAT, MIN_LNG, MAX_LNG))
             .thenReturn(emptyList())
     }

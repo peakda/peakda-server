@@ -2,6 +2,7 @@ package com.peakda.server.domain.spot.application
 
 import com.peakda.server.domain.attraction.entity.Attraction
 import com.peakda.server.domain.attraction.repository.AttractionRepository
+import com.peakda.server.domain.seasonal.application.BloomBaseDateResolver
 import com.peakda.server.domain.seasonal.application.LocalSpotBloomResolver
 import com.peakda.server.domain.seasonal.application.estimator.UserRecordEstimatorProperties
 import com.peakda.server.domain.seasonal.entity.BloomCategory
@@ -43,6 +44,7 @@ class SpotPreviewServiceTest {
     private val spotRepository = mock(SpotRepository::class.java)
     private val attractionRepository = mock(AttractionRepository::class.java)
     private val seasonalBloomEstimateRepository = mock(SeasonalBloomEstimateRepository::class.java)
+    private val bloomBaseDateResolver = mock(BloomBaseDateResolver::class.java)
     private val spotRecordRepository = mock(SpotRecordRepository::class.java)
     private val spotRecordPlantRepository = mock(SpotRecordPlantRepository::class.java)
     private val plantRepository = mock(PlantRepository::class.java)
@@ -66,6 +68,7 @@ class SpotPreviewServiceTest {
     private val service = SpotPreviewService(
         spotRepository,
         seasonalBloomEstimateRepository,
+        bloomBaseDateResolver,
         spotRecordRepository,
         localSpotBloomResolver,
         spotThumbnailResolver,
@@ -80,7 +83,7 @@ class SpotPreviewServiceTest {
     fun `명소형 스팟은 ENDED 를 제외한 가장 강한 추정을 뱃지로, 명소 대표사진을 썸네일로 채운다`() {
         val spot = attractionSpot(SPOT_ID, ATTRACTION_ID)
         `when`(spotRepository.findAllById(listOf(SPOT_ID))).thenReturn(listOf(spot))
-        `when`(seasonalBloomEstimateRepository.findLatestBaseDate()).thenReturn(baseDate)
+        `when`(bloomBaseDateResolver.currentBaseDate()).thenReturn(baseDate)
         `when`(seasonalBloomEstimateRepository.findByBaseDateAndAttractionIdIn(baseDate, listOf(ATTRACTION_ID)))
             .thenReturn(
                 listOf(
@@ -106,10 +109,10 @@ class SpotPreviewServiceTest {
     }
 
     @Test
-    fun `명소형 스팟은 ENDED 를 제외한 모든 뱃지를 상태와 신뢰도 순으로 반환한다`() {
+    fun `명소형 스팟은 ENDED 를 제외한 모든 뱃지를 신뢰도 순으로 반환한다`() {
         val spot = attractionSpot(SPOT_ID, ATTRACTION_ID)
         `when`(spotRepository.findAllById(listOf(SPOT_ID))).thenReturn(listOf(spot))
-        `when`(seasonalBloomEstimateRepository.findLatestBaseDate()).thenReturn(baseDate)
+        `when`(bloomBaseDateResolver.currentBaseDate()).thenReturn(baseDate)
         `when`(seasonalBloomEstimateRepository.findByBaseDateAndAttractionIdIn(baseDate, listOf(ATTRACTION_ID)))
             .thenReturn(
                 listOf(
@@ -122,16 +125,17 @@ class SpotPreviewServiceTest {
         val item = service.preview(listOf(SPOT_ID), categories = null, status = null, lat = null, lng = null, userId = USER_ID)
             .items.single()
 
-        assertThat(item.badges.map { it.category }).containsExactly(BloomCategory.CHERRY, BloomCategory.AZALEA_KR)
+        // 신뢰도 0.99 의 STARTED 가 0.7 의 PEAK 보다 앞선다.
+        assertThat(item.badges.map { it.category }).containsExactly(BloomCategory.AZALEA_KR, BloomCategory.CHERRY)
         assertThat(item.badge).isEqualTo(item.badges.first())
-        assertThat(item.badges.first().peakDurationDays).isEqualTo(4)
+        assertThat(item.badges.last().peakDurationDays).isEqualTo(4)
     }
 
     @Test
     fun `status 필터 후 뱃지가 비면 스팟 자체를 제외한다`() {
         val spot = attractionSpot(SPOT_ID, ATTRACTION_ID)
         `when`(spotRepository.findAllById(listOf(SPOT_ID))).thenReturn(listOf(spot))
-        `when`(seasonalBloomEstimateRepository.findLatestBaseDate()).thenReturn(baseDate)
+        `when`(bloomBaseDateResolver.currentBaseDate()).thenReturn(baseDate)
         `when`(seasonalBloomEstimateRepository.findByBaseDateAndAttractionIdIn(baseDate, listOf(ATTRACTION_ID)))
             .thenReturn(listOf(estimate(BloomCategory.CHERRY, BloomStatus.PEAK, confidence = 0.9)))
 
@@ -182,7 +186,7 @@ class SpotPreviewServiceTest {
     fun `동네형 스팟은 카테고리 매칭되는 최근 게시 기록을 뱃지로, 최신 기록 사진을 썸네일로 채운다`() {
         val spot = localSpot(SPOT_ID)
         `when`(spotRepository.findAllById(listOf(SPOT_ID))).thenReturn(listOf(spot))
-        `when`(seasonalBloomEstimateRepository.findLatestBaseDate()).thenReturn(null)
+        `when`(bloomBaseDateResolver.currentBaseDate()).thenReturn(null)
 
         val rec1 = record(1L, SPOT_ID, LocalDate.of(2026, 3, 20), BloomStage.EARLY)
         val rec2 = record(2L, SPOT_ID, LocalDate.of(2026, 3, 28), BloomStage.PEAK)
@@ -211,7 +215,7 @@ class SpotPreviewServiceTest {
     fun `category 필터에 맞는 기록이 없으면 뱃지는 null 이다`() {
         val spot = localSpot(SPOT_ID)
         `when`(spotRepository.findAllById(listOf(SPOT_ID))).thenReturn(listOf(spot))
-        `when`(seasonalBloomEstimateRepository.findLatestBaseDate()).thenReturn(null)
+        `when`(bloomBaseDateResolver.currentBaseDate()).thenReturn(null)
 
         val rec = record(1L, SPOT_ID, LocalDate.of(2026, 3, 28), BloomStage.PEAK)
         `when`(spotRecordRepository.findBySpotIdInAndStatus(listOf(SPOT_ID), SpotRecordStatus.PUBLISHED))
@@ -230,7 +234,7 @@ class SpotPreviewServiceTest {
     fun `좌표가 주어지면 거리를 계산하고, 존재하지 않는 스팟은 결과에서 제외한다`() {
         val spot = localSpot(SPOT_ID, latitude = 37.55, longitude = 126.98)
         `when`(spotRepository.findAllById(listOf(SPOT_ID, MISSING_SPOT_ID))).thenReturn(listOf(spot))
-        `when`(seasonalBloomEstimateRepository.findLatestBaseDate()).thenReturn(null)
+        `when`(bloomBaseDateResolver.currentBaseDate()).thenReturn(null)
 
         val response = service.preview(listOf(SPOT_ID, MISSING_SPOT_ID), category = null, lat = 37.55, lng = 126.98)
 
@@ -243,7 +247,7 @@ class SpotPreviewServiceTest {
     fun `비로그인 프리뷰는 찜을 조회하지 않고 기본 상태를 반환한다`() {
         val spot = localSpot(SPOT_ID)
         `when`(spotRepository.findAllById(listOf(SPOT_ID))).thenReturn(listOf(spot))
-        `when`(seasonalBloomEstimateRepository.findLatestBaseDate()).thenReturn(null)
+        `when`(bloomBaseDateResolver.currentBaseDate()).thenReturn(null)
         `when`(spotRecordRepository.findBySpotIdInAndStatus(listOf(SPOT_ID), SpotRecordStatus.PUBLISHED))
             .thenReturn(emptyList())
         `when`(spotRecordPhotoRepository.findRecentPhotosBySpotIds(listOf(SPOT_ID), SpotRecordStatus.PUBLISHED.name, 4))

@@ -2,6 +2,7 @@ package com.peakda.server.domain.home.application
 
 import com.peakda.server.domain.attraction.repository.AttractionRepository
 import com.peakda.server.domain.home.presentation.response.HomeSuggestionResponse
+import com.peakda.server.domain.seasonal.application.BloomBaseDateResolver
 import com.peakda.server.domain.seasonal.entity.BloomStatus
 import com.peakda.server.domain.seasonal.repository.SeasonalBloomEstimateRepository
 import org.springframework.stereotype.Service
@@ -16,11 +17,12 @@ import java.time.LocalDate
 class HomeSuggestionService(
     private val attractionRepository: AttractionRepository,
     private val seasonalBloomEstimateRepository: SeasonalBloomEstimateRepository,
+    private val bloomBaseDateResolver: BloomBaseDateResolver,
 ) {
 
     @Transactional(readOnly = true)
     fun suggestion(): HomeSuggestionResponse {
-        val baseDate = seasonalBloomEstimateRepository.findLatestBaseDate()
+        val baseDate = bloomBaseDateResolver.currentBaseDate()
         val best = baseDate?.let {
             seasonalBloomEstimateRepository.findByBaseDateAndStatus(it, BloomStatus.PEAK).maxByOrNull { e -> e.confidence }
         }

@@ -8,6 +8,8 @@ import com.peakda.server.domain.search.presentation.response.SpotSearchItem
 import com.peakda.server.domain.search.presentation.response.TrendingSpotsResponse
 import com.peakda.server.domain.search.presentation.response.TrendingSpotsResponse.TrendingSpotItem
 import com.peakda.server.domain.search.presentation.response.UserSearchItem
+import com.peakda.server.domain.seasonal.application.BloomBaseDateResolver
+import com.peakda.server.domain.seasonal.application.BloomEstimateOrdering
 import com.peakda.server.domain.seasonal.application.LocalSpotBloomResolver
 import com.peakda.server.domain.seasonal.entity.BloomCategory
 import com.peakda.server.domain.seasonal.entity.BloomStatus
@@ -46,6 +48,7 @@ class SearchService(
     private val followRepository: FollowRepository,
     private val spotRecordRepository: SpotRecordRepository,
     private val seasonalBloomEstimateRepository: SeasonalBloomEstimateRepository,
+    private val bloomBaseDateResolver: BloomBaseDateResolver,
     private val localSpotBloomResolver: LocalSpotBloomResolver,
     private val spotThumbnailResolver: SpotThumbnailResolver,
 ) {
@@ -167,7 +170,7 @@ class SearchService(
             .filter { it.type == SpotType.ATTRACTION }
             .mapNotNull { spot -> spot.attractionId?.let { requireNotNull(spot.id) to it } }
         val attractionBadges = if (attractionIdBySpot.isEmpty()) emptyMap() else {
-            val baseDate = seasonalBloomEstimateRepository.findLatestBaseDate()
+            val baseDate = bloomBaseDateResolver.currentBaseDate()
             if (baseDate == null) emptyMap() else {
                 val estimates = if (category == null) {
                     seasonalBloomEstimateRepository.findByBaseDateAndAttractionIdIn(
@@ -184,7 +187,7 @@ class SearchService(
                 val byAttraction = estimates
                     .filter { it.status != BloomStatus.ENDED }
                     .groupBy { it.attractionId }
-                    .mapValues { (_, rows) -> rows.minWith(compareBy({ statusRank(it.status) }, { -it.confidence })).toBadge() }
+                    .mapValues { (_, rows) -> rows.minWith(BloomEstimateOrdering.REPRESENTATIVE_FIRST).toBadge() }
                 attractionIdBySpot.mapNotNull { (spotId, attractionId) -> byAttraction[attractionId]?.let { spotId to it } }.toMap()
             }
         }
@@ -203,13 +206,6 @@ class SearchService(
     }
 
     private fun SeasonalBloomEstimate.toBadge() = BloomBadge(bloomCategory, bloomCategory.displayName, status)
-
-    private fun statusRank(status: BloomStatus): Int = when (status) {
-        BloomStatus.PEAK -> 0
-        BloomStatus.STARTED -> 1
-        BloomStatus.PREPARING -> 2
-        BloomStatus.ENDED -> 3
-    }
 
     companion object {
         private const val TRENDING_LIMIT = 10

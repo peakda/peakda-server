@@ -1,5 +1,7 @@
 package com.peakda.server.domain.spot.application
 
+import com.peakda.server.domain.seasonal.application.BloomBaseDateResolver
+import com.peakda.server.domain.seasonal.application.BloomEstimateOrdering
 import com.peakda.server.domain.seasonal.application.LocalSpotBloomResolver
 import com.peakda.server.domain.seasonal.application.peakDurationDaysInclusive
 import com.peakda.server.domain.seasonal.entity.BloomCategory
@@ -34,6 +36,7 @@ import kotlin.math.sqrt
 class SpotPreviewService(
     private val spotRepository: SpotRepository,
     private val seasonalBloomEstimateRepository: SeasonalBloomEstimateRepository,
+    private val bloomBaseDateResolver: BloomBaseDateResolver,
     private val spotRecordRepository: SpotRecordRepository,
     private val localSpotBloomResolver: LocalSpotBloomResolver,
     private val spotThumbnailResolver: SpotThumbnailResolver,
@@ -120,7 +123,7 @@ class SpotPreviewService(
             .mapNotNull { spot -> spot.attractionId?.let { requireNotNull(spot.id) to it } }
         if (attractionIdBySpot.isEmpty()) return emptyMap()
 
-        val baseDate = seasonalBloomEstimateRepository.findLatestBaseDate() ?: return emptyMap()
+        val baseDate = bloomBaseDateResolver.currentBaseDate() ?: return emptyMap()
         val estimates = seasonalBloomEstimateRepository.findByBaseDateAndAttractionIdIn(
             baseDate,
             attractionIdBySpot.map { it.second },
@@ -130,7 +133,7 @@ class SpotPreviewService(
             .filter { it.status != BloomStatus.ENDED && (categorySet.isEmpty() || it.bloomCategory in categorySet) }
             .groupBy { it.attractionId }
             .mapValues { (_, rows) ->
-                rows.sortedWith(compareBy({ statusRank(it.status) }, { -it.confidence }))
+                rows.sortedWith(BloomEstimateOrdering.REPRESENTATIVE_FIRST)
                     .map { it.toBadge() }
             }
 
@@ -189,12 +192,5 @@ class SpotPreviewService(
         private const val EARTH_RADIUS_METERS = 6_371_000.0
         private const val MAX_PHOTO_COUNT = 4
         private const val LEGACY_ANONYMOUS_USER_ID = 0L
-
-        private fun statusRank(status: BloomStatus): Int = when (status) {
-            BloomStatus.PEAK -> 0
-            BloomStatus.STARTED -> 1
-            BloomStatus.PREPARING -> 2
-            BloomStatus.ENDED -> 3
-        }
     }
 }

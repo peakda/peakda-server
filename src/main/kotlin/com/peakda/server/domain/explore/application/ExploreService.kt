@@ -16,6 +16,7 @@ import com.peakda.server.domain.festival.application.FestivalPhaseResolver
 import com.peakda.server.domain.festival.entity.FestivalEditorialStatus
 import com.peakda.server.domain.festival.repository.FestivalEditorialRepository
 import com.peakda.server.domain.festival.repository.FestivalRepository
+import com.peakda.server.domain.seasonal.application.BloomBaseDateResolver
 import com.peakda.server.domain.seasonal.entity.BloomCategory
 import com.peakda.server.domain.seasonal.entity.BloomStatus
 import com.peakda.server.domain.seasonal.entity.SeasonalBloomEstimate
@@ -41,6 +42,7 @@ import java.time.temporal.ChronoUnit
 @Service
 class ExploreService(
     private val seasonalBloomEstimateRepository: SeasonalBloomEstimateRepository,
+    private val bloomBaseDateResolver: BloomBaseDateResolver,
     private val attractionRepository: AttractionRepository,
     private val spotRepository: SpotRepository,
     private val spotFavoriteRepository: SpotFavoriteRepository,
@@ -54,7 +56,7 @@ class ExploreService(
 
     @Transactional(readOnly = true)
     fun explore(userId: Long?, category: BloomCategory?, today: LocalDate): ExploreResponse {
-        val baseDate = seasonalBloomEstimateRepository.findLatestBaseDate()
+        val baseDate = bloomBaseDateResolver.currentBaseDate()
         val peakNow = findSection(
             baseDate = baseDate,
             status = BloomStatus.PEAK,
@@ -87,7 +89,7 @@ class ExploreService(
         pageRequest: PageRequest,
     ): PageResponse<ExploreSpotItem> {
         val sectionData = findSection(
-            baseDate = seasonalBloomEstimateRepository.findLatestBaseDate(),
+            baseDate = bloomBaseDateResolver.currentBaseDate(),
             status = section.status,
             pageable = pageRequest.toPageable(),
             category = category,

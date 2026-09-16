@@ -13,6 +13,7 @@ import com.peakda.server.domain.festival.entity.FestivalEditorial
 import com.peakda.server.domain.festival.entity.FestivalEditorialStatus
 import com.peakda.server.domain.festival.repository.FestivalEditorialRepository
 import com.peakda.server.domain.festival.repository.FestivalRepository
+import com.peakda.server.domain.seasonal.application.BloomBaseDateResolver
 import com.peakda.server.domain.seasonal.entity.BloomCategory
 import com.peakda.server.domain.seasonal.entity.BloomStatus
 import com.peakda.server.domain.seasonal.entity.Estimator
@@ -39,6 +40,7 @@ import java.time.LocalDate
 class ExploreServiceTest {
 
     private val seasonalBloomEstimateRepository = mock(SeasonalBloomEstimateRepository::class.java)
+    private val bloomBaseDateResolver = mock(BloomBaseDateResolver::class.java)
     private val attractionRepository = mock(AttractionRepository::class.java)
     private val spotRepository = mock(SpotRepository::class.java)
     private val spotFavoriteRepository = mock(SpotFavoriteRepository::class.java)
@@ -55,6 +57,7 @@ class ExploreServiceTest {
     )
     private val service = ExploreService(
         seasonalBloomEstimateRepository,
+        bloomBaseDateResolver,
         attractionRepository,
         spotRepository,
         spotFavoriteRepository,
@@ -74,7 +77,7 @@ class ExploreServiceTest {
     fun `산출 기준일이 없으면 스팟은 비고 축제와 큐레이션은 채운다`() {
         val festival = festival(701L, "진해 군항제", TODAY.minusDays(1), TODAY.plusDays(4))
         val curation = curationCard()
-        `when`(seasonalBloomEstimateRepository.findLatestBaseDate()).thenReturn(null)
+        `when`(bloomBaseDateResolver.currentBaseDate()).thenReturn(null)
         `when`(festivalRepository.findOngoing(TODAY, festivalPageable)).thenReturn(listOf(festival))
         `when`(curationQueryService.cards(curationPageable)).thenReturn(PageImpl(listOf(curation)))
 
@@ -94,7 +97,7 @@ class ExploreServiceTest {
 
     @Test
     fun `비로그인 탐색은 스팟을 반환하되 찜을 조회하지 않는다`() {
-        `when`(seasonalBloomEstimateRepository.findLatestBaseDate()).thenReturn(BASE_DATE)
+        `when`(bloomBaseDateResolver.currentBaseDate()).thenReturn(BASE_DATE)
         `when`(
             seasonalBloomEstimateRepository.findAttractionIdsByBaseDateAndStatus(BASE_DATE, BloomStatus.PEAK, peakPageable),
         ).thenReturn(PageImpl(listOf(1L), peakPageable, 1))
@@ -139,7 +142,7 @@ class ExploreServiceTest {
     @Test
     fun `명소별 최고 신뢰도 추정을 고르고 동률은 카테고리 이름 오름차순으로 고정한다`() {
         stubFestivalAndCuration()
-        `when`(seasonalBloomEstimateRepository.findLatestBaseDate()).thenReturn(BASE_DATE)
+        `when`(bloomBaseDateResolver.currentBaseDate()).thenReturn(BASE_DATE)
         `when`(
             seasonalBloomEstimateRepository.findAttractionIdsByBaseDateAndStatus(
                 BASE_DATE,
@@ -180,7 +183,7 @@ class ExploreServiceTest {
     fun `없는 명소와 비노출 명소는 제외해도 원본 페이지 메타를 유지한다`() {
         val request = PageRequest(page = 1, size = 3)
         val pageable = request.toPageable()
-        `when`(seasonalBloomEstimateRepository.findLatestBaseDate()).thenReturn(BASE_DATE)
+        `when`(bloomBaseDateResolver.currentBaseDate()).thenReturn(BASE_DATE)
         `when`(
             seasonalBloomEstimateRepository.findAttractionIdsByBaseDateAndStatus(
                 BASE_DATE,
@@ -216,7 +219,7 @@ class ExploreServiceTest {
     @Test
     fun `스팟과 찜을 두 섹션 id로 한 번에 조회해 찜과 알림 상태를 채운다`() {
         stubFestivalAndCuration()
-        `when`(seasonalBloomEstimateRepository.findLatestBaseDate()).thenReturn(BASE_DATE)
+        `when`(bloomBaseDateResolver.currentBaseDate()).thenReturn(BASE_DATE)
         `when`(
             seasonalBloomEstimateRepository.findAttractionIdsByBaseDateAndStatus(
                 BASE_DATE,
@@ -338,7 +341,7 @@ class ExploreServiceTest {
                 festival(702L, "광양 매화 축제", TODAY.minusDays(1), TODAY.plusDays(2)),
             ),
         )
-        `when`(seasonalBloomEstimateRepository.findLatestBaseDate()).thenReturn(BASE_DATE)
+        `when`(bloomBaseDateResolver.currentBaseDate()).thenReturn(BASE_DATE)
         `when`(
             seasonalBloomEstimateRepository.findAttractionIdsByBaseDateAndStatusAndBloomCategory(
                 BASE_DATE,
@@ -370,7 +373,7 @@ class ExploreServiceTest {
     fun `전체 보기 페이지 요청을 정렬 없이 그대로 전달하고 원본 메타를 반환한다`() {
         val request = PageRequest(page = 2, size = 4)
         val pageable = request.toPageable()
-        `when`(seasonalBloomEstimateRepository.findLatestBaseDate()).thenReturn(BASE_DATE)
+        `when`(bloomBaseDateResolver.currentBaseDate()).thenReturn(BASE_DATE)
         `when`(
             seasonalBloomEstimateRepository.findAttractionIdsByBaseDateAndStatus(
                 BASE_DATE,
@@ -394,7 +397,7 @@ class ExploreServiceTest {
     }
 
     private fun stubEmptyExplore() {
-        `when`(seasonalBloomEstimateRepository.findLatestBaseDate()).thenReturn(BASE_DATE)
+        `when`(bloomBaseDateResolver.currentBaseDate()).thenReturn(BASE_DATE)
         `when`(
             seasonalBloomEstimateRepository.findAttractionIdsByBaseDateAndStatus(
                 BASE_DATE,

@@ -7,6 +7,7 @@ import com.peakda.server.domain.notification.entity.NotificationLinkType
 import com.peakda.server.domain.notification.entity.NotificationType
 import com.peakda.server.domain.notification.repository.BloomTimingAlertRepository
 import com.peakda.server.domain.notification.repository.DeviceTokenRepository
+import com.peakda.server.domain.seasonal.application.BloomBaseDateResolver
 import com.peakda.server.domain.seasonal.entity.BloomCategory
 import com.peakda.server.domain.seasonal.entity.BloomStatus
 import com.peakda.server.domain.seasonal.entity.Estimator
@@ -36,6 +37,7 @@ class BloomTimingAlertServiceTest {
 
     private val spotFavoriteRepository = mock(SpotFavoriteRepository::class.java)
     private val seasonalBloomEstimateRepository = mock(SeasonalBloomEstimateRepository::class.java)
+    private val bloomBaseDateResolver = mock(BloomBaseDateResolver::class.java)
     private val deviceTokenRepository = mock(DeviceTokenRepository::class.java)
     private val bloomTimingAlertRepository = mock(BloomTimingAlertRepository::class.java)
     private val pushSender = mock(PushSender::class.java)
@@ -44,6 +46,7 @@ class BloomTimingAlertServiceTest {
     private val service = BloomTimingAlertService(
         spotFavoriteRepository = spotFavoriteRepository,
         seasonalBloomEstimateRepository = seasonalBloomEstimateRepository,
+        bloomBaseDateResolver = bloomBaseDateResolver,
         deviceTokenRepository = deviceTokenRepository,
         bloomTimingAlertRepository = bloomTimingAlertRepository,
         pushSender = pushSender,
@@ -56,7 +59,7 @@ class BloomTimingAlertServiceTest {
 
     @Test
     fun `최신 추정 기준일이 없으면 찜 대상을 조회하지 않고 0을 반환한다`() {
-        `when`(seasonalBloomEstimateRepository.findLatestBaseDate()).thenReturn(null)
+        `when`(bloomBaseDateResolver.currentBaseDate()).thenReturn(null)
 
         assertThat(service.sendDueAlerts(TODAY)).isZero()
 
@@ -230,7 +233,7 @@ class BloomTimingAlertServiceTest {
         favorites: List<AlertTargetFavorite>,
         hasNext: Boolean = false,
     ) {
-        `when`(seasonalBloomEstimateRepository.findLatestBaseDate()).thenReturn(BASE_DATE)
+        `when`(bloomBaseDateResolver.currentBaseDate()).thenReturn(BASE_DATE)
         val pageable = PageRequest.of(page, props.pageSize)
         `when`(
             spotFavoriteRepository.findAlertTargets(SpotType.ATTRACTION, pageable),
