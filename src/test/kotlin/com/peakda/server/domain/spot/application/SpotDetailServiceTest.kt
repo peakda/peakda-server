@@ -2,6 +2,7 @@ package com.peakda.server.domain.spot.application
 
 import com.peakda.server.domain.attraction.entity.Attraction
 import com.peakda.server.domain.attraction.repository.AttractionRepository
+import com.peakda.server.domain.seasonal.application.BloomBaseDateResolver
 import com.peakda.server.domain.seasonal.entity.BloomCategory
 import com.peakda.server.domain.seasonal.entity.BloomStatus
 import com.peakda.server.domain.seasonal.entity.Estimator
@@ -38,6 +39,7 @@ class SpotDetailServiceTest {
     private val spotRepository = mock(SpotRepository::class.java)
     private val attractionRepository = mock(AttractionRepository::class.java)
     private val seasonalBloomEstimateRepository = mock(SeasonalBloomEstimateRepository::class.java)
+    private val bloomBaseDateResolver = mock(BloomBaseDateResolver::class.java)
     private val spotRecordRepository = mock(SpotRecordRepository::class.java)
     private val spotFavoriteRepository = mock(SpotFavoriteRepository::class.java)
     private val assembler = mock(SpotRecordResponseAssembler::class.java)
@@ -46,6 +48,7 @@ class SpotDetailServiceTest {
         spotRepository,
         attractionRepository,
         seasonalBloomEstimateRepository,
+        bloomBaseDateResolver,
         spotRecordRepository,
         spotFavoriteRepository,
         assembler,
@@ -58,7 +61,7 @@ class SpotDetailServiceTest {
         val spot = attractionSpot(primaryImageUrl = "https://img/primary.jpg")
         stubRecords(count = 12, preview = listOf(summary(coverUrl = "https://rec/cover.jpg")))
         stubFavorite(SpotFavorite(userId = USER_ID, spotId = SPOT_ID, notifyEnabled = true))
-        // 상태 우선순위(PEAK > ENDED)가 신뢰도보다 먼저 적용되어야 한다.
+        // ENDED 는 신뢰도가 높아도 배너에서 제외된다.
         stubEstimates(
             estimate(BloomStatus.ENDED, confidence = 0.9),
             estimate(BloomStatus.PEAK, confidence = 0.7),
@@ -184,7 +187,7 @@ class SpotDetailServiceTest {
     }
 
     private fun stubEstimates(vararg estimates: SeasonalBloomEstimate) {
-        `when`(seasonalBloomEstimateRepository.findLatestBaseDate()).thenReturn(baseDate)
+        `when`(bloomBaseDateResolver.currentBaseDate()).thenReturn(baseDate)
         `when`(seasonalBloomEstimateRepository.findByAttractionIdAndBaseDate(ATTRACTION_ID, baseDate))
             .thenReturn(estimates.toList())
     }

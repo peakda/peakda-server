@@ -2,6 +2,7 @@ package com.peakda.server.domain.seasonal.application
 
 import com.peakda.server.domain.attraction.entity.Attraction
 import com.peakda.server.domain.attraction.repository.AttractionRepository
+import com.peakda.server.domain.seasonal.application.estimator.UserRecordEstimatorProperties
 import com.peakda.server.domain.seasonal.entity.BloomCategory
 import com.peakda.server.domain.seasonal.entity.BloomStatus
 import com.peakda.server.domain.seasonal.entity.Estimator
@@ -26,22 +27,31 @@ import org.junit.jupiter.api.Test
 import org.mockito.Mockito.mock
 import org.mockito.Mockito.`when`
 import org.springframework.test.util.ReflectionTestUtils
+import java.time.Clock
 import java.time.LocalDate
+import java.time.ZoneId
 
 class SpotBloomMapServiceTest {
 
     private val attractionRepository = mock(AttractionRepository::class.java)
     private val seasonalBloomEstimateRepository = mock(SeasonalBloomEstimateRepository::class.java)
+    private val bloomBaseDateResolver = mock(BloomBaseDateResolver::class.java)
     private val spotRepository = mock(SpotRepository::class.java)
     private val spotRecordRepository = mock(SpotRecordRepository::class.java)
     private val spotRecordPlantRepository = mock(SpotRecordPlantRepository::class.java)
     private val plantRepository = mock(PlantRepository::class.java)
 
-    private val localSpotBloomResolver = LocalSpotBloomResolver(spotRecordPlantRepository, plantRepository)
+    private val localSpotBloomResolver = LocalSpotBloomResolver(
+        spotRecordPlantRepository,
+        plantRepository,
+        UserRecordEstimatorProperties(),
+        Clock.fixed(LocalDate.of(2026, 4, 2).atStartOfDay(KST).toInstant(), KST),
+    )
 
     private val service = SpotBloomMapService(
         attractionRepository,
         seasonalBloomEstimateRepository,
+        bloomBaseDateResolver,
         spotRepository,
         spotRecordRepository,
         localSpotBloomResolver,
@@ -268,13 +278,13 @@ class SpotBloomMapServiceTest {
     // --- fixtures ---
 
     private fun stubAttractions(vararg attractions: Attraction) {
-        `when`(seasonalBloomEstimateRepository.findLatestBaseDate()).thenReturn(baseDate)
+        `when`(bloomBaseDateResolver.currentBaseDate()).thenReturn(baseDate)
         `when`(attractionRepository.findVisibleInBoundingBox(MIN_LAT, MAX_LAT, MIN_LNG, MAX_LNG))
             .thenReturn(attractions.toList())
     }
 
     private fun stubNoAttractions() {
-        `when`(seasonalBloomEstimateRepository.findLatestBaseDate()).thenReturn(baseDate)
+        `when`(bloomBaseDateResolver.currentBaseDate()).thenReturn(baseDate)
         `when`(attractionRepository.findVisibleInBoundingBox(MIN_LAT, MAX_LAT, MIN_LNG, MAX_LNG))
             .thenReturn(emptyList())
     }
@@ -356,6 +366,7 @@ class SpotBloomMapServiceTest {
     }
 
     companion object {
+        private val KST: ZoneId = ZoneId.of("Asia/Seoul")
         private const val ATTRACTION_ID = 501L
         private const val SPOT_ID = 100L
         private const val MIN_LAT = 37.4

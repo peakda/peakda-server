@@ -18,11 +18,12 @@ import org.springframework.transaction.annotation.Transactional
 class BloomQueryService(
     private val attractionRepository: AttractionRepository,
     private val seasonalBloomEstimateRepository: SeasonalBloomEstimateRepository,
+    private val bloomBaseDateResolver: BloomBaseDateResolver,
 ) {
     /** 최신 산출일 기준 status=PEAK 명소 리스트. "지금이 절정이에요" 공급. */
     @Transactional(readOnly = true)
     fun peakList(category: BloomCategory?): BloomPeakListResponse {
-        val baseDate = seasonalBloomEstimateRepository.findLatestBaseDate()
+        val baseDate = bloomBaseDateResolver.currentBaseDate()
             ?: return BloomPeakListResponse(baseDate = null, count = 0, items = emptyList())
 
         val estimates = if (category != null) {

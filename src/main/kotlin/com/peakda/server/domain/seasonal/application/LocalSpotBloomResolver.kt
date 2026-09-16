@@ -1,13 +1,17 @@
 package com.peakda.server.domain.seasonal.application
 
+import com.peakda.server.domain.seasonal.application.estimator.UserRecordEstimatorProperties
 import com.peakda.server.domain.seasonal.entity.BloomCategory
 import com.peakda.server.domain.seasonal.entity.BloomStatus
 import com.peakda.server.domain.spot.entity.SpotRecord
 import com.peakda.server.domain.spot.repository.PlantRepository
 import com.peakda.server.domain.spot.repository.SpotRecordPlantRepository
 import org.springframework.stereotype.Component
+import java.time.Clock
 import java.time.LocalDate
+import java.time.ZoneId
 import java.time.ZoneOffset
+import java.time.temporal.ChronoUnit
 
 /**
  * 동네형(LOCAL) Spot 의 카테고리별 현재 개화 상태를 최근 게시 기록에서 산출한다 (결정 D 변환).
@@ -19,27 +23,35 @@ import java.time.ZoneOffset
  * 최신 판정은 방문일 → 작성 시각 → id 순으로 내림차순이다. 방문일만 비교하면 같은 날짜로 올린 기록끼리
  * 순서가 정해지지 않아, 어느 기록이 상태를 결정할지 조회 순서에 따라 달라진다.
  *
+ * 관측일이 [UserRecordEstimatorProperties.maxAgeDays] 를 넘긴 기록은 아예 신호로 쓰지 않는다. 기록은 그 시점의
+ * 관측일 뿐 현재 상태가 아니어서, 봄에 올린 절정 기록을 가을까지 들고 있으면 철 지난 스팟이 계속 절정으로 보인다.
+ * 명소형 [com.peakda.server.domain.seasonal.application.estimator.UserRecordBloomEstimator] 와 같은 기준을
+ * 쓰도록 튜닝값을 공유한다.
+ *
  * 지도 핀·핀 프리뷰·검색 뱃지가 같은 규칙을 쓰도록 한 곳에 모은다.
  */
 @Component
 class LocalSpotBloomResolver(
     private val spotRecordPlantRepository: SpotRecordPlantRepository,
     private val plantRepository: PlantRepository,
+    private val properties: UserRecordEstimatorProperties,
+    private val clock: Clock = Clock.system(KST),
 ) {
 
     /**
      * [records] (동네형 스팟들의 게시 기록)를 스팟별 신호 목록으로 환산한다.
      * 목록은 신호를 결정한 기록이 최근일수록 앞이고, 같은 기록 안에서는 카테고리 선언 순이다.
-     * 신호가 하나도 남지 않은 스팟은 결과에서 빠진다.
+     * 철 지난 기록만 있는 스팟처럼 신호가 하나도 남지 않은 스팟은 결과에서 빠진다.
      */
     fun resolve(records: List<SpotRecord>): Map<Long, List<LocalBloomSignal>> {
         if (records.isEmpty()) return emptyMap()
         val categoriesByRecord = categoriesByRecord(records)
         if (categoriesByRecord.isEmpty()) return emptyMap()
 
+        val today = LocalDate.now(clock)
         val latestBySpotCategory = linkedMapOf<Long, LinkedHashMap<BloomCategory, SpotRecord>>()
         records
-            .filter { it.bloomStage != null }
+            .filter { it.bloomStage != null && it.isFreshOn(today) }
             .sortedWith(RECENT_FIRST)
             .forEach { record ->
                 val recordId = record.id ?: return@forEach
@@ -59,6 +71,10 @@ class LocalSpotBloomResolver(
             .filterValues { it.isNotEmpty() }
     }
 
+    /** 관측일이 [UserRecordEstimatorProperties.maxAgeDays] 이내인 기록만 현재 상태의 근거로 인정한다. */
+    private fun SpotRecord.isFreshOn(today: LocalDate): Boolean =
+        ChronoUnit.DAYS.between(observedDate, today).coerceAtLeast(0) <= properties.maxAgeDays
+
     /** 각 기록 id 의 꽃 카테고리 집합 (식물의 bloomCategory 브릿지 경유). */
     private fun categoriesByRecord(records: List<SpotRecord>): Map<Long, Set<BloomCategory>> {
         val recordIds = records.mapNotNull { it.id }
@@ -75,6 +91,8 @@ class LocalSpotBloomResolver(
     }
 
     companion object {
+        private val KST: ZoneId = ZoneId.of("Asia/Seoul")
+
         private val SpotRecord.observedDate: LocalDate
             get() = visitedDate ?: createdAt.atZone(ZoneOffset.UTC).toLocalDate()
 

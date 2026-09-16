@@ -2,6 +2,7 @@ package com.peakda.server.domain.spot.application
 
 import com.peakda.server.domain.attraction.entity.Attraction
 import com.peakda.server.domain.attraction.repository.AttractionRepository
+import com.peakda.server.domain.seasonal.application.BloomBaseDateResolver
 import com.peakda.server.domain.seasonal.entity.BloomCategory
 import com.peakda.server.domain.seasonal.entity.BloomStatus
 import com.peakda.server.domain.seasonal.entity.Estimator
@@ -29,6 +30,7 @@ import java.time.LocalDate
 class SpotFavoriteListAssemblerTest {
 
     private val seasonalBloomEstimateRepository = mock(SeasonalBloomEstimateRepository::class.java)
+    private val bloomBaseDateResolver = mock(BloomBaseDateResolver::class.java)
     private val spotRecordRepository = mock(SpotRecordRepository::class.java)
     private val spotRecordPhotoRepository = mock(SpotRecordPhotoRepository::class.java)
     private val spotRecordPhotoUploader = mock(SpotRecordPhotoUploader::class.java)
@@ -37,6 +39,7 @@ class SpotFavoriteListAssemblerTest {
 
     private val assembler = SpotFavoriteListAssembler(
         seasonalBloomEstimateRepository,
+        bloomBaseDateResolver,
         spotRecordRepository,
         spotRecordPhotoRepository,
         spotRecordPhotoUploader,
@@ -45,7 +48,7 @@ class SpotFavoriteListAssemblerTest {
     )
 
     @Test
-    fun `명소형 카드는 상태 우선순위로 대표 개화를 고르고 종료된 추정을 칩에서 제외한다`() {
+    fun `명소형 카드는 신뢰도가 가장 높은 추정을 대표로 고르고 종료된 추정을 칩에서 제외한다`() {
         val card = card(SPOT_ID, ATTRACTION_ID, SpotType.ATTRACTION, "진해 군항제")
         val estimates = listOf(
             estimate(ATTRACTION_ID, BloomCategory.CANOLA, BloomStatus.STARTED, confidence = 0.99),
@@ -56,11 +59,12 @@ class SpotFavoriteListAssemblerTest {
         val response = assemble(listOf(card), baseDate = BASE_DATE, estimates = estimates)
         val favorite = response.favorites.single()
 
-        assertThat(favorite.bloom?.category).isEqualTo(BloomCategory.CHERRY)
-        assertThat(favorite.bloom?.status).isEqualTo(BloomStatus.PEAK)
+        // 신뢰도 0.99 의 STARTED 가 0.60 의 PEAK 를 이긴다. 상태를 먼저 보면 낮은 신뢰도 절정이 대표가 된다.
+        assertThat(favorite.bloom?.category).isEqualTo(BloomCategory.CANOLA)
+        assertThat(favorite.bloom?.status).isEqualTo(BloomStatus.STARTED)
         assertThat(favorite.bloom?.baseDate).isEqualTo(BASE_DATE)
         assertThat(favorite.categories.map { it.category })
-            .containsExactly(BloomCategory.CHERRY, BloomCategory.CANOLA)
+            .containsExactly(BloomCategory.CANOLA, BloomCategory.CHERRY)
     }
 
     @Test
@@ -216,7 +220,7 @@ class SpotFavoriteListAssemblerTest {
             assertThat(it.categories).isEmpty()
         }
         assertThat(response.banner).isNull()
-        verify(seasonalBloomEstimateRepository).findLatestBaseDate()
+        verify(bloomBaseDateResolver).currentBaseDate()
         verifyNoMoreInteractions(seasonalBloomEstimateRepository)
     }
 
@@ -243,7 +247,7 @@ class SpotFavoriteListAssemblerTest {
             .mapNotNull { (_, spot) -> spot.attractionId.takeIf { spot.type == SpotType.ATTRACTION } }
             .distinct()
         if (attractionIds.isNotEmpty()) {
-            `when`(seasonalBloomEstimateRepository.findLatestBaseDate()).thenReturn(baseDate)
+            `when`(bloomBaseDateResolver.currentBaseDate()).thenReturn(baseDate)
             if (baseDate != null) {
                 `when`(
                     seasonalBloomEstimateRepository.findByBaseDateAndAttractionIdIn(baseDate, attractionIds),
