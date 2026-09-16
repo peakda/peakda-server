@@ -9,7 +9,6 @@ import com.peakda.server.domain.curation.presentation.response.CurationCardRespo
 import com.peakda.server.domain.curation.presentation.response.CurationDetailResponse
 import io.swagger.v3.oas.annotations.Operation
 import io.swagger.v3.oas.annotations.Parameter
-import io.swagger.v3.oas.annotations.security.SecurityRequirement
 import io.swagger.v3.oas.annotations.tags.Tag
 import jakarta.validation.Valid
 import org.springframework.http.ResponseEntity
@@ -23,10 +22,9 @@ interface CurationControllerDocs {
 
     @Operation(
         summary = "발행 큐레이션 목록",
-        description = "발행된 주차 단위 큐레이션을 최신 주차순으로 조회한다.",
-        security = [SecurityRequirement(name = "accessTokenCookie")],
+        description = "비로그인으로 조회할 수 있다. 발행된 주차 단위 큐레이션을 최신 주차순으로 조회한다.",
     )
-    @ApiErrorResponses(ErrorCode.INVALID_REQUEST, ErrorCode.UNAUTHORIZED)
+    @ApiErrorResponses(ErrorCode.INVALID_REQUEST)
     @GetMapping
     fun list(
         @Valid @ModelAttribute pageRequest: PageRequest,
@@ -34,11 +32,11 @@ interface CurationControllerDocs {
 
     @Operation(
         summary = "발행 큐레이션 상세",
-        description = "발행된 큐레이션의 챕터와 추천 카드를 조회한다. " +
-            "lat·lng를 모두 전달하면 연결 스팟까지의 거리를 계산한다.",
-        security = [SecurityRequirement(name = "accessTokenCookie")],
+        description = "비로그인으로 조회할 수 있다. 검색엔진·SNS 크롤러가 쿠키 없이 요청하는 공개 상세 화면이다. " +
+            "발행된 큐레이션의 챕터와 추천 카드를 조회한다. 초안이거나 발행 취소된 큐레이션은 404다. " +
+            "lat·lng를 모두 전달하면 연결 스팟까지의 거리를 계산하고, 없으면 거리 값은 null이다.",
     )
-    @ApiErrorResponses(ErrorCode.INVALID_REQUEST, ErrorCode.UNAUTHORIZED, ErrorCode.CURATION_NOT_FOUND)
+    @ApiErrorResponses(ErrorCode.INVALID_REQUEST, ErrorCode.CURATION_NOT_FOUND)
     @GetMapping("/{id}")
     fun detail(
         @Parameter(description = "큐레이션 id", example = "101")
