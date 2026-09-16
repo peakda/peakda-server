@@ -8,22 +8,19 @@ import com.peakda.server.domain.search.presentation.response.SpotSearchItem
 import com.peakda.server.domain.search.presentation.response.TrendingSpotsResponse
 import com.peakda.server.domain.search.presentation.response.TrendingSpotsResponse.TrendingSpotItem
 import com.peakda.server.domain.search.presentation.response.UserSearchItem
-import com.peakda.server.domain.seasonal.application.BloomStageStatusMapper
+import com.peakda.server.domain.seasonal.application.LocalSpotBloomResolver
 import com.peakda.server.domain.seasonal.entity.BloomCategory
 import com.peakda.server.domain.seasonal.entity.BloomStatus
 import com.peakda.server.domain.seasonal.entity.SeasonalBloomEstimate
 import com.peakda.server.domain.seasonal.repository.SeasonalBloomEstimateRepository
 import com.peakda.server.domain.spot.entity.Spot
 import com.peakda.server.domain.spot.entity.SpotFavorite
-import com.peakda.server.domain.spot.entity.SpotRecord
 import com.peakda.server.domain.spot.entity.SpotRecordStatus
 import com.peakda.server.domain.spot.entity.SpotType
 import com.peakda.server.domain.spot.application.SpotThumbnailResolver
 import com.peakda.server.domain.spot.presentation.response.SpotPreviewResponse.BloomBadge
 import com.peakda.server.domain.spot.repository.SpotFavoriteRepository
-import com.peakda.server.domain.spot.repository.SpotRecordPlantRepository
 import com.peakda.server.domain.spot.repository.SpotRecordRepository
-import com.peakda.server.domain.spot.repository.PlantRepository
 import com.peakda.server.domain.spot.repository.SpotRepository
 import com.peakda.server.domain.user.entity.User
 import com.peakda.server.domain.user.entity.UserStatus
@@ -33,8 +30,6 @@ import org.springframework.data.domain.Sort
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 import org.springframework.data.domain.PageRequest as SpringPageRequest
-import java.time.LocalDate
-import java.time.ZoneOffset
 
 /**
  * 검색 도메인(SCR-021~021e) — 스팟/사용자 검색과 트렌딩 스팟 목록.
@@ -51,8 +46,7 @@ class SearchService(
     private val followRepository: FollowRepository,
     private val spotRecordRepository: SpotRecordRepository,
     private val seasonalBloomEstimateRepository: SeasonalBloomEstimateRepository,
-    private val spotRecordPlantRepository: SpotRecordPlantRepository,
-    private val plantRepository: PlantRepository,
+    private val localSpotBloomResolver: LocalSpotBloomResolver,
     private val spotThumbnailResolver: SpotThumbnailResolver,
 ) {
 
@@ -198,31 +192,17 @@ class SearchService(
         val localSpotIds = spots.filter { it.type == SpotType.LOCAL }.mapNotNull { it.id }
         if (localSpotIds.isEmpty()) return attractionBadges
         val records = spotRecordRepository.findBySpotIdInAndStatus(localSpotIds, SpotRecordStatus.PUBLISHED)
-        if (records.isEmpty()) return attractionBadges
-        val joins = spotRecordPlantRepository.findByIdSpotRecordIdIn(records.mapNotNull { it.id })
-        val categoryByPlant = plantRepository.findAllById(joins.map { it.plantId }.toSet())
-            .mapNotNull { plant -> plant.bloomCategory?.let { requireNotNull(plant.id) to it } }
+        // 동네형은 스팟당 대표 뱃지 1건만 노출한다 — 가장 최근 관측 신호 중 카테고리 필터에 맞는 첫 건.
+        val localBadges = localSpotBloomResolver.resolve(records)
+            .mapNotNull { (spotId, signals) ->
+                signals.firstOrNull { category == null || it.category == category }
+                    ?.let { spotId to BloomBadge(it.category, it.category.displayName, it.status) }
+            }
             .toMap()
-        val categoriesByRecord = joins
-            .mapNotNull { join -> categoryByPlant[join.plantId]?.let { join.spotRecordId to it } }
-            .groupBy({ it.first }, { it.second })
-            .mapValues { (_, values) -> values.toSet() }
-        val localBadges = linkedMapOf<Long, BloomBadge>()
-        for (record in records.sortedByDescending { it.recordDate }) {
-            if (record.spotId in localBadges) continue
-            val stage = record.bloomStage ?: continue
-            val status = BloomStageStatusMapper.toStatus(stage)
-            if (status == BloomStatus.ENDED) continue
-            val matched = categoriesByRecord[record.id].orEmpty().firstOrNull { category == null || it == category } ?: continue
-            localBadges[record.spotId] = BloomBadge(matched, matched.displayName, status)
-        }
         return attractionBadges + localBadges
     }
 
     private fun SeasonalBloomEstimate.toBadge() = BloomBadge(bloomCategory, bloomCategory.displayName, status)
-
-    private val SpotRecord.recordDate: LocalDate
-        get() = visitedDate ?: createdAt.atZone(ZoneOffset.UTC).toLocalDate()
 
     private fun statusRank(status: BloomStatus): Int = when (status) {
         BloomStatus.PEAK -> 0

@@ -2,6 +2,7 @@ package com.peakda.server.domain.spot.application
 
 import com.peakda.server.domain.attraction.entity.Attraction
 import com.peakda.server.domain.attraction.repository.AttractionRepository
+import com.peakda.server.domain.seasonal.application.LocalSpotBloomResolver
 import com.peakda.server.domain.seasonal.entity.BloomCategory
 import com.peakda.server.domain.seasonal.entity.BloomStatus
 import com.peakda.server.domain.seasonal.entity.Estimator
@@ -52,12 +53,13 @@ class SpotPreviewServiceTest {
         spotRecordPhotoUploader,
     )
 
+    private val localSpotBloomResolver = LocalSpotBloomResolver(spotRecordPlantRepository, plantRepository)
+
     private val service = SpotPreviewService(
         spotRepository,
         seasonalBloomEstimateRepository,
         spotRecordRepository,
-        spotRecordPlantRepository,
-        plantRepository,
+        localSpotBloomResolver,
         spotThumbnailResolver,
         spotRecordPhotoRepository,
         spotRecordPhotoUploader,
