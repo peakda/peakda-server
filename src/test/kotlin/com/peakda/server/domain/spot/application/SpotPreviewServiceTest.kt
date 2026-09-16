@@ -3,6 +3,7 @@ package com.peakda.server.domain.spot.application
 import com.peakda.server.domain.attraction.entity.Attraction
 import com.peakda.server.domain.attraction.repository.AttractionRepository
 import com.peakda.server.domain.seasonal.application.LocalSpotBloomResolver
+import com.peakda.server.domain.seasonal.application.estimator.UserRecordEstimatorProperties
 import com.peakda.server.domain.seasonal.entity.BloomCategory
 import com.peakda.server.domain.seasonal.entity.BloomStatus
 import com.peakda.server.domain.seasonal.entity.Estimator
@@ -33,7 +34,9 @@ import org.mockito.Mockito.never
 import org.mockito.Mockito.verify
 import org.mockito.Mockito.`when`
 import org.springframework.test.util.ReflectionTestUtils
+import java.time.Clock
 import java.time.LocalDate
+import java.time.ZoneId
 
 class SpotPreviewServiceTest {
 
@@ -53,7 +56,12 @@ class SpotPreviewServiceTest {
         spotRecordPhotoUploader,
     )
 
-    private val localSpotBloomResolver = LocalSpotBloomResolver(spotRecordPlantRepository, plantRepository)
+    private val localSpotBloomResolver = LocalSpotBloomResolver(
+        spotRecordPlantRepository,
+        plantRepository,
+        UserRecordEstimatorProperties(),
+        Clock.fixed(LocalDate.of(2026, 3, 30).atStartOfDay(KST).toInstant(), KST),
+    )
 
     private val service = SpotPreviewService(
         spotRepository,
@@ -343,6 +351,7 @@ class SpotPreviewServiceTest {
     }
 
     companion object {
+        private val KST: ZoneId = ZoneId.of("Asia/Seoul")
         private const val SPOT_ID = 100L
         private const val MISSING_SPOT_ID = 999L
         private const val SECOND_SPOT_ID = 200L

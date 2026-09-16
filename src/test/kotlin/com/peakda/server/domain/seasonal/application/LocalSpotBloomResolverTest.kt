@@ -1,5 +1,6 @@
 package com.peakda.server.domain.seasonal.application
 
+import com.peakda.server.domain.seasonal.application.estimator.UserRecordEstimatorProperties
 import com.peakda.server.domain.seasonal.entity.BloomCategory
 import com.peakda.server.domain.seasonal.entity.BloomStatus
 import com.peakda.server.domain.spot.entity.BloomStage
@@ -16,15 +17,17 @@ import org.junit.jupiter.api.Test
 import org.mockito.Mockito.mock
 import org.mockito.Mockito.`when`
 import org.springframework.test.util.ReflectionTestUtils
+import java.time.Clock
 import java.time.Instant
 import java.time.LocalDate
+import java.time.ZoneId
 
 class LocalSpotBloomResolverTest {
 
     private val spotRecordPlantRepository = mock(SpotRecordPlantRepository::class.java)
     private val plantRepository = mock(PlantRepository::class.java)
 
-    private val resolver = LocalSpotBloomResolver(spotRecordPlantRepository, plantRepository)
+    private val resolver = resolverOn(TODAY)
 
     @Test
     fun `카테고리별로 가장 최근 기록의 단계를 상태로 환산한다`() {
@@ -85,6 +88,50 @@ class LocalSpotBloomResolverTest {
         assertThat(resolver.resolve(listOf(untagged))).isEmpty()
     }
 
+    @Test
+    fun `관측일이 유효 기간을 넘긴 기록은 현재 상태의 근거로 쓰지 않는다`() {
+        // 봄(3월)에 절정이었다고 가을(9월)에 올린 기록 — 9월 스팟 상태를 절정으로 만들면 안 된다.
+        val spring = record(1L, visitedDate = LocalDate.of(2026, 3, 28), stage = BloomStage.PEAK)
+        stubCherry(spring)
+
+        val signals = resolverOn(LocalDate.of(2026, 9, 16)).resolve(listOf(spring))
+
+        assertThat(signals).isEmpty()
+    }
+
+    @Test
+    fun `유효 기간 경계일의 기록은 아직 인정한다`() {
+        val observed = LocalDate.of(2026, 4, 1)
+        val record = record(1L, visitedDate = observed, stage = BloomStage.PEAK)
+        stubCherry(record)
+
+        val lastValidDay = observed.plusDays(UserRecordEstimatorProperties().maxAgeDays)
+        val signals = resolverOn(lastValidDay).resolve(listOf(record))
+
+        assertThat(signals.getValue(SPOT_ID))
+            .containsExactly(LocalBloomSignal(BloomCategory.CHERRY, BloomStatus.PEAK))
+        assertThat(resolverOn(lastValidDay.plusDays(1)).resolve(listOf(record))).isEmpty()
+    }
+
+    @Test
+    fun `철 지난 절정 기록이 있어도 신선한 기록이 있으면 그 기록을 따른다`() {
+        val spring = record(1L, visitedDate = LocalDate.of(2026, 3, 28), stage = BloomStage.PEAK)
+        val recent = record(2L, visitedDate = LocalDate.of(2026, 9, 14), stage = BloomStage.STARTING)
+        stubCherry(spring, recent)
+
+        val signals = resolverOn(LocalDate.of(2026, 9, 16)).resolve(listOf(spring, recent))
+
+        assertThat(signals.getValue(SPOT_ID))
+            .containsExactly(LocalBloomSignal(BloomCategory.CHERRY, BloomStatus.STARTED))
+    }
+
+    private fun resolverOn(today: LocalDate) = LocalSpotBloomResolver(
+        spotRecordPlantRepository,
+        plantRepository,
+        UserRecordEstimatorProperties(),
+        Clock.fixed(today.atStartOfDay(KST).toInstant(), KST),
+    )
+
     private fun stubCherry(vararg records: SpotRecord) {
         `when`(spotRecordPlantRepository.findByIdSpotRecordIdIn(records.map { requireNotNull(it.id) }))
             .thenReturn(records.map { SpotRecordPlant(SpotRecordPlantId(requireNotNull(it.id), PLANT_ID)) })
@@ -117,6 +164,8 @@ class LocalSpotBloomResolverTest {
     }
 
     companion object {
+        private val KST: ZoneId = ZoneId.of("Asia/Seoul")
+        private val TODAY: LocalDate = LocalDate.of(2026, 4, 10)
         private const val SPOT_ID = 100L
         private const val PLANT_ID = 10L
     }

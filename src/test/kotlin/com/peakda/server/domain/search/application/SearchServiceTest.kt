@@ -4,6 +4,7 @@ import com.peakda.server.common.page.PageRequest
 import com.peakda.server.common.storage.ObjectKeyUrlResolver
 import com.peakda.server.domain.auth.oauth.model.OAuth2LoginType
 import com.peakda.server.domain.seasonal.application.LocalSpotBloomResolver
+import com.peakda.server.domain.seasonal.application.estimator.UserRecordEstimatorProperties
 import com.peakda.server.domain.spot.entity.Spot
 import com.peakda.server.domain.spot.entity.SpotType
 import com.peakda.server.domain.spot.repository.SpotFavoriteCount
@@ -44,7 +45,8 @@ class SearchServiceTest {
     private val plantRepository = mock(PlantRepository::class.java)
     private val spotThumbnailResolver = mock(SpotThumbnailResolver::class.java)
 
-    private val localSpotBloomResolver = LocalSpotBloomResolver(spotRecordPlantRepository, plantRepository)
+    private val localSpotBloomResolver =
+        LocalSpotBloomResolver(spotRecordPlantRepository, plantRepository, UserRecordEstimatorProperties())
 
     private val service = SearchService(
         spotRepository,
