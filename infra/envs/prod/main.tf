@@ -507,6 +507,9 @@ resource "aws_ecs_task_definition" "migration" {
     }
   }])
 }
+# maximum_percent 150 은 초과 태스크를 1개만 허용해 desired_count=2 를 두 웨이브에
+# 나눠 교체하므로, 부팅·헬스체크 대기를 두 번 치른다. 200 이면 두 태스크를 동시에
+# 띄워 한 번만 치른다.
 resource "aws_ecs_service" "this" {
   name                               = local.name_prefix
   cluster                            = aws_ecs_cluster.this.id
@@ -517,7 +520,7 @@ resource "aws_ecs_service" "this" {
   availability_zone_rebalancing      = "ENABLED"
   health_check_grace_period_seconds  = 180
   deployment_minimum_healthy_percent = 100
-  deployment_maximum_percent         = 150
+  deployment_maximum_percent         = 200
   deployment_circuit_breaker {
     enable   = true
     rollback = true
