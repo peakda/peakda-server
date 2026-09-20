@@ -3,7 +3,6 @@ package com.peakda.server.domain.spot.application
 import com.peakda.server.domain.attraction.repository.AttractionRepository
 import com.peakda.server.domain.seasonal.application.BloomBaseDateResolver
 import com.peakda.server.domain.seasonal.application.BloomEstimateOrdering
-import com.peakda.server.domain.seasonal.entity.BloomStatus
 import com.peakda.server.domain.seasonal.application.peakDurationDaysInclusive
 import com.peakda.server.domain.seasonal.entity.SeasonalBloomEstimate
 import com.peakda.server.domain.seasonal.repository.SeasonalBloomEstimateRepository
@@ -79,14 +78,13 @@ class SpotDetailService(
     /**
      * 명소에 연결된 스팟만 개화 추정을 가진다. 최신 산출일 기준 가장 신뢰도 높은 추정 1건을 채택한다.
      *
-     * 이미 진 카테고리(ENDED)는 배너로 쓰지 않는다. 프리뷰·검색·찜 카드와 같은 기준이다.
+     * 다섯 단계를 모두 배너로 쓰며, 대표 선택 기준은 프리뷰·검색·찜 카드와 같다.
      */
     private fun resolveBloomBanner(spot: Spot): BloomBanner? {
         val attractionId = spot.attractionId ?: return null
         val baseDate = bloomBaseDateResolver.currentBaseDate() ?: return null
         val representative = seasonalBloomEstimateRepository
             .findByAttractionIdAndBaseDate(attractionId, baseDate)
-            .filter { it.status != BloomStatus.ENDED }
             .minWithOrNull(BloomEstimateOrdering.REPRESENTATIVE_FIRST)
             ?: return null
         return representative.toBanner(baseDate)

@@ -113,7 +113,7 @@ class SpotPreviewService(
             userId = LEGACY_ANONYMOUS_USER_ID,
         )
 
-    /** 명소형 스팟은 ENDED 를 제외하고 상태 우선·신뢰도 순으로 전체 뱃지를 반환한다. */
+    /** 명소형 스팟은 신뢰도·상태 순으로 다섯 단계 뱃지를 모두 반환한다. */
     private fun attractionBadges(
         spots: Collection<Spot>,
         categories: List<BloomCategory>?,
@@ -130,7 +130,7 @@ class SpotPreviewService(
         )
         val categorySet = categories.orEmpty().toSet()
         val badgeByAttraction = estimates
-            .filter { it.status != BloomStatus.ENDED && (categorySet.isEmpty() || it.bloomCategory in categorySet) }
+            .filter { categorySet.isEmpty() || it.bloomCategory in categorySet }
             .groupBy { it.attractionId }
             .mapValues { (_, rows) ->
                 rows.sortedWith(BloomEstimateOrdering.REPRESENTATIVE_FIRST)

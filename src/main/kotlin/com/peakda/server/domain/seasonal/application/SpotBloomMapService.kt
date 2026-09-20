@@ -29,7 +29,7 @@ import java.time.LocalDate
  * - 방문예정일 [date] 가 주어지면 명소형 슬롯을 절정 구간 기준으로 재계산한다 (결정 C MVP 산식).
  *   동네형은 관측값이라 미래 투영이 불가하므로 최근 관측 상태를 유지한다.
  *
- * 핀=3단계(PREPARING/STARTED/PEAK)만 노출하고 ENDED 슬롯은 제외한다.
+ * 핀은 개화전/이르다/시작/절정/늦었다 다섯 단계를 모두 노출한다.
  */
 @Service
 class SpotBloomMapService(
@@ -115,7 +115,7 @@ class SpotBloomMapService(
             .groupBy { it.attractionId }
             .mapNotNull { (attractionId, rows) ->
                 val attraction = attractionsById[attractionId] ?: return@mapNotNull null
-                val slots = rows.mapNotNull { it.toSlot(date) }
+                val slots = rows.map { it.toSlot(date) }
                     .filter { status == null || it.status == status }
                 if (slots.isEmpty()) return@mapNotNull null
                 attraction.toPin(spotIdByAttraction[attractionId], slots)
@@ -152,13 +152,9 @@ class SpotBloomMapService(
         }
     }
 
-    /**
-     * 절정 구간 기준 슬롯 변환. [date] 가 주어지면 그날 상태를 재계산하고, 없으면 저장된 산출 상태를 쓴다.
-     * ENDED 는 핀에서 제외하므로 null 을 반환한다.
-     */
-    private fun SeasonalBloomEstimate.toSlot(date: LocalDate?): BloomSlot? {
+    /** 절정 구간 기준 슬롯 변환. [date] 가 주어지면 그날 상태를 재계산하고, 없으면 저장된 산출 상태를 쓴다. */
+    private fun SeasonalBloomEstimate.toSlot(date: LocalDate?): BloomSlot {
         val effectiveStatus = if (date == null) status else statusOn(date)
-        if (effectiveStatus == BloomStatus.ENDED) return null
         return BloomSlot(bloomCategory, bloomCategory.displayName, effectiveStatus, confidence)
     }
 

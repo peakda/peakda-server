@@ -58,7 +58,7 @@ data class SpotPreviewResponse(
         val displayName: String,
 
         @field:Schema(
-            description = "PREPARING/STARTED/PEAK 중 하나. ENDED 는 이 응답에서 제외된다",
+            description = "BEFORE_SEASON=개화전, PREPARING=이르다, STARTED=시작, PEAK=절정, ENDED=늦었다",
             example = "PEAK",
         )
         val status: BloomStatus,

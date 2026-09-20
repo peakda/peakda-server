@@ -3,7 +3,6 @@ package com.peakda.server.domain.spot.application
 import com.peakda.server.domain.attraction.repository.AttractionRepository
 import com.peakda.server.domain.seasonal.application.BloomBaseDateResolver
 import com.peakda.server.domain.seasonal.application.BloomEstimateOrdering
-import com.peakda.server.domain.seasonal.entity.BloomStatus
 import com.peakda.server.domain.seasonal.entity.SeasonalBloomEstimate
 import com.peakda.server.domain.seasonal.repository.SeasonalBloomEstimateRepository
 import com.peakda.server.domain.spot.entity.Spot
@@ -103,7 +102,6 @@ class SpotFavoriteListAssembler(
         val baseDate = bloomBaseDateResolver.currentBaseDate() ?: return emptyMap()
         return seasonalBloomEstimateRepository
             .findByBaseDateAndAttractionIdIn(baseDate, attractionIds)
-            .filter { it.status != BloomStatus.ENDED }
             .groupBy { it.attractionId }
             .mapValues { (_, estimates) ->
                 val ordered = estimates.sortedWith(BloomEstimateOrdering.REPRESENTATIVE_FIRST)

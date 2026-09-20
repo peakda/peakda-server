@@ -61,7 +61,7 @@ class SpotDetailServiceTest {
         val spot = attractionSpot(primaryImageUrl = "https://img/primary.jpg")
         stubRecords(count = 12, preview = listOf(summary(coverUrl = "https://rec/cover.jpg")))
         stubFavorite(SpotFavorite(userId = USER_ID, spotId = SPOT_ID, notifyEnabled = true))
-        // ENDED 는 신뢰도가 높아도 배너에서 제외된다.
+        // 이미 진 카테고리는 신뢰도가 높아도 대표 배너가 되지 않는다.
         stubEstimates(
             estimate(BloomStatus.ENDED, confidence = 0.9),
             estimate(BloomStatus.PEAK, confidence = 0.7),

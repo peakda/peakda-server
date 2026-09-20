@@ -61,7 +61,7 @@ class SpotBloomMapServiceTest {
     private val baseDate = LocalDate.of(2026, 3, 30)
 
     @Test
-    fun `명소형 핀은 추정을 상속하고 기존 Spot 행이 있으면 spotId 를 채우며 ENDED 슬롯은 제외한다`() {
+    fun `명소형 핀은 추정을 상속하고 기존 Spot 행이 있으면 spotId 를 채우며 늦었다 슬롯도 노출한다`() {
         stubAttractions(attraction(ATTRACTION_ID, "남산"))
         stubAttractionEstimates(
             estimate(BloomCategory.CHERRY, BloomStatus.PEAK, confidence = 0.9),
@@ -78,7 +78,8 @@ class SpotBloomMapServiceTest {
         assertThat(pin.spotId).isEqualTo(100L)
         assertThat(pin.attractionId).isEqualTo(ATTRACTION_ID)
         assertThat(pin.type).isEqualTo(SpotType.ATTRACTION)
-        assertThat(pin.blooms).extracting<BloomCategory> { it.category }.containsExactly(BloomCategory.CHERRY)
+        assertThat(pin.blooms).extracting<BloomCategory> { it.category }
+            .containsExactly(BloomCategory.CHERRY, BloomCategory.AZALEA)
 
         // 하위호환 alias: 명소형 핀이 옛 구조(attractions)로도 제공된다.
         assertThat(response.attractions).hasSize(1)
@@ -102,13 +103,13 @@ class SpotBloomMapServiceTest {
     }
 
     @Test
-    fun `동네형 핀은 최근 기록의 단계를 상태로 환산하고 LATE 는 제외한다`() {
+    fun `동네형 핀은 최근 기록의 단계를 상태로 환산하고 LATE 는 늦었다로 남긴다`() {
         stubNoAttractions()
         val spot = localSpot(SPOT_ID, "벚꽃길")
         `when`(spotRepository.findVisibleInBoundingBox(SpotType.LOCAL, MIN_LAT, MAX_LAT, MIN_LNG, MAX_LNG))
             .thenReturn(listOf(spot))
 
-        // CHERRY: 최근(rec1 PEAK) 이 과거(rec2 EARLY) 보다 우선. CAMELLIA: 유일 기록이 LATE → 제외.
+        // CHERRY: 최근(rec1 PEAK) 이 과거(rec2 EARLY) 보다 우선. CAMELLIA: 유일 기록이 LATE → 늦었다.
         val rec1 = record(1L, SPOT_ID, LocalDate.of(2026, 4, 1), BloomStage.PEAK)
         val rec2 = record(2L, SPOT_ID, LocalDate.of(2026, 3, 20), BloomStage.EARLY)
         val rec3 = record(3L, SPOT_ID, LocalDate.of(2026, 4, 2), BloomStage.LATE)
@@ -133,9 +134,11 @@ class SpotBloomMapServiceTest {
         assertThat(pin.spotId).isEqualTo(SPOT_ID)
         assertThat(pin.type).isEqualTo(SpotType.LOCAL)
         assertThat(pin.attractionId).isNull()
-        assertThat(pin.blooms).hasSize(1)
-        assertThat(pin.blooms.first().category).isEqualTo(BloomCategory.CHERRY)
-        assertThat(pin.blooms.first().status).isEqualTo(BloomStatus.PEAK)
+        // 신호는 기록이 최근일수록 앞이다 — rec3(4/2 CAMELLIA) 다음 rec1(4/1 CHERRY).
+        assertThat(pin.blooms.map { it.category })
+            .containsExactly(BloomCategory.CAMELLIA, BloomCategory.CHERRY)
+        assertThat(pin.blooms.map { it.status })
+            .containsExactly(BloomStatus.ENDED, BloomStatus.PEAK)
         // 동네형은 하위호환 alias(attractions)에 포함되지 않는다.
         assertThat(response.attractions).isEmpty()
     }
