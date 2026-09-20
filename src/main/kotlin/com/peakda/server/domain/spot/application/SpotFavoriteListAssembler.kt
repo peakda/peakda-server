@@ -88,7 +88,7 @@ class SpotFavoriteListAssembler(
             )
             .groupBy { it.spotId }
             .mapValues { (_, photos) ->
-                photos.take(properties.photoLimit).map { spotRecordPhotoUploader.presignedUrlOf(it.objectKey) }
+                photos.take(properties.photoLimit).map { spotRecordPhotoUploader.urlOf(it.objectKey) }
             }
     }
 

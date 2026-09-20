@@ -83,7 +83,7 @@ class AuthService(
         }
         val mainKey = variantKeys[ProfileImagePolicy.MAIN_VARIANT]
             ?: throw ImageException(ErrorCode.IMAGE_PROCESSING_FAILED)
-        val variantUrls = variantKeys.mapValues { (_, key) -> objectStorage.presignedGetUrl(key) }
+        val variantUrls = variantKeys.mapValues { (_, key) -> objectKeyUrlResolver.resolveKey(key) }
         val mainUrl = requireNotNull(variantUrls[ProfileImagePolicy.MAIN_VARIANT])
         return ProfileImageResponse(
             profileImageUrl = mainUrl,

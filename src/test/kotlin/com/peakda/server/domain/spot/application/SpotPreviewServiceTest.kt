@@ -95,7 +95,7 @@ class SpotPreviewServiceTest {
             .thenReturn(listOf(attraction(ATTRACTION_ID, "https://img/primary.jpg")))
         `when`(spotRecordPhotoRepository.findRecentPhotosBySpotIds(listOf(SPOT_ID), SpotRecordStatus.PUBLISHED.name, 4))
             .thenReturn(listOf(photo(SPOT_ID, "key-record")))
-        `when`(spotRecordPhotoUploader.presignedUrlOf("key-record")).thenReturn("https://rec/record.jpg")
+        `when`(spotRecordPhotoUploader.urlOf("key-record")).thenReturn("https://rec/record.jpg")
 
         val response = service.preview(listOf(SPOT_ID), category = null, lat = null, lng = null)
 
@@ -159,7 +159,7 @@ class SpotPreviewServiceTest {
         `when`(spotRepository.findAllById(listOf(SPOT_ID, SECOND_SPOT_ID))).thenReturn(listOf(second, first))
         `when`(spotRecordPhotoRepository.findRecentPhotosBySpotIds(listOf(SECOND_SPOT_ID, SPOT_ID), SpotRecordStatus.PUBLISHED.name, 4))
             .thenReturn((1..5).map { photo(SPOT_ID, "key-$it") })
-        (1..5).forEach { `when`(spotRecordPhotoUploader.presignedUrlOf("key-$it")).thenReturn("https://rec/$it.jpg") }
+        (1..5).forEach { `when`(spotRecordPhotoUploader.urlOf("key-$it")).thenReturn("https://rec/$it.jpg") }
         `when`(spotFavoriteRepository.findByUserIdAndSpotIdIn(USER_ID, listOf(SPOT_ID, SECOND_SPOT_ID)))
             .thenReturn(listOf(SpotFavorite(userId = USER_ID, spotId = SPOT_ID, notifyEnabled = true)))
         `when`(spotRecordRepository.countBySpotIdInAndStatus(listOf(SPOT_ID, SECOND_SPOT_ID), SpotRecordStatus.PUBLISHED))
@@ -202,7 +202,7 @@ class SpotPreviewServiceTest {
         `when`(plantRepository.findAllById(setOf(10L))).thenReturn(listOf(plant(10L, BloomCategory.CHERRY)))
         `when`(spotRecordPhotoRepository.findRecentPhotosBySpotIds(listOf(SPOT_ID), SpotRecordStatus.PUBLISHED.name, 4))
             .thenReturn(listOf(photo(spotId = SPOT_ID, objectKey = "key-2")))
-        `when`(spotRecordPhotoUploader.presignedUrlOf("key-2")).thenReturn("https://rec/2.jpg")
+        `when`(spotRecordPhotoUploader.urlOf("key-2")).thenReturn("https://rec/2.jpg")
 
         val response = service.preview(listOf(SPOT_ID), category = null, lat = null, lng = null)
 

@@ -166,7 +166,7 @@ class SpotFavoriteListAssemblerTest {
         val card = card(SPOT_ID, null, SpotType.LOCAL, "우리 동네 공원")
         val photos = (1..5).map { photo(SPOT_ID, "photo-$it") }
         photos.forEach { projection ->
-            `when`(spotRecordPhotoUploader.presignedUrlOf(projection.objectKey))
+            `when`(spotRecordPhotoUploader.urlOf(projection.objectKey))
                 .thenReturn("https://cdn/${projection.objectKey}")
         }
 

@@ -111,10 +111,10 @@ class SpotRecordResponseAssemblerTest {
             SpotRecordPhoto(101L, "first-1", 1),
         )
         `when`(spotRecordPhotoRepository.findBySpotRecordIdIn(listOf(102L, 101L))).thenReturn(photos)
-        `when`(spotRecordPhotoUploader.presignedUrlOf("first-1")).thenReturn("url-first-1")
-        `when`(spotRecordPhotoUploader.presignedUrlOf("first-2")).thenReturn("url-first-2")
-        `when`(spotRecordPhotoUploader.presignedUrlOf("second-1")).thenReturn("url-second-1")
-        `when`(spotRecordPhotoUploader.presignedUrlOf("second-2")).thenReturn("url-second-2")
+        `when`(spotRecordPhotoUploader.urlOf("first-1")).thenReturn("url-first-1")
+        `when`(spotRecordPhotoUploader.urlOf("first-2")).thenReturn("url-first-2")
+        `when`(spotRecordPhotoUploader.urlOf("second-1")).thenReturn("url-second-1")
+        `when`(spotRecordPhotoUploader.urlOf("second-2")).thenReturn("url-second-2")
         `when`(spotRecordReactionRepository.countsBySpotRecordIdIn(listOf(102L, 101L))).thenReturn(emptyList())
         `when`(spotRecordReactionRepository.findByUserIdAndSpotRecordIdIn(VIEWER_ID, listOf(102L, 101L)))
             .thenReturn(emptyList())
@@ -127,10 +127,10 @@ class SpotRecordResponseAssemblerTest {
         assertThat(responses[0].coverPhoto).isSameAs(responses[0].photos.first())
         assertThat(responses[1].coverPhoto).isSameAs(responses[1].photos.first())
         verify(spotRecordPhotoRepository).findBySpotRecordIdIn(listOf(102L, 101L))
-        verify(spotRecordPhotoUploader).presignedUrlOf("first-1")
-        verify(spotRecordPhotoUploader).presignedUrlOf("first-2")
-        verify(spotRecordPhotoUploader).presignedUrlOf("second-1")
-        verify(spotRecordPhotoUploader).presignedUrlOf("second-2")
+        verify(spotRecordPhotoUploader).urlOf("first-1")
+        verify(spotRecordPhotoUploader).urlOf("first-2")
+        verify(spotRecordPhotoUploader).urlOf("second-1")
+        verify(spotRecordPhotoUploader).urlOf("second-2")
     }
 
     @Test

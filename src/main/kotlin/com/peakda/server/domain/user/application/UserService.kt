@@ -45,7 +45,7 @@ class UserService(
             deleteManaged(userId, previousKey)
         }
 
-        val variantUrls = variantKeys.mapValues { (_, key) -> objectStorage.presignedGetUrl(key) }
+        val variantUrls = variantKeys.mapValues { (_, key) -> objectKeyUrlResolver.resolveKey(key) }
         val mainUrl = requireNotNull(variantUrls[ProfileImagePolicy.MAIN_VARIANT])
         return ProfileImageResponse(
             profileImageUrl = mainUrl,

@@ -169,7 +169,7 @@ class SpotPreviewService(
         return spotRecordPhotoRepository
             .findRecentPhotosBySpotIds(spotIds, SpotRecordStatus.PUBLISHED.name, MAX_PHOTO_COUNT)
             .groupBy { it.spotId }
-            .mapValues { (_, photos) -> photos.take(MAX_PHOTO_COUNT).map { spotRecordPhotoUploader.presignedUrlOf(it.objectKey) } }
+            .mapValues { (_, photos) -> photos.take(MAX_PHOTO_COUNT).map { spotRecordPhotoUploader.urlOf(it.objectKey) } }
     }
 
     private fun SeasonalBloomEstimate.toBadge() = BloomBadge(

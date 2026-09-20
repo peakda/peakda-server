@@ -62,7 +62,7 @@ class SpotThumbnailResolver(
 
         return latestBySpot.mapNotNull { (spotId, record) ->
             val recordId = record.id ?: return@mapNotNull null
-            photosByRecord[recordId]?.firstOrNull()?.let { spotId to spotRecordPhotoUploader.presignedUrlOf(it.objectKey) }
+            photosByRecord[recordId]?.firstOrNull()?.let { spotId to spotRecordPhotoUploader.urlOf(it.objectKey) }
         }.toMap()
     }
 

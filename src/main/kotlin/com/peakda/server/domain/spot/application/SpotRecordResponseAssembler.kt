@@ -146,7 +146,7 @@ class SpotRecordResponseAssembler(
 
     private fun SpotRecordPhoto.toEntry() = PhotoEntry(
         objectKey = objectKey,
-        url = spotRecordPhotoUploader.presignedUrlOf(objectKey),
+        url = spotRecordPhotoUploader.urlOf(objectKey),
         sortOrder = sortOrder,
     )
 

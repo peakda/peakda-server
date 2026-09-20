@@ -2,6 +2,7 @@ package com.peakda.server.domain.notification.application
 
 import com.peakda.server.common.storage.ObjectKeyUrlResolver
 import com.peakda.server.common.storage.ObjectStorage
+import com.peakda.server.common.storage.StorageProperties
 import com.peakda.server.domain.auth.oauth.model.OAuth2LoginType
 import com.peakda.server.common.page.PageRequest
 import com.peakda.server.domain.notification.entity.Notification
@@ -32,7 +33,7 @@ class NotificationServiceTest {
     private val service = NotificationService(
         notificationRepository,
         userRepository,
-        ObjectKeyUrlResolver(objectStorage),
+        ObjectKeyUrlResolver(objectStorage, StorageProperties(bucket = "test-bucket")),
     )
 
     private val pageable = SpringPageRequest.of(0, 20)
