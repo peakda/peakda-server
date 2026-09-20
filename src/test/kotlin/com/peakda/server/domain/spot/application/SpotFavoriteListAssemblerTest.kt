@@ -48,7 +48,7 @@ class SpotFavoriteListAssemblerTest {
     )
 
     @Test
-    fun `명소형 카드는 신뢰도가 가장 높은 추정을 대표로 고르고 종료된 추정을 칩에서 제외한다`() {
+    fun `명소형 카드는 신뢰도가 가장 높은 추정을 대표로 고르고 종료된 추정을 칩 맨 뒤로 보낸다`() {
         val card = card(SPOT_ID, ATTRACTION_ID, SpotType.ATTRACTION, "진해 군항제")
         val estimates = listOf(
             estimate(ATTRACTION_ID, BloomCategory.CANOLA, BloomStatus.STARTED, confidence = 0.99),
@@ -63,8 +63,9 @@ class SpotFavoriteListAssemblerTest {
         assertThat(favorite.bloom?.category).isEqualTo(BloomCategory.CANOLA)
         assertThat(favorite.bloom?.status).isEqualTo(BloomStatus.STARTED)
         assertThat(favorite.bloom?.baseDate).isEqualTo(BASE_DATE)
+        // 신뢰도 1.0 이어도 이미 진 단풍은 대표가 아니라 칩 맨 뒤다.
         assertThat(favorite.categories.map { it.category })
-            .containsExactly(BloomCategory.CANOLA, BloomCategory.CHERRY)
+            .containsExactly(BloomCategory.CANOLA, BloomCategory.CHERRY, BloomCategory.MAPLE)
     }
 
     @Test

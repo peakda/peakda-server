@@ -80,7 +80,7 @@ class SpotPreviewServiceTest {
     private val baseDate = LocalDate.of(2026, 3, 30)
 
     @Test
-    fun `명소형 스팟은 ENDED 를 제외한 가장 강한 추정을 뱃지로, 명소 대표사진을 썸네일로 채운다`() {
+    fun `명소형 스팟은 시즌이 남은 가장 강한 추정을 뱃지로, 명소 대표사진을 썸네일로 채운다`() {
         val spot = attractionSpot(SPOT_ID, ATTRACTION_ID)
         `when`(spotRepository.findAllById(listOf(SPOT_ID))).thenReturn(listOf(spot))
         `when`(bloomBaseDateResolver.currentBaseDate()).thenReturn(baseDate)
@@ -109,7 +109,7 @@ class SpotPreviewServiceTest {
     }
 
     @Test
-    fun `명소형 스팟은 ENDED 를 제외한 모든 뱃지를 신뢰도 순으로 반환한다`() {
+    fun `명소형 스팟은 다섯 단계 뱃지를 시즌·신뢰도 순으로 반환한다`() {
         val spot = attractionSpot(SPOT_ID, ATTRACTION_ID)
         `when`(spotRepository.findAllById(listOf(SPOT_ID))).thenReturn(listOf(spot))
         `when`(bloomBaseDateResolver.currentBaseDate()).thenReturn(baseDate)
@@ -125,10 +125,11 @@ class SpotPreviewServiceTest {
         val item = service.preview(listOf(SPOT_ID), categories = null, status = null, lat = null, lng = null, userId = USER_ID)
             .items.single()
 
-        // 신뢰도 0.99 의 STARTED 가 0.7 의 PEAK 보다 앞선다.
-        assertThat(item.badges.map { it.category }).containsExactly(BloomCategory.AZALEA_KR, BloomCategory.CHERRY)
+        // 신뢰도 0.99 의 STARTED 가 0.7 의 PEAK 보다 앞서고, 이미 진 PLUM 은 신뢰도 1.0 이어도 맨 뒤다.
+        assertThat(item.badges.map { it.category })
+            .containsExactly(BloomCategory.AZALEA_KR, BloomCategory.CHERRY, BloomCategory.PLUM)
         assertThat(item.badge).isEqualTo(item.badges.first())
-        assertThat(item.badges.last().peakDurationDays).isEqualTo(4)
+        assertThat(item.badges[1].peakDurationDays).isEqualTo(4)
     }
 
     @Test

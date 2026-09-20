@@ -43,14 +43,15 @@ class LocalSpotBloomResolverTest {
     }
 
     @Test
-    fun `최신 기록이 LATE 면 과거 절정 기록으로 되돌아가지 않고 신호에서 빠진다`() {
+    fun `최신 기록이 LATE 면 과거 절정 기록으로 되돌아가지 않고 늦었다로 남는다`() {
         val peak = record(1L, visitedDate = LocalDate.of(2026, 4, 1), stage = BloomStage.PEAK)
         val late = record(2L, visitedDate = LocalDate.of(2026, 4, 9), stage = BloomStage.LATE)
         stubCherry(peak, late)
 
         val signals = resolver.resolve(listOf(peak, late))
 
-        assertThat(signals).isEmpty()
+        assertThat(signals.getValue(SPOT_ID))
+            .containsExactly(LocalBloomSignal(BloomCategory.CHERRY, BloomStatus.ENDED))
     }
 
     @Test

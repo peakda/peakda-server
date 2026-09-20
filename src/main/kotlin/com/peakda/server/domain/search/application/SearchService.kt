@@ -12,7 +12,6 @@ import com.peakda.server.domain.seasonal.application.BloomBaseDateResolver
 import com.peakda.server.domain.seasonal.application.BloomEstimateOrdering
 import com.peakda.server.domain.seasonal.application.LocalSpotBloomResolver
 import com.peakda.server.domain.seasonal.entity.BloomCategory
-import com.peakda.server.domain.seasonal.entity.BloomStatus
 import com.peakda.server.domain.seasonal.entity.SeasonalBloomEstimate
 import com.peakda.server.domain.seasonal.repository.SeasonalBloomEstimateRepository
 import com.peakda.server.domain.spot.entity.Spot
@@ -185,7 +184,6 @@ class SearchService(
                     )
                 }
                 val byAttraction = estimates
-                    .filter { it.status != BloomStatus.ENDED }
                     .groupBy { it.attractionId }
                     .mapValues { (_, rows) -> rows.minWith(BloomEstimateOrdering.REPRESENTATIVE_FIRST).toBadge() }
                 attractionIdBySpot.mapNotNull { (spotId, attractionId) -> byAttraction[attractionId]?.let { spotId to it } }.toMap()

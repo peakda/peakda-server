@@ -4,6 +4,7 @@ import com.peakda.server.domain.seasonal.application.estimator.BloomEstimator
 import com.peakda.server.domain.seasonal.entity.BloomStatus
 import com.peakda.server.domain.seasonal.entity.Estimator
 import org.springframework.stereotype.Service
+import java.time.LocalDate
 import kotlin.math.abs
 
 /**
@@ -13,11 +14,13 @@ import kotlin.math.abs
  * 2. 신뢰도 내림차순, 동률이면 직접 관측을 가장 먼저 두고 기존 카테고리별 추정기 우선순위를 적용한다.
  * 3. 상위 두 결과의 상태가 다르고 신뢰도 차가 작으면 보수적 상태(STARTED>PEAK>PREPARING>ENDED)를 채택한다.
  * 4. 채택 상태에 동의하는 추정기 수만큼 신뢰도를 가산한다(상한 적용).
+ * 5. 절정 구간을 승계한 뒤 PREPARING 을 개화전/이르다로 가른다.
  */
 @Service
 class BloomStatusFusionService(
     private val estimators: List<BloomEstimator>,
     private val properties: BloomFusionProperties,
+    private val statusWindowResolver: BloomStatusWindowResolver,
 ) {
     fun fuse(context: BloomEstimationContext): BloomEstimation? {
         val results = estimators.mapNotNull { it.estimate(context) }
@@ -45,7 +48,9 @@ class BloomStatusFusionService(
         val boosted = base.confidence + (agreeing - 1) * properties.agreementBonus
         val confidence = boosted.coerceAtMost(properties.agreementBonusCap).coerceAtMost(1.0)
 
-        return base.copy(confidence = confidence).inheritPeakWindow(ranked)
+        return base.copy(confidence = confidence)
+            .inheritPeakWindow(ranked)
+            .narrowPreparing(context.baseDate)
     }
 
     /**
@@ -57,6 +62,15 @@ class BloomStatusFusionService(
         if (peakStartDate != null) return this
         val donor = candidates.firstOrNull { it.peakStartDate != null } ?: return this
         return copy(peakStartDate = donor.peakStartDate, peakEndDate = donor.peakEndDate)
+    }
+
+    /**
+     * 추정기는 "아직 안 폈다"를 PREPARING 하나로만 낸다. 절정까지 남은 날로 개화전과 이르다를 가른다.
+     * 구간 승계 뒤에 적용해야 GDD 처럼 구간 없는 신호가 늘 개화전으로 떨어지지 않는다.
+     */
+    private fun BloomEstimation.narrowPreparing(baseDate: LocalDate): BloomEstimation {
+        val narrowed = statusWindowResolver.narrow(status, baseDate, peakStartDate)
+        return if (narrowed == status) this else copy(status = narrowed)
     }
 
     /** 동률 신뢰도일 때 신호 신뢰도 우선순위 (작을수록 우선). */
@@ -74,5 +88,7 @@ class BloomStatusFusionService(
         BloomStatus.PEAK -> 1
         BloomStatus.PREPARING -> 2
         BloomStatus.ENDED -> 3
+        // 개화전은 추정기가 내지 않는다. PREPARING 을 융합 뒤에 가른 결과라 여기로 들어오지 않는다.
+        BloomStatus.BEFORE_SEASON -> 4
     }
 }

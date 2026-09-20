@@ -29,13 +29,14 @@ import java.time.LocalDate
  * - 방문예정일 [date] 가 주어지면 명소형 슬롯을 절정 구간 기준으로 재계산한다 (결정 C MVP 산식).
  *   동네형은 관측값이라 미래 투영이 불가하므로 최근 관측 상태를 유지한다.
  *
- * 핀=3단계(PREPARING/STARTED/PEAK)만 노출하고 ENDED 슬롯은 제외한다.
+ * 핀은 개화전/이르다/시작/절정/늦었다 다섯 단계를 모두 노출한다.
  */
 @Service
 class SpotBloomMapService(
     private val attractionRepository: AttractionRepository,
     private val seasonalBloomEstimateRepository: SeasonalBloomEstimateRepository,
     private val bloomBaseDateResolver: BloomBaseDateResolver,
+    private val bloomStatusWindowResolver: BloomStatusWindowResolver,
     private val spotRepository: SpotRepository,
     private val spotRecordRepository: SpotRecordRepository,
     private val localSpotBloomResolver: LocalSpotBloomResolver,
@@ -114,7 +115,7 @@ class SpotBloomMapService(
             .groupBy { it.attractionId }
             .mapNotNull { (attractionId, rows) ->
                 val attraction = attractionsById[attractionId] ?: return@mapNotNull null
-                val slots = rows.mapNotNull { it.toSlot(date) }
+                val slots = rows.map { it.toSlot(date) }
                     .filter { status == null || it.status == status }
                 if (slots.isEmpty()) return@mapNotNull null
                 attraction.toPin(spotIdByAttraction[attractionId], slots)
@@ -151,27 +152,19 @@ class SpotBloomMapService(
         }
     }
 
-    /**
-     * 절정 구간 기준 슬롯 변환. [date] 가 주어지면 그날 상태를 재계산하고, 없으면 저장된 산출 상태를 쓴다.
-     * ENDED 는 핀에서 제외하므로 null 을 반환한다.
-     */
-    private fun SeasonalBloomEstimate.toSlot(date: LocalDate?): BloomSlot? {
+    /** 절정 구간 기준 슬롯 변환. [date] 가 주어지면 그날 상태를 재계산하고, 없으면 저장된 산출 상태를 쓴다. */
+    private fun SeasonalBloomEstimate.toSlot(date: LocalDate?): BloomSlot {
         val effectiveStatus = if (date == null) status else statusOn(date)
-        if (effectiveStatus == BloomStatus.ENDED) return null
         return BloomSlot(bloomCategory, bloomCategory.displayName, effectiveStatus, confidence)
     }
 
-    /** 결정 C MVP 산식 — D 가 절정구간이면 PEAK, 직전 [STARTED_WINDOW_DAYS] 일이면 STARTED, 종료 후면 ENDED, 그 외 PREPARING. */
-    private fun SeasonalBloomEstimate.statusOn(date: LocalDate): BloomStatus {
-        val start = peakStartDate ?: return status
-        val end = peakEndDate ?: start
-        return when {
-            !date.isBefore(start) && !date.isAfter(end) -> BloomStatus.PEAK
-            !date.isBefore(start.minusDays(STARTED_WINDOW_DAYS)) && date.isBefore(start) -> BloomStatus.STARTED
-            date.isAfter(end) -> BloomStatus.ENDED
-            else -> BloomStatus.PREPARING
-        }
-    }
+    /**
+     * 결정 C MVP 산식 — 방문예정일을 절정 구간과 견줘 다시 판정한다.
+     * 산출 시점 보정과 같은 경계를 쓰도록 [BloomStatusWindowResolver] 에 위임하고,
+     * 절정 시작일을 모르면 판정 근거가 없으므로 저장된 산출 상태를 유지한다.
+     */
+    private fun SeasonalBloomEstimate.statusOn(date: LocalDate): BloomStatus =
+        bloomStatusWindowResolver.statusOn(date, peakStartDate, peakEndDate) ?: status
 
     private fun Attraction.toPin(spotId: Long?, slots: List<BloomSlot>) = BloomMapPin(
         spotId = spotId,
@@ -202,7 +195,6 @@ class SpotBloomMapService(
     )
 
     companion object {
-        private const val STARTED_WINDOW_DAYS = 7L
         private const val LOCAL_RECORD_CONFIDENCE = 0.5
     }
 }
