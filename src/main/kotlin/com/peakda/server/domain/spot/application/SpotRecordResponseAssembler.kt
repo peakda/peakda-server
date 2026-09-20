@@ -30,7 +30,7 @@ class SpotRecordResponseAssembler(
     private val spotRecordPhotoRepository: SpotRecordPhotoRepository,
     private val spotRecordPlantRepository: SpotRecordPlantRepository,
     private val spotRecordReactionRepository: SpotRecordReactionRepository,
-    private val spotRecordPhotoUploader: SpotRecordPhotoUploader,
+    private val spotRecordPhotoUrlResolver: SpotRecordPhotoUrlResolver,
     private val objectKeyUrlResolver: ObjectKeyUrlResolver,
 ) {
 
@@ -146,8 +146,9 @@ class SpotRecordResponseAssembler(
 
     private fun SpotRecordPhoto.toEntry() = PhotoEntry(
         objectKey = objectKey,
-        url = spotRecordPhotoUploader.urlOf(objectKey),
+        url = spotRecordPhotoUrlResolver.mainUrl(objectKey),
         sortOrder = sortOrder,
+        variants = spotRecordPhotoUrlResolver.variantUrls(objectKey, variantNames),
     )
 
     private data class AssemblyContext(

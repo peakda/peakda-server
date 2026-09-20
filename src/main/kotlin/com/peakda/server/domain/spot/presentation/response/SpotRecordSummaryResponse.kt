@@ -21,7 +21,11 @@ data class SpotRecordSummaryResponse(
     val coverPhoto: SpotRecordResponse.PhotoEntry?,
     @field:Schema(
         description = "첨부 사진 전체 목록 (sortOrder 오름차순, 사진이 없으면 빈 배열)",
-        example = "[{\"objectKey\":\"spot-records/7/2026/09/photo/main.jpg\",\"url\":\"https://example.com/photo.jpg\",\"sortOrder\":1}]",
+        example = "[{\"objectKey\":\"spot-records/7/2026/09/9b1deb4d/main.jpg\"," +
+            "\"url\":\"https://cdn.peakda.com/spot-records/7/2026/09/9b1deb4d/main.jpg\",\"sortOrder\":1," +
+            "\"variants\":{\"thumbnail\":\"https://cdn.peakda.com/spot-records/7/2026/09/9b1deb4d/thumbnail.jpg\"," +
+            "\"medium\":\"https://cdn.peakda.com/spot-records/7/2026/09/9b1deb4d/medium.jpg\"," +
+            "\"main\":\"https://cdn.peakda.com/spot-records/7/2026/09/9b1deb4d/main.jpg\"}}]",
     )
     val photos: List<SpotRecordResponse.PhotoEntry> = emptyList(),
     val status: SpotRecordStatus,

@@ -35,7 +35,7 @@ class SpotRecordResponseAssemblerTest {
     private val spotRecordPhotoRepository = mock(SpotRecordPhotoRepository::class.java)
     private val spotRecordPlantRepository = mock(SpotRecordPlantRepository::class.java)
     private val spotRecordReactionRepository = mock(SpotRecordReactionRepository::class.java)
-    private val spotRecordPhotoUploader = mock(SpotRecordPhotoUploader::class.java)
+    private val spotRecordPhotoUrlResolver = mock(SpotRecordPhotoUrlResolver::class.java)
     private val objectKeyUrlResolver = mock(ObjectKeyUrlResolver::class.java)
 
     private val assembler = SpotRecordResponseAssembler(
@@ -45,7 +45,7 @@ class SpotRecordResponseAssemblerTest {
         spotRecordPhotoRepository,
         spotRecordPlantRepository,
         spotRecordReactionRepository,
-        spotRecordPhotoUploader,
+        spotRecordPhotoUrlResolver,
         objectKeyUrlResolver,
     )
 
@@ -111,10 +111,14 @@ class SpotRecordResponseAssemblerTest {
             SpotRecordPhoto(101L, "first-1", 1),
         )
         `when`(spotRecordPhotoRepository.findBySpotRecordIdIn(listOf(102L, 101L))).thenReturn(photos)
-        `when`(spotRecordPhotoUploader.urlOf("first-1")).thenReturn("url-first-1")
-        `when`(spotRecordPhotoUploader.urlOf("first-2")).thenReturn("url-first-2")
-        `when`(spotRecordPhotoUploader.urlOf("second-1")).thenReturn("url-second-1")
-        `when`(spotRecordPhotoUploader.urlOf("second-2")).thenReturn("url-second-2")
+        `when`(spotRecordPhotoUrlResolver.mainUrl("first-1")).thenReturn("url-first-1")
+        `when`(spotRecordPhotoUrlResolver.mainUrl("first-2")).thenReturn("url-first-2")
+        `when`(spotRecordPhotoUrlResolver.mainUrl("second-1")).thenReturn("url-second-1")
+        `when`(spotRecordPhotoUrlResolver.mainUrl("second-2")).thenReturn("url-second-2")
+        listOf("first-1", "first-2", "second-1", "second-2").forEach { key ->
+            `when`(spotRecordPhotoUrlResolver.variantUrls(key, null))
+                .thenReturn(mapOf("thumbnail" to "thumb-$key", "medium" to "url-$key", "main" to "url-$key"))
+        }
         `when`(spotRecordReactionRepository.countsBySpotRecordIdIn(listOf(102L, 101L))).thenReturn(emptyList())
         `when`(spotRecordReactionRepository.findByUserIdAndSpotRecordIdIn(VIEWER_ID, listOf(102L, 101L)))
             .thenReturn(emptyList())
@@ -127,10 +131,13 @@ class SpotRecordResponseAssemblerTest {
         assertThat(responses[0].coverPhoto).isSameAs(responses[0].photos.first())
         assertThat(responses[1].coverPhoto).isSameAs(responses[1].photos.first())
         verify(spotRecordPhotoRepository).findBySpotRecordIdIn(listOf(102L, 101L))
-        verify(spotRecordPhotoUploader).urlOf("first-1")
-        verify(spotRecordPhotoUploader).urlOf("first-2")
-        verify(spotRecordPhotoUploader).urlOf("second-1")
-        verify(spotRecordPhotoUploader).urlOf("second-2")
+        verify(spotRecordPhotoUrlResolver).mainUrl("first-1")
+        verify(spotRecordPhotoUrlResolver).mainUrl("first-2")
+        verify(spotRecordPhotoUrlResolver).mainUrl("second-1")
+        verify(spotRecordPhotoUrlResolver).mainUrl("second-2")
+        assertThat(responses[1].photos.first().variants)
+            .containsEntry("thumbnail", "thumb-first-1")
+            .containsEntry("main", "url-first-1")
     }
 
     @Test

@@ -33,7 +33,7 @@ class SpotFavoriteListAssemblerTest {
     private val bloomBaseDateResolver = mock(BloomBaseDateResolver::class.java)
     private val spotRecordRepository = mock(SpotRecordRepository::class.java)
     private val spotRecordPhotoRepository = mock(SpotRecordPhotoRepository::class.java)
-    private val spotRecordPhotoUploader = mock(SpotRecordPhotoUploader::class.java)
+    private val spotRecordPhotoUrlResolver = mock(SpotRecordPhotoUrlResolver::class.java)
     private val attractionRepository = mock(AttractionRepository::class.java)
     private val properties = SpotFavoriteProperties(bannerLeadDays = 7, photoLimit = 4)
 
@@ -42,7 +42,7 @@ class SpotFavoriteListAssemblerTest {
         bloomBaseDateResolver,
         spotRecordRepository,
         spotRecordPhotoRepository,
-        spotRecordPhotoUploader,
+        spotRecordPhotoUrlResolver,
         attractionRepository,
         properties,
     )
@@ -166,7 +166,7 @@ class SpotFavoriteListAssemblerTest {
         val card = card(SPOT_ID, null, SpotType.LOCAL, "우리 동네 공원")
         val photos = (1..5).map { photo(SPOT_ID, "photo-$it") }
         photos.forEach { projection ->
-            `when`(spotRecordPhotoUploader.urlOf(projection.objectKey))
+            `when`(spotRecordPhotoUrlResolver.thumbnailUrl(projection.objectKey))
                 .thenReturn("https://cdn/${projection.objectKey}")
         }
 

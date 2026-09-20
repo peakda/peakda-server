@@ -23,8 +23,6 @@ class SpotRecordPhotoUploader(
         return files.map { uploadSingle(userId, it, yearMonth) }
     }
 
-    fun urlOf(objectKey: String): String = objectKeyUrlResolver.resolveKey(objectKey)
-
     fun deleteByMainKey(mainKey: String) {
         if (!mainKey.startsWith("spot-records/")) return
         val prefix = mainKey.substringBeforeLast("/")

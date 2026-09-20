@@ -72,10 +72,22 @@ data class SpotRecordResponse(
         val name: String,
     )
 
-    @Schema(description = "사진 항목 — url 은 응답 시점 발급 presigned URL")
+    @Schema(description = "사진 항목")
     data class PhotoEntry(
         val objectKey: String,
+        @field:Schema(
+            description = "원본(1600px) URL. CDN 공개 주소가 설정돼 있으면 만료가 없고, 아니면 응답 시점 발급 presigned URL",
+            example = "https://cdn.peakda.com/spot-records/42/2026/09/9b1deb4d/main.jpg",
+        )
         val url: String,
         val sortOrder: Int,
+        @field:Schema(
+            description = "사이즈 variant 별 URL. thumbnail=256px(정사각 크롭), medium=1080px, main=1600px. " +
+                "아직 보유하지 않은 variant 는 main URL 로 채워진다.",
+            example = "{\"thumbnail\":\"https://cdn.peakda.com/spot-records/42/2026/09/9b1deb4d/thumbnail.jpg\"," +
+                "\"medium\":\"https://cdn.peakda.com/spot-records/42/2026/09/9b1deb4d/medium.jpg\"," +
+                "\"main\":\"https://cdn.peakda.com/spot-records/42/2026/09/9b1deb4d/main.jpg\"}",
+        )
+        val variants: Map<String, String> = emptyMap(),
     )
 }

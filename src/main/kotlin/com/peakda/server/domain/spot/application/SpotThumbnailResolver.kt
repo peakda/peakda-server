@@ -20,7 +20,7 @@ class SpotThumbnailResolver(
     private val attractionRepository: AttractionRepository,
     private val spotRecordRepository: SpotRecordRepository,
     private val spotRecordPhotoRepository: SpotRecordPhotoRepository,
-    private val spotRecordPhotoUploader: SpotRecordPhotoUploader,
+    private val spotRecordPhotoUrlResolver: SpotRecordPhotoUrlResolver,
 ) {
 
     fun resolve(spots: Collection<Spot>): Map<Long, String> {
@@ -62,7 +62,7 @@ class SpotThumbnailResolver(
 
         return latestBySpot.mapNotNull { (spotId, record) ->
             val recordId = record.id ?: return@mapNotNull null
-            photosByRecord[recordId]?.firstOrNull()?.let { spotId to spotRecordPhotoUploader.urlOf(it.objectKey) }
+            photosByRecord[recordId]?.firstOrNull()?.let { spotId to spotRecordPhotoUrlResolver.thumbnailUrl(it.objectKey) }
         }.toMap()
     }
 

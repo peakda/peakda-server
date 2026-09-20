@@ -11,7 +11,7 @@ data class UploadedImageResponse(
     val objectKey: String,
 
     @field:Schema(
-        description = "화면 미리보기용 presigned URL. 만료되므로 DB에 저장하지 않는다.",
+        description = "화면 미리보기용 URL. DB에는 objectKey 만 저장한다.",
         example = "https://storage.example.com/curations/2026-07/.../main.jpg?X-Amz-Signature=...",
     )
     val previewUrl: String,

@@ -26,7 +26,7 @@ class SpotFavoriteListAssembler(
     private val bloomBaseDateResolver: BloomBaseDateResolver,
     private val spotRecordRepository: SpotRecordRepository,
     private val spotRecordPhotoRepository: SpotRecordPhotoRepository,
-    private val spotRecordPhotoUploader: SpotRecordPhotoUploader,
+    private val spotRecordPhotoUrlResolver: SpotRecordPhotoUrlResolver,
     private val attractionRepository: AttractionRepository,
     private val properties: SpotFavoriteProperties,
 ) {
@@ -88,7 +88,7 @@ class SpotFavoriteListAssembler(
             )
             .groupBy { it.spotId }
             .mapValues { (_, photos) ->
-                photos.take(properties.photoLimit).map { spotRecordPhotoUploader.urlOf(it.objectKey) }
+                photos.take(properties.photoLimit).map { spotRecordPhotoUrlResolver.thumbnailUrl(it.objectKey) }
             }
     }
 
