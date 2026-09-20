@@ -280,7 +280,7 @@ resource "aws_lb_target_group" "this" {
   health_check {
     path                = "/actuator/health/readiness"
     matcher             = "200"
-    interval            = 15
+    interval            = 10
     timeout             = 5
     healthy_threshold   = 2
     unhealthy_threshold = 3
@@ -470,7 +470,7 @@ resource "aws_ecs_task_definition" "this" {
   }
   execution_role_arn    = aws_iam_role.execution.arn
   task_role_arn         = aws_iam_role.task.arn
-  container_definitions = jsonencode([{ name = "app", image = "${data.aws_ecr_repository.app.repository_url}:${var.image_tag}", essential = true, portMappings = [{ containerPort = 8080, protocol = "tcp" }], environment = [for name, value in local.app_parameters : { name = name, value = value }], secrets = concat([{ name = "SPRING_DATASOURCE_PASSWORD", valueFrom = "${aws_db_instance.this.master_user_secret[0].secret_arn}:password::" }, { name = "SPRING_DATA_REDIS_URL", valueFrom = aws_ssm_parameter.redis_url.arn }], [for name in var.app_secret_names : { name = name, valueFrom = module.config.secret_arns[name] } if name != "SPRING_DATASOURCE_PASSWORD" && name != "SPRING_DATA_REDIS_URL"]), logConfiguration = { logDriver = "awslogs", options = { "awslogs-group" = aws_cloudwatch_log_group.app.name, "awslogs-region" = var.region, "awslogs-stream-prefix" = "app" } }, healthCheck = { command = ["CMD-SHELL", "curl -fsS http://localhost:8080/actuator/health/readiness || exit 1"], interval = 30, timeout = 5, retries = 3, startPeriod = 60 } }])
+  container_definitions = jsonencode([{ name = "app", image = "${data.aws_ecr_repository.app.repository_url}:${var.image_tag}", essential = true, portMappings = [{ containerPort = 8080, protocol = "tcp" }], environment = [for name, value in local.app_parameters : { name = name, value = value }], secrets = concat([{ name = "SPRING_DATASOURCE_PASSWORD", valueFrom = "${aws_db_instance.this.master_user_secret[0].secret_arn}:password::" }, { name = "SPRING_DATA_REDIS_URL", valueFrom = aws_ssm_parameter.redis_url.arn }], [for name in var.app_secret_names : { name = name, valueFrom = module.config.secret_arns[name] } if name != "SPRING_DATASOURCE_PASSWORD" && name != "SPRING_DATA_REDIS_URL"]), logConfiguration = { logDriver = "awslogs", options = { "awslogs-group" = aws_cloudwatch_log_group.app.name, "awslogs-region" = var.region, "awslogs-stream-prefix" = "app" } }, healthCheck = { command = ["CMD-SHELL", "curl -fsS http://localhost:8080/actuator/health/readiness || exit 1"], interval = 10, timeout = 5, retries = 6, startPeriod = 120 } }])
 }
 resource "aws_ecs_task_definition" "migration" {
   family                   = "${local.name_prefix}-migration"
