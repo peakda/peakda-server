@@ -7,7 +7,6 @@ import com.peakda.server.domain.spot.repository.SpotRecordPhotoRepository
 import org.slf4j.LoggerFactory
 import org.springframework.data.domain.PageRequest
 import org.springframework.stereotype.Service
-import org.springframework.transaction.annotation.Transactional
 
 /**
  * variant 세트가 늘어나기 전에 올라온 기록 사진에 빠진 이미지를 채워 넣는 일회성 작업.
@@ -23,21 +22,20 @@ class SpotRecordPhotoVariantBackfillService(
 ) {
     private val log = LoggerFactory.getLogger(this::class.java)
 
-    @Transactional
     fun backfill(batchSize: Int): SpotRecordPhotoVariantBackfillResult {
         val targets = spotRecordPhotoRepository
             .findByVariantNamesIsNullOrderByIdAsc(PageRequest.of(0, batchSize.coerceIn(MIN_BATCH_SIZE, MAX_BATCH_SIZE)))
 
-        var updated = 0
-        var failed = 0
-        targets.forEach { photo ->
-            if (regenerate(photo)) updated++ else failed++
+        // S3 왕복이 사진당 세 번이라 트랜잭션 안에서 돌면 커넥션을 오래 잡는다. 다 만든 뒤에 한 번에 저장한다.
+        val regenerated = targets.filter { regenerate(it) }
+        if (regenerated.isNotEmpty()) {
+            spotRecordPhotoRepository.saveAll(regenerated)
         }
 
         return SpotRecordPhotoVariantBackfillResult(
             scanned = targets.size,
-            updated = updated,
-            failed = failed,
+            updated = regenerated.size,
+            failed = targets.size - regenerated.size,
             remaining = spotRecordPhotoRepository.countByVariantNamesIsNull(),
         )
     }

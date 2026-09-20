@@ -18,9 +18,9 @@ class ProfileImageUrlResolver(
 
     /** 아바타(128) URL. 피드 카드·목록처럼 작게 쓰는 자리에 쓴다. */
     fun thumbnailUrl(value: String?): String? {
-        val thumbnail = variantOf(ProfileImagePolicy.THUMBNAIL_VARIANT) ?: return mainUrl(value)
         if (value.isNullOrBlank()) return null
         if (!objectKeyUrlResolver.isObjectKey(value)) return value
+        val thumbnail = variantOf(ProfileImagePolicy.THUMBNAIL_VARIANT) ?: return mainUrl(value)
         return objectKeyUrlResolver.resolveKey(ProfileImagePolicy.variantKeyOf(value, thumbnail))
     }
 
