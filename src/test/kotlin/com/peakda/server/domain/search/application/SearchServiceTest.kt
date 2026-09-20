@@ -1,7 +1,7 @@
 package com.peakda.server.domain.search.application
 
+import com.peakda.server.domain.user.application.ProfileImageUrlResolver
 import com.peakda.server.common.page.PageRequest
-import com.peakda.server.common.storage.ObjectKeyUrlResolver
 import com.peakda.server.domain.auth.oauth.model.OAuth2LoginType
 import com.peakda.server.domain.seasonal.application.BloomBaseDateResolver
 import com.peakda.server.domain.seasonal.application.LocalSpotBloomResolver
@@ -38,7 +38,7 @@ class SearchServiceTest {
     private val spotRepository = mock(SpotRepository::class.java)
     private val userRepository = mock(UserRepository::class.java)
     private val spotFavoriteRepository = mock(SpotFavoriteRepository::class.java)
-    private val objectKeyUrlResolver = mock(ObjectKeyUrlResolver::class.java)
+    private val profileImageUrlResolver = mock(ProfileImageUrlResolver::class.java)
     private val followRepository = mock(FollowRepository::class.java)
     private val spotRecordRepository = mock(SpotRecordRepository::class.java)
     private val seasonalBloomEstimateRepository = mock(SeasonalBloomEstimateRepository::class.java)
@@ -54,7 +54,7 @@ class SearchServiceTest {
         spotRepository,
         userRepository,
         spotFavoriteRepository,
-        objectKeyUrlResolver,
+        profileImageUrlResolver,
         followRepository,
         spotRecordRepository,
         seasonalBloomEstimateRepository,
@@ -133,7 +133,7 @@ class SearchServiceTest {
         val pageable = SpringPageRequest.of(0, 20, Sort.by(Sort.Direction.ASC, "nickname"))
         `when`(userRepository.findByStatusAndNicknameContainingIgnoreCase(UserStatus.ACTIVE, "피크", pageable))
             .thenReturn(PageImpl(listOf(user), pageable, 1))
-        `when`(objectKeyUrlResolver.resolve(null)).thenReturn(null)
+        `when`(profileImageUrlResolver.thumbnailUrl(null)).thenReturn(null)
 
         val response = service.searchUsers(1L, "피크", PageRequest(page = 0, size = 20))
 

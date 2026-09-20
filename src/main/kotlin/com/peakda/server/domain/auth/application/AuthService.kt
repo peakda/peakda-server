@@ -9,14 +9,15 @@ import com.peakda.server.common.security.cookie.CookieUtils
 import com.peakda.server.common.security.jwt.JwtProperties
 import com.peakda.server.common.security.jwt.TokenResponse
 import com.peakda.server.common.security.principal.SignupSessionPrincipal
-import com.peakda.server.common.storage.ObjectStorage
 import com.peakda.server.common.storage.ObjectKeyUrlResolver
+import com.peakda.server.common.storage.ObjectStorage
 import com.peakda.server.domain.auth.presentation.response.UserInfoResponse
 import com.peakda.server.domain.auth.signup.application.SignupProfileImagePolicy
 import com.peakda.server.domain.auth.signup.presentation.request.SignupCompleteRequest
 import com.peakda.server.domain.auth.signup.presentation.response.NicknameCheckResponse
 import com.peakda.server.domain.auth.signup.repository.SignupSessionRepository
 import com.peakda.server.domain.user.application.ProfileImagePolicy
+import com.peakda.server.domain.user.application.ProfileImageUrlResolver
 import com.peakda.server.domain.user.application.UserFavoriteCategoryService
 import com.peakda.server.domain.user.entity.User
 import com.peakda.server.domain.user.presentation.response.ProfileImageResponse
@@ -40,6 +41,7 @@ class AuthService(
     private val imageResizer: ImageResizer,
     private val objectStorage: ObjectStorage,
     private val objectKeyUrlResolver: ObjectKeyUrlResolver,
+    private val profileImageUrlResolver: ProfileImageUrlResolver,
     private val userFavoriteCategoryService: UserFavoriteCategoryService,
 ) {
 
@@ -56,7 +58,8 @@ class AuthService(
 
         return UserInfoResponse.from(
             user = user,
-            profileImageUrl = objectKeyUrlResolver.resolve(user.profileImageUrl),
+            profileImageUrl = profileImageUrlResolver.mainUrl(user.profileImageUrl),
+            profileImageVariants = profileImageUrlResolver.variantUrls(user.profileImageUrl),
             favoriteCategories = userFavoriteCategoryService.findCategories(userId),
         )
     }

@@ -14,6 +14,14 @@ data class UserProfileResponse(
     @field:Schema(description = "프로필 이미지 URL (없으면 null)", example = "https://cdn.peakda.com/profile-images/42/main.jpg")
     val profileImageUrl: String?,
 
+    @field:Schema(
+        description = "프로필 이미지의 사이즈 variant 별 URL. thumbnail=128px, main=512px. " +
+            "외부 OAuth 제공자가 준 이미지는 고를 사이즈가 없어 빈 객체다.",
+        example = "{\"thumbnail\":\"https://cdn.peakda.com/profile-images/42/thumbnail.jpg\"," +
+            "\"main\":\"https://cdn.peakda.com/profile-images/42/main.jpg\"}",
+    )
+    val profileImageVariants: Map<String, String> = emptyMap(),
+
     @field:Schema(description = "통계")
     val stats: Stats,
 

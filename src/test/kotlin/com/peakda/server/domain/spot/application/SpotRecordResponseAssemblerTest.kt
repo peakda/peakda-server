@@ -1,6 +1,6 @@
 package com.peakda.server.domain.spot.application
 
-import com.peakda.server.common.storage.ObjectKeyUrlResolver
+import com.peakda.server.domain.user.application.ProfileImageUrlResolver
 import com.peakda.server.domain.auth.oauth.model.OAuth2LoginType
 import com.peakda.server.domain.spot.entity.ReactionType
 import com.peakda.server.domain.spot.entity.Spot
@@ -36,7 +36,7 @@ class SpotRecordResponseAssemblerTest {
     private val spotRecordPlantRepository = mock(SpotRecordPlantRepository::class.java)
     private val spotRecordReactionRepository = mock(SpotRecordReactionRepository::class.java)
     private val spotRecordPhotoUrlResolver = mock(SpotRecordPhotoUrlResolver::class.java)
-    private val objectKeyUrlResolver = mock(ObjectKeyUrlResolver::class.java)
+    private val profileImageUrlResolver = mock(ProfileImageUrlResolver::class.java)
 
     private val assembler = SpotRecordResponseAssembler(
         spotRepository,
@@ -46,7 +46,7 @@ class SpotRecordResponseAssemblerTest {
         spotRecordPlantRepository,
         spotRecordReactionRepository,
         spotRecordPhotoUrlResolver,
-        objectKeyUrlResolver,
+        profileImageUrlResolver,
     )
 
     @Test
@@ -165,7 +165,7 @@ class SpotRecordResponseAssemblerTest {
         `when`(spotRecordPhotoRepository.findBySpotRecordIdIn(recordIds)).thenReturn(emptyList())
         `when`(spotRecordPlantRepository.findByIdSpotRecordIdIn(recordIds)).thenReturn(emptyList())
         `when`(plantRepository.findAllById(emptySet())).thenReturn(emptyList())
-        `when`(objectKeyUrlResolver.resolve(null)).thenReturn(null)
+        `when`(profileImageUrlResolver.thumbnailUrl(null)).thenReturn(null)
     }
 
     private fun record(id: Long): SpotRecord {

@@ -30,6 +30,9 @@ class ObjectKeyUrlResolver(
         return "$base/${key.trimStart('/')}"
     }
 
+    /** 우리 버킷 key 인지(= 외부 URL 이 아닌지) 판단한다. variant key 를 계산해도 되는지 가리는 데 쓴다. */
+    fun isObjectKey(value: String): Boolean = !isExternalUrl(value)
+
     private fun isExternalUrl(value: String): Boolean =
         value.startsWith("http://") || value.startsWith("https://")
 }

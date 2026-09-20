@@ -1,6 +1,5 @@
 package com.peakda.server.domain.spot.application
 
-import com.peakda.server.common.storage.ObjectKeyUrlResolver
 import com.peakda.server.domain.feed.presentation.response.ReactionCount
 import com.peakda.server.domain.feed.presentation.response.ReactionSummary
 import com.peakda.server.domain.spot.entity.Plant
@@ -18,6 +17,7 @@ import com.peakda.server.domain.spot.repository.SpotRecordPhotoRepository
 import com.peakda.server.domain.spot.repository.SpotRecordPlantRepository
 import com.peakda.server.domain.spot.repository.SpotRecordReactionRepository
 import com.peakda.server.domain.spot.repository.SpotRepository
+import com.peakda.server.domain.user.application.ProfileImageUrlResolver
 import com.peakda.server.domain.user.entity.User
 import com.peakda.server.domain.user.repository.UserRepository
 import org.springframework.stereotype.Component
@@ -31,7 +31,7 @@ class SpotRecordResponseAssembler(
     private val spotRecordPlantRepository: SpotRecordPlantRepository,
     private val spotRecordReactionRepository: SpotRecordReactionRepository,
     private val spotRecordPhotoUrlResolver: SpotRecordPhotoUrlResolver,
-    private val objectKeyUrlResolver: ObjectKeyUrlResolver,
+    private val profileImageUrlResolver: ProfileImageUrlResolver,
 ) {
 
     fun assemble(record: SpotRecord, viewerId: Long?): SpotRecordResponse {
@@ -139,7 +139,7 @@ class SpotRecordResponseAssembler(
     private fun User.toSummary() = UserSummary(
         id = requireNotNull(id),
         nickname = nickname,
-        profileImageUrl = objectKeyUrlResolver.resolve(profileImageUrl),
+        profileImageUrl = profileImageUrlResolver.thumbnailUrl(profileImageUrl),
     )
 
     private fun Plant.toSummary() = PlantSummary(id = requireNotNull(id), name = name)

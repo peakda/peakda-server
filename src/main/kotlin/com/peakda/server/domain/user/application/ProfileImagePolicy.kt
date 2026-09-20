@@ -16,9 +16,18 @@ object ProfileImagePolicy {
     )
 
     const val MAIN_VARIANT = "main"
+    const val THUMBNAIL_VARIANT = "thumbnail"
 
     fun keyOf(userId: Long, variant: ImageVariant): String =
         "profile-images/$userId/${variant.name}.${variant.format.extension}"
+
+    /**
+     * 저장된 main key 에서 같은 이미지의 다른 variant key 를 만든다.
+     *
+     * 가입 중 임시 업로드(`temp/signup/...`)도 같은 prefix 규칙을 쓰므로 함께 처리된다.
+     */
+    fun variantKeyOf(mainKey: String, variant: ImageVariant): String =
+        "${mainKey.substringBeforeLast('/')}/${variant.name}.${variant.format.extension}"
 
     fun validate(file: MultipartFile) {
         if (file.isEmpty) throw ImageException(ErrorCode.IMAGE_REQUIRED)

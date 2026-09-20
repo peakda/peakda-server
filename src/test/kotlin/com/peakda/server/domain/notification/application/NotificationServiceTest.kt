@@ -1,16 +1,17 @@
 package com.peakda.server.domain.notification.application
 
+import com.peakda.server.common.page.PageRequest
 import com.peakda.server.common.storage.ObjectKeyUrlResolver
 import com.peakda.server.common.storage.ObjectStorage
 import com.peakda.server.common.storage.StorageProperties
 import com.peakda.server.domain.auth.oauth.model.OAuth2LoginType
-import com.peakda.server.common.page.PageRequest
 import com.peakda.server.domain.notification.entity.Notification
 import com.peakda.server.domain.notification.entity.NotificationLinkType
 import com.peakda.server.domain.notification.entity.NotificationSegment
 import com.peakda.server.domain.notification.entity.NotificationType
 import com.peakda.server.domain.notification.exception.NotificationNotFoundException
 import com.peakda.server.domain.notification.repository.NotificationRepository
+import com.peakda.server.domain.user.application.ProfileImageUrlResolver
 import com.peakda.server.domain.user.entity.User
 import com.peakda.server.domain.user.repository.UserRepository
 import org.assertj.core.api.Assertions.assertThat
@@ -33,7 +34,12 @@ class NotificationServiceTest {
     private val service = NotificationService(
         notificationRepository,
         userRepository,
-        ObjectKeyUrlResolver(objectStorage, StorageProperties(bucket = "test-bucket")),
+        ProfileImageUrlResolver(
+            ObjectKeyUrlResolver(
+                objectStorage,
+                StorageProperties(bucket = "test-bucket", publicBaseUrl = "https://cdn.peakda.com"),
+            ),
+        ),
     )
 
     private val pageable = SpringPageRequest.of(0, 20)
@@ -69,13 +75,19 @@ class NotificationServiceTest {
         val second = notification(3L, NotificationType.REACTION, actorUserId = 8L)
         `when`(notificationRepository.findByRecipientIdOrderByCreatedAtDesc(RECIPIENT_ID, pageable))
             .thenReturn(PageImpl(listOf(first, second)))
-        `when`(userRepository.findAllById(listOf(7L, 8L))).thenReturn(listOf(user(7L, "첫 사용자", "profile-7"), user(8L, "둘 사용자", "profile-8")))
-        `when`(objectStorage.presignedGetUrl("profile-7")).thenReturn("https://cdn/7")
-        `when`(objectStorage.presignedGetUrl("profile-8")).thenReturn("https://cdn/8")
+        `when`(userRepository.findAllById(listOf(7L, 8L))).thenReturn(
+            listOf(
+                user(7L, "첫 사용자", "profile-images/7/main.jpg"),
+                user(8L, "둘 사용자", "profile-images/8/main.jpg"),
+            ),
+        )
 
         val response = service.list(RECIPIENT_ID, NotificationSegment.ALL, PageRequest())
 
-        assertThat(response.content).extracting<String?> { it.imageUrl }.containsExactly("https://cdn/7", "https://cdn/8")
+        assertThat(response.content).extracting<String?> { it.imageUrl }.containsExactly(
+            "https://cdn.peakda.com/profile-images/7/thumbnail.jpg",
+            "https://cdn.peakda.com/profile-images/8/thumbnail.jpg",
+        )
         verify(userRepository).findAllById(listOf(7L, 8L))
     }
 
