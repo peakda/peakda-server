@@ -190,8 +190,68 @@ class BloomStatusFusionServiceTest {
         assertThat(result.status).isEqualTo(BloomStatus.PEAK)
     }
 
+    @Test
+    fun `절정이 이르다 창 밖이면 PREPARING 이 개화전으로 좁혀진다`() {
+        // 산출일 3월 30일에 절정이 5월이면 "미리 계획 중"이라 부를 시기가 아니다.
+        val service = service(
+            stub(
+                Estimator.CALENDAR,
+                estimation(
+                    Estimator.CALENDAR,
+                    BloomStatus.PREPARING,
+                    0.4,
+                    peakStartDate = LocalDate.of(2026, 5, 10),
+                    peakEndDate = LocalDate.of(2026, 5, 17),
+                ),
+            ),
+        )
+
+        assertThat(service.fuse(context())!!.status).isEqualTo(BloomStatus.BEFORE_SEASON)
+    }
+
+    @Test
+    fun `절정이 이르다 창 안이면 PREPARING 을 유지한다`() {
+        val service = service(
+            stub(
+                Estimator.CALENDAR,
+                estimation(
+                    Estimator.CALENDAR,
+                    BloomStatus.PREPARING,
+                    0.4,
+                    peakStartDate = LocalDate.of(2026, 4, 10),
+                    peakEndDate = LocalDate.of(2026, 4, 17),
+                ),
+            ),
+        )
+
+        assertThat(service.fuse(context())!!.status).isEqualTo(BloomStatus.PREPARING)
+    }
+
+    @Test
+    fun `절정 구간 없는 신호도 승계한 구간으로 이르다 판정을 받는다`() {
+        // GDD 는 상태만 내고 구간을 내지 않는다. 승계 전에 가르면 늘 개화전으로 떨어진다.
+        val service = service(
+            stub(Estimator.GDD, estimation(Estimator.GDD, BloomStatus.PREPARING, 0.7)),
+            stub(
+                Estimator.CALENDAR,
+                estimation(
+                    Estimator.CALENDAR,
+                    BloomStatus.PREPARING,
+                    0.4,
+                    peakStartDate = LocalDate.of(2026, 4, 10),
+                    peakEndDate = LocalDate.of(2026, 4, 17),
+                ),
+            ),
+        )
+
+        val result = service.fuse(context())
+
+        assertThat(result!!.estimator).isEqualTo(Estimator.GDD)
+        assertThat(result.status).isEqualTo(BloomStatus.PREPARING)
+    }
+
     private fun service(vararg estimators: BloomEstimator) =
-        BloomStatusFusionService(estimators.toList(), properties)
+        BloomStatusFusionService(estimators.toList(), properties, BloomStatusWindowResolver(BloomStatusWindowProperties()))
 
     private fun stub(estimator: Estimator, result: BloomEstimation?) = StubEstimator(estimator, result)
 

@@ -25,7 +25,7 @@ interface SeasonalBloomControllerDocs {
         summary = "지도 영역 개화 현황 (Spot 핀)",
         description = "지도 영역(bbox) 내 Spot 핀별 현재 개화 상태를 조회한다. " +
             "명소형(개화 추정 상속)과 동네형(사용자 기록 파생) 핀을 함께 반환하며, " +
-            "핀 3단계(PREPARING/STARTED/PEAK)만 노출하고 ENDED 는 제외된다. " +
+            "핀은 BEFORE_SEASON(개화전)/PREPARING(이르다)/STARTED(시작)/PEAK(절정)/ENDED(늦었다) 5단계를 모두 노출한다. " +
             "category 와 categories 는 합집합으로 특정 꽃을 필터하고, status 로 명소형·동네형에 같은 상태 기준을 적용한다. " +
             "region 은 bbox 와 AND 로 적용되며 bbox 를 무시하고 권역 전체를 반환하지 않는다. " +
             "동네형은 주소 첫 토큰으로 권역을 판정하고, 판정 불가한 주소는 권역 필터가 걸리면 제외한다. " +

@@ -17,8 +17,8 @@ import java.time.temporal.ChronoUnit
  * 동네형(LOCAL) Spot 의 카테고리별 현재 개화 상태를 최근 게시 기록에서 산출한다 (결정 D 변환).
  *
  * 명소형과 달리 동네형은 추정기가 없어 사용자 기록이 유일한 신호다. 그래서 카테고리마다
- * **가장 최근 기록 한 건만** 채택하고, 그 기록이 LATE(= [BloomStatus.ENDED]) 면 슬롯을 만들지 않는다.
- * ENDED 를 건너뛰고 더 오래된 기록으로 되돌아가면 이미 진 꽃이 계속 절정으로 남는다.
+ * **가장 최근 기록 한 건만** 채택한다. LATE(= [BloomStatus.ENDED]) 기록도 '늦었다' 신호로 그대로 쓴다.
+ * 이 기록을 건너뛰고 더 오래된 기록으로 되돌아가면 이미 진 꽃이 계속 절정으로 남는다.
  *
  * 최신 판정은 방문일 → 작성 시각 → id 순으로 내림차순이다. 방문일만 비교하면 같은 날짜로 올린 기록끼리
  * 순서가 정해지지 않아, 어느 기록이 상태를 결정할지 조회 순서에 따라 달라진다.
@@ -63,9 +63,8 @@ class LocalSpotBloomResolver(
 
         return latestBySpotCategory
             .mapValues { (_, byCategory) ->
-                byCategory.mapNotNull { (category, record) ->
-                    val status = BloomStageStatusMapper.toStatus(requireNotNull(record.bloomStage))
-                    if (status == BloomStatus.ENDED) null else LocalBloomSignal(category, status)
+                byCategory.map { (category, record) ->
+                    LocalBloomSignal(category, BloomStageStatusMapper.toStatus(requireNotNull(record.bloomStage)))
                 }
             }
             .filterValues { it.isNotEmpty() }

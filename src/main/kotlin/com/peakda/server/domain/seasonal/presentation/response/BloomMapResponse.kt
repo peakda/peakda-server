@@ -6,7 +6,7 @@ import com.peakda.server.domain.spot.entity.SpotType
 import io.swagger.v3.oas.annotations.media.Schema
 import java.time.LocalDate
 
-@Schema(description = "지도 영역 내 Spot 핀별 개화 상태 (핀 3단계, ENDED 제외)")
+@Schema(description = "지도 영역 내 Spot 핀별 개화 상태 (핀 5단계)")
 data class BloomMapResponse(
     @field:Schema(description = "명소 개화 추정 산출 기준일 (추정 데이터가 없으면 null)", example = "2026-06-06")
     val baseDate: LocalDate?,
@@ -77,7 +77,10 @@ data class BloomMapResponse(
         @field:Schema(description = "카테고리 표시명", example = "벚꽃")
         val displayName: String,
 
-        @field:Schema(description = "현재 상태 (PREPARING/STARTED/PEAK)", example = "PEAK")
+        @field:Schema(
+            description = "현재 상태. BEFORE_SEASON=개화전, PREPARING=이르다, STARTED=시작, PEAK=절정, ENDED=늦었다",
+            example = "PEAK",
+        )
         val status: BloomStatus,
 
         @field:Schema(description = "신뢰도 (0~1)", example = "0.9")
