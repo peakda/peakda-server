@@ -18,16 +18,29 @@ object ProfileImagePolicy {
     const val MAIN_VARIANT = "main"
     const val THUMBNAIL_VARIANT = "thumbnail"
 
-    fun keyOf(userId: Long, variant: ImageVariant): String =
-        "profile-images/$userId/${variant.name}.${variant.format.extension}"
+    private const val ROOT = "profile-images"
+
+    /**
+     * 업로드마다 새 prefix 를 만든다.
+     *
+     * 주소가 고정이면 사용자가 사진을 바꿔도 CDN 이 옛 이미지를 계속 내려주고,
+     * userId 만 알면 남의 프로필 이미지 주소를 추측할 수 있다. 임의 문자열이 둘 다 막는다.
+     */
+    fun prefixOf(userId: Long, uuid: String): String = "$ROOT/$userId/$uuid"
+
+    fun keyOf(prefix: String, variant: ImageVariant): String =
+        "$prefix/${variant.name}.${variant.format.extension}"
 
     /**
      * 저장된 main key 에서 같은 이미지의 다른 variant key 를 만든다.
      *
-     * 가입 중 임시 업로드(`temp/signup/...`)도 같은 prefix 규칙을 쓰므로 함께 처리된다.
+     * 가입 중 임시 업로드(`temp/signup/...`)와 prefix 가 고정이던 과거 업로드도 같은 규칙으로 처리된다.
      */
     fun variantKeyOf(mainKey: String, variant: ImageVariant): String =
-        "${mainKey.substringBeforeLast('/')}/${variant.name}.${variant.format.extension}"
+        keyOf(mainKey.substringBeforeLast('/'), variant)
+
+    /** 우리가 이 사용자 몫으로 올린 이미지인지. 외부 OAuth 가 준 URL 과 구분한다. */
+    fun isManagedKey(userId: Long, value: String): Boolean = value.startsWith("$ROOT/$userId/")
 
     fun validate(file: MultipartFile) {
         if (file.isEmpty) throw ImageException(ErrorCode.IMAGE_REQUIRED)

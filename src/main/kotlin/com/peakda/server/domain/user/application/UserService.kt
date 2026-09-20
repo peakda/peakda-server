@@ -12,6 +12,7 @@ import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 import org.springframework.web.multipart.MultipartFile
+import java.util.UUID
 
 @Service
 class UserService(
@@ -31,8 +32,9 @@ class UserService(
         val previousKey = user.profileImageUrl
 
         val resized = imageResizer.resize(file.bytes, ProfileImagePolicy.VARIANTS)
+        val prefix = ProfileImagePolicy.prefixOf(userId, UUID.randomUUID().toString())
         val variantKeys = resized.associate { result ->
-            val key = ProfileImagePolicy.keyOf(userId, result.variant)
+            val key = ProfileImagePolicy.keyOf(prefix, result.variant)
             objectStorage.upload(key, result.bytes, result.variant.format.mimeType)
             result.variant.name to key
         }
@@ -63,11 +65,11 @@ class UserService(
         deleteManaged(userId, currentKey)
     }
 
+    /** 외부 OAuth 이미지는 건드리지 않고, 우리가 올린 이미지만 variant 까지 지운다. */
     private fun deleteManaged(userId: Long, currentKey: String) {
-        val managed = ProfileImagePolicy.VARIANTS.any { currentKey == ProfileImagePolicy.keyOf(userId, it) }
-        if (!managed) return
+        if (!ProfileImagePolicy.isManagedKey(userId, currentKey)) return
         ProfileImagePolicy.VARIANTS.forEach { variant ->
-            val key = ProfileImagePolicy.keyOf(userId, variant)
+            val key = ProfileImagePolicy.variantKeyOf(currentKey, variant)
             runCatching { objectStorage.delete(key) }
                 .onFailure { log.warn("프로필 이미지 삭제 실패 key={}", key, it) }
         }
