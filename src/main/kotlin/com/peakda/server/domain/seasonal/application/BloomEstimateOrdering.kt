@@ -18,10 +18,12 @@ object BloomEstimateOrdering {
         compareByDescending<SeasonalBloomEstimate> { it.confidence }
             .thenBy { statusRank(it.status) }
 
+    /** 지금 볼 만한 순서. 이미 진 꽃(ENDED)보다 아직 시즌이 아닌 꽃(BEFORE_SEASON)을 더 뒤에 둔다. */
     private fun statusRank(status: BloomStatus): Int = when (status) {
         BloomStatus.PEAK -> 0
         BloomStatus.STARTED -> 1
         BloomStatus.PREPARING -> 2
         BloomStatus.ENDED -> 3
+        BloomStatus.BEFORE_SEASON -> 4
     }
 }

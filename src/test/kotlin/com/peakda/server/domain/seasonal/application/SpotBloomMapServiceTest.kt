@@ -52,6 +52,7 @@ class SpotBloomMapServiceTest {
         attractionRepository,
         seasonalBloomEstimateRepository,
         bloomBaseDateResolver,
+        BloomStatusWindowResolver(BloomStatusWindowProperties()),
         spotRepository,
         spotRecordRepository,
         localSpotBloomResolver,
@@ -162,6 +163,31 @@ class SpotBloomMapServiceTest {
         )
 
         assertThat(response.pins.first().blooms.first().status).isEqualTo(BloomStatus.PEAK)
+    }
+
+    @Test
+    fun `방문예정일이 이르다 창보다 앞서면 개화전으로 재계산한다`() {
+        stubAttractions(attraction(ATTRACTION_ID, "여좌천"))
+        stubAttractionEstimates(
+            estimate(
+                BloomCategory.CHERRY,
+                BloomStatus.PEAK,
+                confidence = 0.8,
+                peakStart = LocalDate.of(2026, 4, 1),
+                peakEnd = LocalDate.of(2026, 4, 10),
+            ),
+        )
+        stubMaterializedSpot(spotId = 100L)
+        stubNoLocalSpots()
+
+        val response = service.map(
+            MIN_LAT, MAX_LAT, MIN_LNG, MAX_LNG,
+            category = null,
+            // 절정 15일 전은 "미리 계획 중"이라 부를 시기가 아니다.
+            date = LocalDate.of(2026, 3, 17),
+        )
+
+        assertThat(response.pins.first().blooms.first().status).isEqualTo(BloomStatus.BEFORE_SEASON)
     }
 
     @Test

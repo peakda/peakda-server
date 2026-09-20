@@ -36,6 +36,7 @@ class SpotBloomMapService(
     private val attractionRepository: AttractionRepository,
     private val seasonalBloomEstimateRepository: SeasonalBloomEstimateRepository,
     private val bloomBaseDateResolver: BloomBaseDateResolver,
+    private val bloomStatusWindowResolver: BloomStatusWindowResolver,
     private val spotRepository: SpotRepository,
     private val spotRecordRepository: SpotRecordRepository,
     private val localSpotBloomResolver: LocalSpotBloomResolver,
@@ -161,17 +162,13 @@ class SpotBloomMapService(
         return BloomSlot(bloomCategory, bloomCategory.displayName, effectiveStatus, confidence)
     }
 
-    /** 결정 C MVP 산식 — D 가 절정구간이면 PEAK, 직전 [STARTED_WINDOW_DAYS] 일이면 STARTED, 종료 후면 ENDED, 그 외 PREPARING. */
-    private fun SeasonalBloomEstimate.statusOn(date: LocalDate): BloomStatus {
-        val start = peakStartDate ?: return status
-        val end = peakEndDate ?: start
-        return when {
-            !date.isBefore(start) && !date.isAfter(end) -> BloomStatus.PEAK
-            !date.isBefore(start.minusDays(STARTED_WINDOW_DAYS)) && date.isBefore(start) -> BloomStatus.STARTED
-            date.isAfter(end) -> BloomStatus.ENDED
-            else -> BloomStatus.PREPARING
-        }
-    }
+    /**
+     * 결정 C MVP 산식 — 방문예정일을 절정 구간과 견줘 다시 판정한다.
+     * 산출 시점 보정과 같은 경계를 쓰도록 [BloomStatusWindowResolver] 에 위임하고,
+     * 절정 시작일을 모르면 판정 근거가 없으므로 저장된 산출 상태를 유지한다.
+     */
+    private fun SeasonalBloomEstimate.statusOn(date: LocalDate): BloomStatus =
+        bloomStatusWindowResolver.statusOn(date, peakStartDate, peakEndDate) ?: status
 
     private fun Attraction.toPin(spotId: Long?, slots: List<BloomSlot>) = BloomMapPin(
         spotId = spotId,
@@ -202,7 +199,6 @@ class SpotBloomMapService(
     )
 
     companion object {
-        private const val STARTED_WINDOW_DAYS = 7L
         private const val LOCAL_RECORD_CONFIDENCE = 0.5
     }
 }

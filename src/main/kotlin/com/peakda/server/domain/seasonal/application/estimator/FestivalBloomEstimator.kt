@@ -98,6 +98,8 @@ class FestivalBloomEstimator(
             BloomStatus.STARTED -> 1
             BloomStatus.ENDED -> 2
             BloomStatus.PREPARING -> 3
+            // 축제 기간은 절정 구간이라 축제 신호만으로는 개화전을 판정하지 않는다.
+            BloomStatus.BEFORE_SEASON -> 4
         }
     }
 }

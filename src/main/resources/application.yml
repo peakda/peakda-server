@@ -294,6 +294,10 @@ peakda:
           start: 137.0
           peak: 183.0
           end: 226.0
+    status-window:
+      # 절정 시작일 기준. D-7~D-1 은 시작, D-14~D-8 은 이르다, 그보다 멀면 개화전.
+      started-window-days: 7
+      early-window-days: 14
     fusion:
       agreement-bonus: 0.1
       agreement-bonus-cap: 1.0

@@ -88,7 +88,7 @@ interface SpotControllerDocs {
         )
         @RequestParam("categories", required = false) categories: List<BloomCategory>?,
         @Parameter(
-            description = "지금 상태 필터 (PEAK=절정, STARTED=피기시작, PREPARING=이르다)",
+            description = "지금 상태 필터 (PEAK=절정, STARTED=피기시작, PREPARING=이르다, BEFORE_SEASON=개화전)",
             example = "PEAK",
         )
         @RequestParam("status", required = false) status: BloomStatus?,
