@@ -6,6 +6,7 @@
 .gradle
 .kotlin
 build
+!build/libs/app.jar
 out
 HELP.md
 README.md

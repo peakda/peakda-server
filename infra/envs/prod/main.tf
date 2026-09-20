@@ -280,7 +280,7 @@ resource "aws_lb_target_group" "this" {
   health_check {
     path                = "/actuator/health/readiness"
     matcher             = "200"
-    interval            = 15
+    interval            = 10
     timeout             = 5
     healthy_threshold   = 2
     unhealthy_threshold = 3
@@ -470,7 +470,7 @@ resource "aws_ecs_task_definition" "this" {
   }
   execution_role_arn    = aws_iam_role.execution.arn
   task_role_arn         = aws_iam_role.task.arn
-  container_definitions = jsonencode([{ name = "app", image = "${data.aws_ecr_repository.app.repository_url}:${var.image_tag}", essential = true, portMappings = [{ containerPort = 8080, protocol = "tcp" }], environment = [for name, value in local.app_parameters : { name = name, value = value }], secrets = concat([{ name = "SPRING_DATASOURCE_PASSWORD", valueFrom = "${aws_db_instance.this.master_user_secret[0].secret_arn}:password::" }, { name = "SPRING_DATA_REDIS_URL", valueFrom = aws_ssm_parameter.redis_url.arn }], [for name in var.app_secret_names : { name = name, valueFrom = module.config.secret_arns[name] } if name != "SPRING_DATASOURCE_PASSWORD" && name != "SPRING_DATA_REDIS_URL"]), logConfiguration = { logDriver = "awslogs", options = { "awslogs-group" = aws_cloudwatch_log_group.app.name, "awslogs-region" = var.region, "awslogs-stream-prefix" = "app" } }, healthCheck = { command = ["CMD-SHELL", "curl -fsS http://localhost:8080/actuator/health/readiness || exit 1"], interval = 30, timeout = 5, retries = 3, startPeriod = 60 } }])
+  container_definitions = jsonencode([{ name = "app", image = "${data.aws_ecr_repository.app.repository_url}:${var.image_tag}", essential = true, portMappings = [{ containerPort = 8080, protocol = "tcp" }], environment = [for name, value in local.app_parameters : { name = name, value = value }], secrets = concat([{ name = "SPRING_DATASOURCE_PASSWORD", valueFrom = "${aws_db_instance.this.master_user_secret[0].secret_arn}:password::" }, { name = "SPRING_DATA_REDIS_URL", valueFrom = aws_ssm_parameter.redis_url.arn }], [for name in var.app_secret_names : { name = name, valueFrom = module.config.secret_arns[name] } if name != "SPRING_DATASOURCE_PASSWORD" && name != "SPRING_DATA_REDIS_URL"]), logConfiguration = { logDriver = "awslogs", options = { "awslogs-group" = aws_cloudwatch_log_group.app.name, "awslogs-region" = var.region, "awslogs-stream-prefix" = "app" } }, healthCheck = { command = ["CMD-SHELL", "curl -fsS http://localhost:8080/actuator/health/readiness || exit 1"], interval = 10, timeout = 5, retries = 6, startPeriod = 120 } }])
 }
 resource "aws_ecs_task_definition" "migration" {
   family                   = "${local.name_prefix}-migration"
@@ -507,6 +507,9 @@ resource "aws_ecs_task_definition" "migration" {
     }
   }])
 }
+# maximum_percent 150 은 초과 태스크를 1개만 허용해 desired_count=2 를 두 웨이브에
+# 나눠 교체하므로, 부팅·헬스체크 대기를 두 번 치른다. 200 이면 두 태스크를 동시에
+# 띄워 한 번만 치른다.
 resource "aws_ecs_service" "this" {
   name                               = local.name_prefix
   cluster                            = aws_ecs_cluster.this.id
@@ -517,7 +520,7 @@ resource "aws_ecs_service" "this" {
   availability_zone_rebalancing      = "ENABLED"
   health_check_grace_period_seconds  = 180
   deployment_minimum_healthy_percent = 100
-  deployment_maximum_percent         = 150
+  deployment_maximum_percent         = 200
   deployment_circuit_breaker {
     enable   = true
     rollback = true

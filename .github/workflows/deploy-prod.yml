@@ -32,8 +32,15 @@ jobs:
           distribution: temurin
           java-version: "21"
 
-      - name: Test
-        run: ./gradlew test --no-daemon
+      # 의존성·빌드 캐시가 없으면 매 실행이 콜드 빌드가 된다.
+      # 데몬 종료와 캐시 저장은 이 액션이 처리하므로 --no-daemon 을 쓰지 않는다.
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v4
+
+      # build 는 test 와 bootJar 를 한 번의 Gradle 실행으로 끝낸다.
+      # 테스트가 깨지면 jar 가 나오지 않으므로 배포 게이트는 그대로 유지된다.
+      - name: Test and build jar
+        run: ./gradlew build
 
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v4
@@ -72,9 +79,45 @@ jobs:
           REVISION=$(aws ecs register-task-definition \
             --cli-input-json file://task-definition-new.json \
             --query 'taskDefinition.taskDefinitionArn' --output text)
-          aws ecs update-service --cluster "$CLUSTER" --service "$SERVICE" \
-            --task-definition "$REVISION" --force-new-deployment >/dev/null
-          aws ecs wait services-stable --cluster "$CLUSTER" --services "$SERVICE"
+
+          # update-service 응답에서 이번 배포의 deployment id 를 받아 그 배포만 추적한다.
+          # 서비스 전체를 보면 직전 배포의 COMPLETED 를 이번 것으로 오인할 수 있다.
+          # 새 task definition 을 넘기므로 --force-new-deployment 는 필요 없다.
+          DEPLOYMENT_ID=$(aws ecs update-service \
+            --cluster "$CLUSTER" --service "$SERVICE" --task-definition "$REVISION" \
+            --query 'service.deployments[?status==`PRIMARY`].id | [0]' --output text)
+          echo "배포 리비전: $REVISION"
+          echo "배포 ID: $DEPLOYMENT_ID"
+          if [ -z "$DEPLOYMENT_ID" ] || [ "$DEPLOYMENT_ID" = "None" ]; then
+            echo "update-service 가 PRIMARY 배포를 돌려주지 않았다"
+            exit 1
+          fi
+
+          # ecs wait services-stable 은 15초 주기로 폴링하는 데다 구 태스크가 완전히
+          # 멈출 때까지 기다린다. 트래픽 전환이 끝난 시점은 PRIMARY 배포의
+          # rolloutState 로 충분히 판정되고, 서킷브레이커 롤백은 FAILED 로 드러난다.
+          for _ in $(seq 1 120); do
+            sleep 5
+            STATE=$(aws ecs describe-services --cluster "$CLUSTER" --services "$SERVICE" \
+              --query "services[0].deployments[?id=='$DEPLOYMENT_ID'].rolloutState | [0]" \
+              --output text 2>/dev/null || echo UNKNOWN)
+            case "$STATE" in
+              COMPLETED)
+                echo "롤아웃 완료"
+                exit 0
+                ;;
+              FAILED | None)
+                echo "롤아웃 실패 (rolloutState=$STATE)"
+                aws ecs describe-services --cluster "$CLUSTER" --services "$SERVICE" \
+                  --query 'services[0].events[:10].message' --output text
+                exit 1
+                ;;
+            esac
+          done
+          echo "롤아웃이 10분 안에 끝나지 않았다"
+          aws ecs describe-services --cluster "$CLUSTER" --services "$SERVICE" \
+            --query 'services[0].events[:10].message' --output text
+          exit 1
 
       - name: Verify public health endpoint
         env:
