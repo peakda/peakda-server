@@ -37,8 +37,10 @@ jobs:
       - name: Set up Gradle
         uses: gradle/actions/setup-gradle@v4
 
-      - name: Test
-        run: ./gradlew test
+      # build 는 test 와 bootJar 를 한 번의 Gradle 실행으로 끝낸다.
+      # 테스트가 깨지면 jar 가 나오지 않으므로 배포 게이트는 그대로 유지된다.
+      - name: Test and build jar
+        run: ./gradlew build
 
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v4

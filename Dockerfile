@@ -1,14 +1,5 @@
-FROM eclipse-temurin:21-jdk AS builder
-WORKDIR /workspace
-
-COPY gradle gradle
-COPY gradlew settings.gradle.kts build.gradle.kts ./
-RUN chmod +x gradlew && ./gradlew --no-daemon dependencies > /dev/null 2>&1 || true
-
-COPY src src
-RUN ./gradlew --no-daemon bootJar -x test \
-    && cp build/libs/app.jar app.jar
-
+# jar 는 CI 러너가 Gradle 캐시를 재사용해 빌드한다.
+# 컨테이너 안에서 다시 컴파일하면 러너에서 이미 끝낸 컴파일을 캐시 없이 반복하게 된다.
 FROM eclipse-temurin:21-jre
 WORKDIR /app
 
@@ -20,7 +11,8 @@ RUN apt-get update \
 RUN groupadd --system spring && useradd --system --gid spring spring
 USER spring:spring
 
-COPY --from=builder /workspace/app.jar app.jar
+ARG JAR_FILE=build/libs/app.jar
+COPY ${JAR_FILE} app.jar
 
 # 2GB 인스턴스에서 PostgreSQL·Redis·Caddy 와 함께 뜬다.
 # 컨테이너 mem_limit(1200m) 안에서 힙을 고정해 다른 컨테이너를 밀어내지 않게 한다.
