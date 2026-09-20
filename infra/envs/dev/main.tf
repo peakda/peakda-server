@@ -153,10 +153,10 @@ module "config" {
       STORAGE_ENDPOINT          = "https://s3.${var.region}.amazonaws.com"
       STORAGE_REGION            = var.region
       STORAGE_PATH_STYLE_ACCESS = "false"
-
-      # 값이 있으면 이미지 URL 이 presigned 대신 만료 없는 CDN 주소로 나간다.
-      STORAGE_PUBLIC_BASE_URL = module.media_cdn.public_base_url
     },
+    # 프런트가 CDN 도메인을 이미지 허용 목록에 올리기 전까지는 내리지 않는다.
+    # 파라미터가 없으면 앱은 presigned URL 로 폴백한다. SSM 은 빈 값을 받지 않으므로 키 자체를 뺀다.
+    var.media_cdn_enabled ? { STORAGE_PUBLIC_BASE_URL = module.media_cdn.public_base_url } : {},
     var.app_parameters,
   )
 

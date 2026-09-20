@@ -136,3 +136,12 @@ variable "prod_vpc_cidr" {
   type        = string
   default     = "10.20.0.0/16"
 }
+
+# 이미지 URL 을 CDN 고정 주소로 내릴지 여부.
+# false 면 STORAGE_PUBLIC_BASE_URL 을 주지 않아 앱이 presigned URL 로 폴백한다.
+# 프런트가 next/image 허용 목록에 CDN 도메인을 갖고 있어야 한다 — 없으면 이미지가 전부 깨진다.
+variable "media_cdn_enabled" {
+  description = "이미지 응답에 CDN 공개 주소를 쓸지 여부"
+  type        = bool
+  default     = true
+}
