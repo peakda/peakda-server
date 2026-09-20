@@ -46,11 +46,16 @@ class SpotRecordPhotoUploader(
             }
         }
         val key = mainKey ?: throw ImageException(ErrorCode.IMAGE_PROCESSING_FAILED)
-        return UploadedPhoto(objectKey = key, previewUrl = objectKeyUrlResolver.resolveKey(key))
+        return UploadedPhoto(
+            objectKey = key,
+            previewUrl = objectKeyUrlResolver.resolveKey(key),
+            variantNames = SpotRecordPhotoPolicy.CURRENT_VARIANT_NAMES,
+        )
     }
 
     data class UploadedPhoto(
         val objectKey: String,
         val previewUrl: String,
+        val variantNames: String,
     )
 }
