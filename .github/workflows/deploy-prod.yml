@@ -32,8 +32,13 @@ jobs:
           distribution: temurin
           java-version: "21"
 
+      # 의존성·빌드 캐시가 없으면 매 실행이 콜드 빌드가 된다.
+      # 데몬 종료와 캐시 저장은 이 액션이 처리하므로 --no-daemon 을 쓰지 않는다.
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v4
+
       - name: Test
-        run: ./gradlew test --no-daemon
+        run: ./gradlew test
 
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v4
