@@ -3,7 +3,6 @@ package com.peakda.server.domain.search.application
 import com.peakda.server.common.page.PageRequest
 import com.peakda.server.common.page.PageResponse
 import com.peakda.server.common.page.toPageResponse
-import com.peakda.server.common.storage.ObjectKeyUrlResolver
 import com.peakda.server.domain.search.presentation.response.SpotSearchItem
 import com.peakda.server.domain.search.presentation.response.TrendingSpotsResponse
 import com.peakda.server.domain.search.presentation.response.TrendingSpotsResponse.TrendingSpotItem
@@ -14,23 +13,24 @@ import com.peakda.server.domain.seasonal.application.LocalSpotBloomResolver
 import com.peakda.server.domain.seasonal.entity.BloomCategory
 import com.peakda.server.domain.seasonal.entity.SeasonalBloomEstimate
 import com.peakda.server.domain.seasonal.repository.SeasonalBloomEstimateRepository
+import com.peakda.server.domain.spot.application.SpotThumbnailResolver
 import com.peakda.server.domain.spot.entity.Spot
 import com.peakda.server.domain.spot.entity.SpotFavorite
 import com.peakda.server.domain.spot.entity.SpotRecordStatus
 import com.peakda.server.domain.spot.entity.SpotType
-import com.peakda.server.domain.spot.application.SpotThumbnailResolver
 import com.peakda.server.domain.spot.presentation.response.SpotPreviewResponse.BloomBadge
 import com.peakda.server.domain.spot.repository.SpotFavoriteRepository
 import com.peakda.server.domain.spot.repository.SpotRecordRepository
 import com.peakda.server.domain.spot.repository.SpotRepository
+import com.peakda.server.domain.user.application.ProfileImageUrlResolver
 import com.peakda.server.domain.user.entity.User
 import com.peakda.server.domain.user.entity.UserStatus
 import com.peakda.server.domain.user.repository.FollowRepository
 import com.peakda.server.domain.user.repository.UserRepository
+import org.springframework.data.domain.PageRequest as SpringPageRequest
 import org.springframework.data.domain.Sort
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
-import org.springframework.data.domain.PageRequest as SpringPageRequest
 
 /**
  * 검색 도메인(SCR-021~021e) — 스팟/사용자 검색과 트렌딩 스팟 목록.
@@ -43,7 +43,7 @@ class SearchService(
     private val spotRepository: SpotRepository,
     private val userRepository: UserRepository,
     private val spotFavoriteRepository: SpotFavoriteRepository,
-    private val objectKeyUrlResolver: ObjectKeyUrlResolver,
+    private val profileImageUrlResolver: ProfileImageUrlResolver,
     private val followRepository: FollowRepository,
     private val spotRecordRepository: SpotRecordRepository,
     private val seasonalBloomEstimateRepository: SeasonalBloomEstimateRepository,
@@ -158,7 +158,7 @@ class SearchService(
     private fun User.toSearchItem(following: Boolean, recordCount: Long, followerCount: Long) = UserSearchItem(
         userId = requireNotNull(id),
         nickname = nickname,
-        profileImageUrl = objectKeyUrlResolver.resolve(profileImageUrl),
+        profileImageUrl = profileImageUrlResolver.thumbnailUrl(profileImageUrl),
         following = following,
         recordCount = recordCount,
         followerCount = followerCount,

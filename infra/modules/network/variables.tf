@@ -20,3 +20,12 @@ variable "create_app_security_group" {
   type        = bool
   default     = true
 }
+
+variable "peering_routes" {
+  description = "public 라우트 테이블에 추가할 VPC 피어링 경로"
+  type = list(object({
+    cidr_block            = string
+    peering_connection_id = string
+  }))
+  default = []
+}

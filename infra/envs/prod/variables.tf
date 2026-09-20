@@ -14,6 +14,11 @@ variable "subdomain" {
   type    = string
   default = "api"
 }
+variable "cdn_subdomain" {
+  description = "이미지 CDN 서브도메인. 최종 FQDN 은 <cdn_subdomain>.<domain_name>"
+  type        = string
+  default     = "cdn"
+}
 variable "ecr_repository_name" {
   type    = string
   default = "peakda-server"
@@ -125,4 +130,12 @@ variable "vercel_verification_txt" {
   description = "_vercel TXT 소유 확인 값. Vercel 이 요구할 때만 채운다"
   type        = string
   default     = ""
+}
+
+# 로컬에서 prod DB 에 붙기 위해 허용하는 외부 VPC 보안그룹.
+# 기본값은 dev 앱 서버 보안그룹이며, 경로가 필요 없어지면 빈 목록으로 두면 규칙이 사라진다.
+variable "developer_access_security_group_ids" {
+  description = "prod DB 에 5432 접근을 허용할 다른 VPC 의 보안그룹 id 목록"
+  type        = list(string)
+  default     = ["sg-031245810f0850cb8"]
 }

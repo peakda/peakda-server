@@ -9,14 +9,15 @@ import com.peakda.server.common.security.cookie.CookieUtils
 import com.peakda.server.common.security.jwt.JwtProperties
 import com.peakda.server.common.security.jwt.TokenResponse
 import com.peakda.server.common.security.principal.SignupSessionPrincipal
-import com.peakda.server.common.storage.ObjectStorage
 import com.peakda.server.common.storage.ObjectKeyUrlResolver
+import com.peakda.server.common.storage.ObjectStorage
 import com.peakda.server.domain.auth.presentation.response.UserInfoResponse
 import com.peakda.server.domain.auth.signup.application.SignupProfileImagePolicy
 import com.peakda.server.domain.auth.signup.presentation.request.SignupCompleteRequest
 import com.peakda.server.domain.auth.signup.presentation.response.NicknameCheckResponse
 import com.peakda.server.domain.auth.signup.repository.SignupSessionRepository
 import com.peakda.server.domain.user.application.ProfileImagePolicy
+import com.peakda.server.domain.user.application.ProfileImageUrlResolver
 import com.peakda.server.domain.user.application.UserFavoriteCategoryService
 import com.peakda.server.domain.user.entity.User
 import com.peakda.server.domain.user.presentation.response.ProfileImageResponse
@@ -28,6 +29,7 @@ import org.springframework.security.core.context.SecurityContextHolder
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 import org.springframework.web.multipart.MultipartFile
+import java.util.UUID
 
 @Service
 class AuthService(
@@ -40,6 +42,7 @@ class AuthService(
     private val imageResizer: ImageResizer,
     private val objectStorage: ObjectStorage,
     private val objectKeyUrlResolver: ObjectKeyUrlResolver,
+    private val profileImageUrlResolver: ProfileImageUrlResolver,
     private val userFavoriteCategoryService: UserFavoriteCategoryService,
 ) {
 
@@ -56,7 +59,8 @@ class AuthService(
 
         return UserInfoResponse.from(
             user = user,
-            profileImageUrl = objectKeyUrlResolver.resolve(user.profileImageUrl),
+            profileImageUrl = profileImageUrlResolver.mainUrl(user.profileImageUrl),
+            profileImageVariants = profileImageUrlResolver.variantUrls(user.profileImageUrl),
             favoriteCategories = userFavoriteCategoryService.findCategories(userId),
         )
     }
@@ -76,14 +80,15 @@ class AuthService(
         val sessionId = requireNotNull(principal.getSignupSession().id) { "signup session id must exist" }
 
         val resized = imageResizer.resize(file.bytes, ProfileImagePolicy.VARIANTS)
+        val prefix = SignupProfileImagePolicy.prefixOf(sessionId, UUID.randomUUID().toString())
         val variantKeys = resized.associate { result ->
-            val key = SignupProfileImagePolicy.keyOf(sessionId, result.variant)
+            val key = ProfileImagePolicy.keyOf(prefix, result.variant)
             objectStorage.upload(key, result.bytes, result.variant.format.mimeType)
             result.variant.name to key
         }
         val mainKey = variantKeys[ProfileImagePolicy.MAIN_VARIANT]
             ?: throw ImageException(ErrorCode.IMAGE_PROCESSING_FAILED)
-        val variantUrls = variantKeys.mapValues { (_, key) -> objectStorage.presignedGetUrl(key) }
+        val variantUrls = variantKeys.mapValues { (_, key) -> objectKeyUrlResolver.resolveKey(key) }
         val mainUrl = requireNotNull(variantUrls[ProfileImagePolicy.MAIN_VARIANT])
         return ProfileImageResponse(
             profileImageUrl = mainUrl,
@@ -200,10 +205,12 @@ class AuthService(
         if (initialImageValue.isNullOrBlank()) return
         if (!SignupProfileImagePolicy.isManaged(sessionId, initialImageValue)) return
 
+        val sourcePrefix = initialImageValue.substringBeforeLast('/')
+        val destinationPrefix = ProfileImagePolicy.prefixOf(userId, UUID.randomUUID().toString())
         var mainKey: String? = null
         ProfileImagePolicy.VARIANTS.forEach { variant ->
-            val sourceKey = SignupProfileImagePolicy.keyOf(sessionId, variant)
-            val destinationKey = ProfileImagePolicy.keyOf(userId, variant)
+            val sourceKey = ProfileImagePolicy.keyOf(sourcePrefix, variant)
+            val destinationKey = ProfileImagePolicy.keyOf(destinationPrefix, variant)
             objectStorage.copy(sourceKey, destinationKey)
             if (variant.name == ProfileImagePolicy.MAIN_VARIANT) {
                 mainKey = destinationKey
@@ -212,7 +219,7 @@ class AuthService(
         user.profileImageUrl = mainKey
 
         ProfileImagePolicy.VARIANTS.forEach { variant ->
-            val tempKey = SignupProfileImagePolicy.keyOf(sessionId, variant)
+            val tempKey = ProfileImagePolicy.keyOf(sourcePrefix, variant)
             runCatching { objectStorage.delete(tempKey) }
                 .onFailure { log.warn("가입 임시 프로필 이미지 삭제 실패 key={}", tempKey, it) }
         }

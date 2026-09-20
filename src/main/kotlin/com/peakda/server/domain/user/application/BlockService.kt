@@ -2,7 +2,6 @@ package com.peakda.server.domain.user.application
 
 import com.peakda.server.common.page.PageRequest
 import com.peakda.server.common.page.PageResponse
-import com.peakda.server.common.storage.ObjectKeyUrlResolver
 import com.peakda.server.domain.user.exception.SelfBlockNotAllowedException
 import com.peakda.server.domain.user.exception.UserNotFoundException
 import com.peakda.server.domain.user.presentation.response.BlockedUserResponse
@@ -21,7 +20,7 @@ class BlockService(
     private val blockRepository: BlockRepository,
     private val userRepository: UserRepository,
     private val followRepository: FollowRepository,
-    private val objectKeyUrlResolver: ObjectKeyUrlResolver,
+    private val profileImageUrlResolver: ProfileImageUrlResolver,
 ) {
 
     fun block(blockerId: Long, targetUserId: Long) {
@@ -51,7 +50,7 @@ class BlockService(
                 BlockedUserResponse(
                     userId = requireNotNull(user.id),
                     nickname = user.nickname,
-                    profileImageUrl = objectKeyUrlResolver.resolve(user.profileImageUrl),
+                    profileImageUrl = profileImageUrlResolver.thumbnailUrl(user.profileImageUrl),
                     blockedAt = block.createdAt,
                 )
             }

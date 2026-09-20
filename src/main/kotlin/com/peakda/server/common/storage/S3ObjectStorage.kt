@@ -53,6 +53,19 @@ class S3ObjectStorage(
         return destinationKey
     }
 
+    override fun download(key: String): ByteArray {
+        try {
+            return s3Client.getObjectAsBytes(
+                GetObjectRequest.builder()
+                    .bucket(properties.bucket)
+                    .key(key)
+                    .build(),
+            ).asByteArray()
+        } catch (e: S3Exception) {
+            throw StorageException(ErrorCode.STORAGE_DOWNLOAD_FAILED)
+        }
+    }
+
     override fun delete(key: String) {
         try {
             s3Client.deleteObject(

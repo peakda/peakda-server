@@ -1,14 +1,13 @@
 package com.peakda.server.domain.user.application
 
-import com.peakda.server.common.storage.ObjectKeyUrlResolver
 import com.peakda.server.domain.spot.application.SpotRecordResponseAssembler
 import com.peakda.server.domain.spot.entity.SpotRecordStatus
 import com.peakda.server.domain.spot.repository.SpotRecordRepository
 import com.peakda.server.domain.user.exception.UserNotFoundException
 import com.peakda.server.domain.user.presentation.response.FavoriteCategoryResponse
 import com.peakda.server.domain.user.presentation.response.UserProfileResponse
-import com.peakda.server.domain.user.repository.FollowRepository
 import com.peakda.server.domain.user.repository.BlockRepository
+import com.peakda.server.domain.user.repository.FollowRepository
 import com.peakda.server.domain.user.repository.UserFavoriteCategoryRepository
 import com.peakda.server.domain.user.repository.UserRepository
 import org.springframework.data.domain.PageRequest
@@ -27,7 +26,7 @@ class UserProfileService(
     private val userFavoriteCategoryRepository: UserFavoriteCategoryRepository,
     private val spotRecordRepository: SpotRecordRepository,
     private val spotRecordResponseAssembler: SpotRecordResponseAssembler,
-    private val objectKeyUrlResolver: ObjectKeyUrlResolver,
+    private val profileImageUrlResolver: ProfileImageUrlResolver,
 ) {
 
     @Transactional(readOnly = true)
@@ -44,7 +43,8 @@ class UserProfileService(
         return UserProfileResponse(
             userId = targetUserId,
             nickname = user.nickname,
-            profileImageUrl = objectKeyUrlResolver.resolve(user.profileImageUrl),
+            profileImageUrl = profileImageUrlResolver.mainUrl(user.profileImageUrl),
+            profileImageVariants = profileImageUrlResolver.variantUrls(user.profileImageUrl),
             stats = UserProfileResponse.Stats(
                 recordCount = recordsPage.totalElements,
                 followerCount = followRepository.countByFollowingId(targetUserId),

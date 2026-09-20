@@ -3,6 +3,7 @@ package com.peakda.server.domain.spot.application
 import com.peakda.server.common.exception.ErrorCode
 import com.peakda.server.common.image.ImageException
 import com.peakda.server.common.image.ImageResizer
+import com.peakda.server.common.storage.ObjectKeyUrlResolver
 import com.peakda.server.common.storage.ObjectStorage
 import org.springframework.stereotype.Component
 import org.springframework.web.multipart.MultipartFile
@@ -13,6 +14,7 @@ import java.util.UUID
 class SpotRecordPhotoUploader(
     private val objectStorage: ObjectStorage,
     private val imageResizer: ImageResizer,
+    private val objectKeyUrlResolver: ObjectKeyUrlResolver,
 ) {
 
     fun upload(userId: Long, files: List<MultipartFile>): List<UploadedPhoto> {
@@ -20,8 +22,6 @@ class SpotRecordPhotoUploader(
         val yearMonth = YearMonth.now()
         return files.map { uploadSingle(userId, it, yearMonth) }
     }
-
-    fun presignedUrlOf(objectKey: String): String = objectStorage.presignedGetUrl(objectKey)
 
     fun deleteByMainKey(mainKey: String) {
         if (!mainKey.startsWith("spot-records/")) return
@@ -44,11 +44,16 @@ class SpotRecordPhotoUploader(
             }
         }
         val key = mainKey ?: throw ImageException(ErrorCode.IMAGE_PROCESSING_FAILED)
-        return UploadedPhoto(objectKey = key, previewUrl = objectStorage.presignedGetUrl(key))
+        return UploadedPhoto(
+            objectKey = key,
+            previewUrl = objectKeyUrlResolver.resolveKey(key),
+            variantNames = SpotRecordPhotoPolicy.CURRENT_VARIANT_NAMES,
+        )
     }
 
     data class UploadedPhoto(
         val objectKey: String,
         val previewUrl: String,
+        val variantNames: String,
     )
 }

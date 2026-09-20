@@ -10,12 +10,27 @@ provider "aws" {
   }
 }
 
+# CloudFront 인증서는 us-east-1 에만 만들 수 있다.
+provider "aws" {
+  alias  = "us_east_1"
+  region = "us-east-1"
+
+  default_tags {
+    tags = {
+      Project     = "peakda"
+      Environment = var.env
+      ManagedBy   = "terraform"
+    }
+  }
+}
+
 data "aws_caller_identity" "current" {}
 
 locals {
   name_prefix = "peakda-${var.env}"
   account_id  = data.aws_caller_identity.current.account_id
   app_domain  = "${var.subdomain}.${var.domain_name}"
+  cdn_domain  = "${var.cdn_subdomain}.${var.domain_name}"
 
   # 서버에 배포되는 자산. 내용이 바뀌면 S3 오브젝트가 갱신되고
   # 다음 배포에서 deploy.sh 가 s3 sync 로 가져간다.
@@ -38,6 +53,13 @@ module "network" {
 
   name_prefix = local.name_prefix
   vpc_cidr    = var.vpc_cidr
+
+  # 개발자가 로컬에서 dev 앱 서버를 거쳐 prod DB 에 붙는 경로.
+  # 피어링 연결 자체는 콘솔에서 만든 것을 그대로 쓰고, 경로만 코드가 관리한다.
+  peering_routes = var.prod_peering_connection_id == "" ? [] : [{
+    cidr_block            = var.prod_vpc_cidr
+    peering_connection_id = var.prod_peering_connection_id
+  }]
 }
 
 # ---------------------------------------------------------------------------
@@ -82,6 +104,22 @@ module "media" {
   iam_user_name = "${local.name_prefix}-media"
 }
 
+module "media_cdn" {
+  source = "../../modules/media-cdn"
+
+  providers = {
+    aws           = aws
+    aws.us_east_1 = aws.us_east_1
+  }
+
+  name_prefix                 = local.name_prefix
+  bucket_id                   = module.media.bucket_id
+  bucket_arn                  = module.media.bucket_arn
+  bucket_regional_domain_name = module.media.bucket_regional_domain_name
+  domain_name                 = local.cdn_domain
+  route53_zone_id             = module.dns.zone_id
+}
+
 # ---------------------------------------------------------------------------
 # 애플리케이션 설정 (SSM Parameter Store)
 # ---------------------------------------------------------------------------
@@ -115,6 +153,9 @@ module "config" {
       STORAGE_ENDPOINT          = "https://s3.${var.region}.amazonaws.com"
       STORAGE_REGION            = var.region
       STORAGE_PATH_STYLE_ACCESS = "false"
+
+      # 값이 있으면 이미지 URL 이 presigned 대신 만료 없는 CDN 주소로 나간다.
+      STORAGE_PUBLIC_BASE_URL = module.media_cdn.public_base_url
     },
     var.app_parameters,
   )
