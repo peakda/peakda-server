@@ -15,8 +15,8 @@ data class SpotRecordPhotoUploadResponse(
         )
         val objectKey: String,
         @field:Schema(
-            description = "즉시 미리보기용 presigned URL (만료 있음, DB 저장 금지)",
-            example = "https://t3.storageapi.dev/peakda-bucket/spot-records/42/2026/05/.../main.jpg?X-Amz-Signature=...",
+            description = "즉시 미리보기용 원본 URL. DB 에는 objectKey 만 저장한다.",
+            example = "https://cdn.peakda.com/spot-records/42/2026/05/9b1deb4d/main.jpg",
         )
         val previewUrl: String,
     )

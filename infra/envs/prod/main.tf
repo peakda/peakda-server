@@ -3,6 +3,13 @@ provider "aws" {
   default_tags { tags = { Project = "peakda", Environment = "prod", ManagedBy = "terraform" } }
 }
 
+# CloudFront 인증서는 us-east-1 에만 만들 수 있다. ALB 용 인증서(서울)와는 별개다.
+provider "aws" {
+  alias  = "us_east_1"
+  region = "us-east-1"
+  default_tags { tags = { Project = "peakda", Environment = "prod", ManagedBy = "terraform" } }
+}
+
 data "aws_caller_identity" "current" {}
 data "aws_route53_zone" "root" {
   name         = var.domain_name
@@ -17,6 +24,7 @@ data "aws_iam_openid_connect_provider" "github" {
 locals {
   name_prefix        = "peakda-prod"
   app_domain         = "${var.subdomain}.${var.domain_name}"
+  cdn_domain         = "${var.cdn_subdomain}.${var.domain_name}"
   account_id         = data.aws_caller_identity.current.account_id
   parameter_arns     = ["arn:aws:ssm:${var.region}:${local.account_id}:parameter/peakda/prod/*"]
   media_bucket_name  = "${local.name_prefix}-media-${local.account_id}"
@@ -88,6 +96,18 @@ resource "aws_security_group" "db" {
     to_port         = 5432
     protocol        = "tcp"
     security_groups = [aws_security_group.task.id, aws_security_group.migration.id]
+  }
+
+  # 개발자가 로컬에서 dev 앱 서버를 거쳐 붙는 경로. VPC 피어링은 dev 구성이 관리한다.
+  dynamic "ingress" {
+    for_each = length(var.developer_access_security_group_ids) > 0 ? [1] : []
+
+    content {
+      from_port       = 5432
+      to_port         = 5432
+      protocol        = "tcp"
+      security_groups = var.developer_access_security_group_ids
+    }
   }
 }
 resource "aws_security_group" "redis" {
@@ -192,6 +212,22 @@ resource "aws_s3_bucket_lifecycle_configuration" "media" {
     filter {}
     abort_incomplete_multipart_upload { days_after_initiation = 7 }
   }
+}
+
+module "media_cdn" {
+  source = "../../modules/media-cdn"
+
+  providers = {
+    aws           = aws
+    aws.us_east_1 = aws.us_east_1
+  }
+
+  name_prefix                 = local.name_prefix
+  bucket_id                   = aws_s3_bucket.media.id
+  bucket_arn                  = aws_s3_bucket.media.arn
+  bucket_regional_domain_name = aws_s3_bucket.media.bucket_regional_domain_name
+  domain_name                 = local.cdn_domain
+  route53_zone_id             = data.aws_route53_zone.root.zone_id
 }
 
 resource "aws_s3_bucket" "backup" { bucket = local.backup_bucket_name }
@@ -408,6 +444,7 @@ locals {
     STORAGE_REGION                                         = var.region
     STORAGE_PATH_STYLE_ACCESS                              = "false"
     STORAGE_PRESIGNED_URL_TTL_SECONDS                      = "3600"
+    STORAGE_PUBLIC_BASE_URL                                = module.media_cdn.public_base_url
     JAVA_OPTS                                              = "-Xms512m -Xmx1024m -XX:MaxRAMPercentage=70.0"
     FCM_ENABLED                                            = "true"
     FCM_PROJECT_ID                                         = var.fcm_project_id

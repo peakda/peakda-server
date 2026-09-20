@@ -2,7 +2,6 @@ package com.peakda.server.domain.user.application
 
 import com.peakda.server.common.page.PageRequest
 import com.peakda.server.common.page.PageResponse
-import com.peakda.server.common.storage.ObjectKeyUrlResolver
 import com.peakda.server.domain.user.entity.Follow
 import com.peakda.server.domain.user.exception.SelfFollowNotAllowedException
 import com.peakda.server.domain.user.exception.UserNotFoundException
@@ -20,7 +19,7 @@ import org.springframework.transaction.annotation.Transactional
 class FollowService(
     private val followRepository: FollowRepository,
     private val userRepository: UserRepository,
-    private val objectKeyUrlResolver: ObjectKeyUrlResolver,
+    private val profileImageUrlResolver: ProfileImageUrlResolver,
     private val eventPublisher: ApplicationEventPublisher,
 ) {
 
@@ -100,7 +99,7 @@ class FollowService(
                 FollowUserResponse(
                     userId = userId,
                     nickname = user.nickname,
-                    profileImageUrl = objectKeyUrlResolver.resolve(user.profileImageUrl),
+                    profileImageUrl = profileImageUrlResolver.thumbnailUrl(user.profileImageUrl),
                     following = userId in followingTargetIds,
                     followedAt = follow.createdAt,
                 )

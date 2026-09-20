@@ -28,6 +28,15 @@ class SpotRecordPhoto(
 
     @Column(name = "sort_order", nullable = false)
     var sortOrder: Int,
+
+    /**
+     * 보유한 이미지 variant 이름 목록(콤마 구분).
+     *
+     * NULL 은 variant 세트가 늘어나기 전에 올라온 사진이라는 뜻이며,
+     * 실제 보유 여부는 [com.peakda.server.domain.spot.application.SpotRecordPhotoPolicy.availableVariantNames] 가 판단한다.
+     */
+    @Column(name = "variant_names", columnDefinition = "TEXT")
+    var variantNames: String? = null,
 ) : BaseTimeEntity() {
 
     @Id

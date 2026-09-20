@@ -1,6 +1,5 @@
 package com.peakda.server.domain.notification.application
 
-import com.peakda.server.common.storage.ObjectKeyUrlResolver
 import com.peakda.server.common.page.PageRequest
 import com.peakda.server.common.page.PageResponse
 import com.peakda.server.common.page.toPageResponse
@@ -9,10 +8,11 @@ import com.peakda.server.domain.notification.entity.NotificationSegment
 import com.peakda.server.domain.notification.exception.NotificationNotFoundException
 import com.peakda.server.domain.notification.presentation.response.NotificationResponse
 import com.peakda.server.domain.notification.repository.NotificationRepository
+import com.peakda.server.domain.user.application.ProfileImageUrlResolver
 import com.peakda.server.domain.user.repository.UserRepository
+import java.time.Instant
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
-import java.time.Instant
 
 /**
  * 알림 저장·조회·읽음(P3-1). 생성은 이벤트 리스너·스케줄러가 호출하고, 조회·읽음은 사용자 요청으로 호출된다.
@@ -22,7 +22,7 @@ import java.time.Instant
 class NotificationService(
     private val notificationRepository: NotificationRepository,
     private val userRepository: UserRepository,
-    private val objectKeyUrlResolver: ObjectKeyUrlResolver,
+    private val profileImageUrlResolver: ProfileImageUrlResolver,
 ) {
 
     fun create(command: CreateNotificationCommand): Notification {
@@ -54,7 +54,7 @@ class NotificationService(
         return page.map { notification ->
             val imageUrl = notification.actorUserId
                 ?.let { usersById[it]?.profileImageUrl }
-                ?.let(objectKeyUrlResolver::resolve)
+                ?.let(profileImageUrlResolver::thumbnailUrl)
             NotificationResponse.from(notification, imageUrl)
         }.toPageResponse()
     }

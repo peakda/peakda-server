@@ -1,6 +1,7 @@
 package com.peakda.server.domain.spot.repository
 
 import com.peakda.server.domain.spot.entity.SpotRecordPhoto
+import org.springframework.data.domain.Pageable
 import org.springframework.data.jpa.repository.JpaRepository
 import org.springframework.data.jpa.repository.Query
 import org.springframework.data.repository.query.Param
@@ -9,6 +10,11 @@ interface SpotRecordPhotoRepository : JpaRepository<SpotRecordPhoto, Long> {
     fun findBySpotRecordIdOrderBySortOrderAsc(spotRecordId: Long): List<SpotRecordPhoto>
     fun findBySpotRecordIdIn(spotRecordIds: Collection<Long>): List<SpotRecordPhoto>
     fun deleteBySpotRecordId(spotRecordId: Long)
+
+    /** variant 백필 대상(보유 variant 가 기록되지 않은 사진)을 오래된 순으로 가져온다. */
+    fun findByVariantNamesIsNullOrderByIdAsc(pageable: Pageable): List<SpotRecordPhoto>
+
+    fun countByVariantNamesIsNull(): Long
 
     /**
      * 여러 스팟의 최근 게시 기록 사진을 스팟당 [limit] 장까지 한 번에 조회한다.

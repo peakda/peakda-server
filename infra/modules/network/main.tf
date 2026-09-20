@@ -51,6 +51,17 @@ resource "aws_route_table" "public" {
     gateway_id = aws_internet_gateway.this.id
   }
 
+  # 인라인 route 블록은 이 테이블의 경로 전체를 관리한다. 여기 없는 경로는 apply 때 지워지므로
+  # 피어링 경로도 반드시 코드에 있어야 한다.
+  dynamic "route" {
+    for_each = var.peering_routes
+
+    content {
+      cidr_block                = route.value.cidr_block
+      vpc_peering_connection_id = route.value.peering_connection_id
+    }
+  }
+
   tags = {
     Name = "${var.name_prefix}-public-rt"
   }

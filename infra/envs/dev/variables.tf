@@ -54,6 +54,12 @@ variable "subdomain" {
   default     = "api-dev"
 }
 
+variable "cdn_subdomain" {
+  description = "이미지 CDN 서브도메인. 최종 FQDN 은 <cdn_subdomain>.<domain_name>"
+  type        = string
+  default     = "cdn-dev"
+}
+
 variable "create_dns_zone" {
   description = "Route53 호스팅 존을 이 환경에서 생성할지 여부. 존은 환경 간 공유한다"
   type        = bool
@@ -109,4 +115,24 @@ variable "monthly_budget_limit" {
 variable "alert_email" {
   description = "예산 알림 수신 이메일"
   type        = string
+}
+
+# ---------------------------------------------------------------------------
+# prod 연결 (개발자 로컬 접근 경로)
+#
+# 로컬 → dev 앱 서버 → prod RDS 로 붙기 위해 VPC 피어링과 prod DB 보안그룹 허용이 필요하다.
+# 피어링 연결(pcx-)은 콘솔에서 만든 것을 그대로 쓰고, 라우트만 Terraform 이 관리한다.
+# 값을 비우면 경로를 만들지 않는다.
+# ---------------------------------------------------------------------------
+
+variable "prod_peering_connection_id" {
+  description = "dev↔prod VPC 피어링 연결 id. 비우면 피어링 경로를 만들지 않는다"
+  type        = string
+  default     = "pcx-023bd0318dac1af64"
+}
+
+variable "prod_vpc_cidr" {
+  description = "prod VPC CIDR. 피어링 경로의 목적지"
+  type        = string
+  default     = "10.20.0.0/16"
 }

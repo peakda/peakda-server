@@ -1,7 +1,6 @@
 package com.peakda.server.domain.user.application
 
 import com.peakda.server.common.page.PageRequest
-import com.peakda.server.common.storage.ObjectKeyUrlResolver
 import com.peakda.server.domain.auth.oauth.model.OAuth2LoginType
 import com.peakda.server.domain.user.entity.Block
 import com.peakda.server.domain.user.entity.User
@@ -27,9 +26,9 @@ class BlockServiceTest {
     private val blockRepository = mock(BlockRepository::class.java)
     private val userRepository = mock(UserRepository::class.java)
     private val followRepository = mock(FollowRepository::class.java)
-    private val objectKeyUrlResolver = mock(ObjectKeyUrlResolver::class.java)
+    private val profileImageUrlResolver = mock(ProfileImageUrlResolver::class.java)
 
-    private val service = BlockService(blockRepository, userRepository, followRepository, objectKeyUrlResolver)
+    private val service = BlockService(blockRepository, userRepository, followRepository, profileImageUrlResolver)
 
     @Test
     fun `자기 자신은 차단할 수 없다`() {
@@ -71,7 +70,7 @@ class BlockServiceTest {
         `when`(blockRepository.findByBlockerIdOrderByCreatedAtDesc(BLOCKER_ID, pageable))
             .thenReturn(PageImpl(listOf(block), pageable, 1))
         `when`(userRepository.findAllById(listOf(BLOCKED_ID))).thenReturn(listOf(user(BLOCKED_ID, "불편러")))
-        `when`(objectKeyUrlResolver.resolve(null)).thenReturn(null)
+        `when`(profileImageUrlResolver.thumbnailUrl(null)).thenReturn(null)
 
         val response = service.list(BLOCKER_ID, PageRequest(page = 0, size = 20))
 

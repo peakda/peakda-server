@@ -41,7 +41,7 @@ class SpotPreviewService(
     private val localSpotBloomResolver: LocalSpotBloomResolver,
     private val spotThumbnailResolver: SpotThumbnailResolver,
     private val spotRecordPhotoRepository: SpotRecordPhotoRepository,
-    private val spotRecordPhotoUploader: SpotRecordPhotoUploader,
+    private val spotRecordPhotoUrlResolver: SpotRecordPhotoUrlResolver,
     private val spotFavoriteRepository: SpotFavoriteRepository,
 ) {
 
@@ -169,7 +169,7 @@ class SpotPreviewService(
         return spotRecordPhotoRepository
             .findRecentPhotosBySpotIds(spotIds, SpotRecordStatus.PUBLISHED.name, MAX_PHOTO_COUNT)
             .groupBy { it.spotId }
-            .mapValues { (_, photos) -> photos.take(MAX_PHOTO_COUNT).map { spotRecordPhotoUploader.presignedUrlOf(it.objectKey) } }
+            .mapValues { (_, photos) -> photos.take(MAX_PHOTO_COUNT).map { spotRecordPhotoUrlResolver.thumbnailUrl(it.objectKey) } }
     }
 
     private fun SeasonalBloomEstimate.toBadge() = BloomBadge(

@@ -202,7 +202,8 @@ class SpotRecordService(
 
     private fun replacePhotos(recordId: Long, photoKeys: List<String>) {
         val existing = spotRecordPhotoRepository.findBySpotRecordIdOrderBySortOrderAsc(recordId)
-        val existingKeys = existing.map { it.objectKey }.toSet()
+        val existingVariantNames = existing.associate { it.objectKey to it.variantNames }
+        val existingKeys = existingVariantNames.keys
         val nextKeys = photoKeys.toList()
         val nextKeySet = nextKeys.toSet()
         val orphanedKeys = existingKeys - nextKeySet
@@ -211,7 +212,17 @@ class SpotRecordService(
         spotRecordPhotoRepository.flush()
         nextKeys.forEachIndexed { index, key ->
             spotRecordPhotoRepository.save(
-                SpotRecordPhoto(spotRecordId = recordId, objectKey = key, sortOrder = index + 1)
+                SpotRecordPhoto(
+                    spotRecordId = recordId,
+                    objectKey = key,
+                    sortOrder = index + 1,
+                    // 이미 달려 있던 사진은 보유 variant 를 그대로 두고, 새로 올라온 사진에만 현재 정책을 적는다.
+                    variantNames = if (key in existingKeys) {
+                        existingVariantNames[key]
+                    } else {
+                        SpotRecordPhotoPolicy.CURRENT_VARIANT_NAMES
+                    },
+                )
             )
         }
         orphanedKeys.forEach { spotRecordPhotoUploader.deleteByMainKey(it) }

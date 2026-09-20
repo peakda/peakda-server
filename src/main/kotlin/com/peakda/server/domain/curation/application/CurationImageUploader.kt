@@ -3,6 +3,7 @@ package com.peakda.server.domain.curation.application
 import com.peakda.server.common.exception.ErrorCode
 import com.peakda.server.common.image.ImageException
 import com.peakda.server.common.image.ImageResizer
+import com.peakda.server.common.storage.ObjectKeyUrlResolver
 import com.peakda.server.common.storage.ObjectStorage
 import org.springframework.stereotype.Component
 import org.springframework.web.multipart.MultipartFile
@@ -13,6 +14,7 @@ import java.util.UUID
 class CurationImageUploader(
     private val objectStorage: ObjectStorage,
     private val imageResizer: ImageResizer,
+    private val objectKeyUrlResolver: ObjectKeyUrlResolver,
 ) {
 
     fun upload(file: MultipartFile): UploadedImage {
@@ -30,7 +32,7 @@ class CurationImageUploader(
         val objectKey = mainKey ?: throw ImageException(ErrorCode.IMAGE_PROCESSING_FAILED)
         return UploadedImage(
             objectKey = objectKey,
-            previewUrl = objectStorage.presignedGetUrl(objectKey),
+            previewUrl = objectKeyUrlResolver.resolveKey(objectKey),
         )
     }
 

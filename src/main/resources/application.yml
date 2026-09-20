@@ -122,6 +122,8 @@ app:
     secret-key: ${STORAGE_SECRET_KEY:}
     path-style-access: ${STORAGE_PATH_STYLE_ACCESS:true}
     presigned-url-ttl-seconds: ${STORAGE_PRESIGNED_URL_TTL_SECONDS:604800}
+    # CDN 공개 base URL. 설정하면 이미지 URL 이 만료 없는 고정 주소가 되고, 비우면 presigned 로 폴백한다.
+    public-base-url: ${STORAGE_PUBLIC_BASE_URL:}
 
 external:
   data-go-kr:
