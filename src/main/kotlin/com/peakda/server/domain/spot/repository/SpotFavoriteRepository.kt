@@ -21,13 +21,15 @@ interface SpotFavoriteRepository : JpaRepository<SpotFavorite, Long> {
     fun deleteByUserId(userId: Long)
 
     /**
-     * 찜이 많은 순서로 스팟 id·찜 수를 뽑는다 ("인기 스팟"/트렌딩 소스).
-     * [pageable] 로 상위 N개만 자른다.
+     * 찜이 많은 순서로 공개(visible) 스팟 id·찜 수를 뽑는다 ("인기 스팟"/트렌딩 소스).
+     * [pageable] 로 상위 N개만 자른다. 숨김 스팟은 자르기 전에 빼서 N개를 채운다.
      */
     @Query(
         """
             SELECT f.spotId AS spotId, COUNT(f) AS favoriteCount
-            FROM SpotFavorite f
+            FROM SpotFavorite f, Spot s
+            WHERE s.id = f.spotId
+              AND s.visible = true
             GROUP BY f.spotId
             ORDER BY COUNT(f) DESC
         """,

@@ -119,10 +119,7 @@ class SearchService(
     @Transactional(readOnly = true)
     fun trending(): TrendingSpotsResponse {
         val counts = spotFavoriteRepository.findTrendingSpotIds(SpringPageRequest.of(0, TRENDING_LIMIT))
-        // 찜 집계는 Spot 공개 여부를 보지 않으므로, 숨김 처리된 Spot 은 여기서 뺀다.
-        val spotsById = spotRepository.findAllById(counts.map { it.spotId })
-            .filter { it.visible }
-            .associateBy { requireNotNull(it.id) }
+        val spotsById = spotRepository.findAllById(counts.map { it.spotId }).associateBy { requireNotNull(it.id) }
         val items = counts.mapNotNull { count -> spotsById[count.spotId]?.toTrendingItem(count.favoriteCount) }
         return TrendingSpotsResponse(items)
     }
