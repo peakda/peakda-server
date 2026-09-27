@@ -84,7 +84,8 @@ class BloomTaggingService(
 
     private fun matchKeyword(title: String, category: BloomCategory): KeywordMatch? {
         val haystack = title.lowercase()
-        val hint = category.keywordHints.firstOrNull { haystack.contains(it.lowercase()) } ?: return null
+        if (category.keywordExclusions.any { haystack.contains(it.lowercase()) }) return null
+        val hint =category.keywordHints.firstOrNull { haystack.contains(it.lowercase()) } ?: return null
         val exact = haystack.contains(category.displayName.lowercase())
         val confidence = properties.keywordBaseConfidence + if (exact) properties.keywordExactBoost else 0.0
         return KeywordMatch(confidence = minOf(confidence, 1.0), evidence = "keyword:$hint")
