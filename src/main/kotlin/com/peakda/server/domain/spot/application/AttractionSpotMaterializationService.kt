@@ -1,16 +1,18 @@
 package com.peakda.server.domain.spot.application
 
+import com.peakda.server.domain.attraction.application.AttractionEligibilityProperties
 import com.peakda.server.domain.attraction.repository.AttractionRepository
 import org.springframework.data.domain.PageRequest
 import org.springframework.data.domain.Sort
 import org.springframework.stereotype.Service
 import org.slf4j.LoggerFactory
 
-/** visible 명소를 페이지 단위로 읽어 좌표가 있는 명소형 Spot을 멱등적으로 materialize한다. */
+/** 서비스 대상 유형의 visible 명소를 페이지 단위로 읽어 좌표가 있는 명소형 Spot을 멱등적으로 materialize한다. */
 @Service
 class AttractionSpotMaterializationService(
     private val attractionRepository: AttractionRepository,
     private val chunkService: AttractionSpotMaterializationChunkService,
+    private val eligibilityProperties: AttractionEligibilityProperties,
 ) {
     fun materializeVisibleAttractions(): AttractionSpotMaterializationResult {
         var pageNumber = 0
@@ -18,7 +20,8 @@ class AttractionSpotMaterializationService(
         var skippedNoCoordinates = 0
         var pages = 0
         while (true) {
-            val page = attractionRepository.findByVisibleTrue(
+            val page = attractionRepository.findByVisibleTrueAndContentTypeCodeIn(
+                eligibilityProperties.eligibleContentTypes,
                 PageRequest.of(pageNumber, PAGE_SIZE, Sort.by(Sort.Direction.ASC, "id")),
             )
             if (page.isEmpty) break

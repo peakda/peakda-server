@@ -1,5 +1,6 @@
 package com.peakda.server.infrastructure.scheduler.kto
 
+import com.peakda.server.domain.attraction.application.AttractionEligibilityProperties
 import com.peakda.server.domain.attraction.application.AttractionSyncService
 import com.peakda.server.domain.attraction.repository.AttractionRepository
 import com.peakda.server.domain.spot.application.AttractionSpotMaterializationResult
@@ -73,6 +74,7 @@ class KorServiceSyncJobTest {
         AttractionSpotMaterializationService(
             Mockito.mock(AttractionRepository::class.java),
             Mockito.mock(AttractionSpotMaterializationChunkService::class.java),
+            AttractionEligibilityProperties(),
         ) {
         override fun materializeVisibleAttractions(): AttractionSpotMaterializationResult =
             AttractionSpotMaterializationResult(processed = 0, skippedNoCoordinates = 0, pages = 0)
