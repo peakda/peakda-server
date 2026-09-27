@@ -5,6 +5,7 @@ import com.peakda.server.domain.attraction.entity.Attraction
 import com.peakda.server.domain.attraction.repository.AttractionRepository
 import com.peakda.server.domain.festival.entity.Festival
 import com.peakda.server.domain.festival.repository.FestivalRepository
+import com.peakda.server.domain.seasonal.entity.TagSource
 import com.peakda.server.domain.seasonal.repository.AttractionBloomRepository
 import com.peakda.server.domain.seasonal.repository.AttractionBloomUpsertCommand
 import org.assertj.core.api.Assertions.assertThat
@@ -12,6 +13,7 @@ import org.junit.jupiter.api.Test
 import org.mockito.Mockito.mock
 import org.mockito.Mockito.mockingDetails
 import org.springframework.test.util.ReflectionTestUtils
+import java.time.Instant
 import java.time.LocalDate
 
 class BloomTaggingServiceTest {
@@ -122,6 +124,19 @@ class BloomTaggingServiceTest {
         val count = service.tagFestivals(LocalDate.of(2026, 10, 20))
 
         assertThat(count).isZero()
+    }
+
+    @Test
+    fun `오래된 태그 정리는 자동 출처만 실행 시작 1시간 전 기준으로 지운다`() {
+        val runStartedAt = Instant.parse("2026-09-27T20:45:00Z")
+
+        service.deleteStaleAutoTags(runStartedAt)
+
+        val delete = mockingDetails(attractionBloomRepository).invocations.single()
+        assertThat(delete.method.name).isEqualTo("deleteBySourceInAndUpdatedAtBefore")
+        assertThat(delete.arguments[0] as Collection<*>)
+            .containsExactlyInAnyOrder(TagSource.KEYWORD, TagSource.FESTIVAL)
+        assertThat(delete.arguments[1]).isEqualTo(Instant.parse("2026-09-27T19:45:00Z"))
     }
 
     private fun upserts(): List<AttractionBloomUpsertCommand> =

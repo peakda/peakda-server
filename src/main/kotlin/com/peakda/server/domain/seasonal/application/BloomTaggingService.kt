@@ -11,6 +11,8 @@ import com.peakda.server.domain.seasonal.repository.AttractionBloomRepository
 import com.peakda.server.domain.seasonal.repository.AttractionBloomUpsertCommand
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
+import java.time.Duration
+import java.time.Instant
 import java.time.LocalDate
 import kotlin.math.atan2
 import kotlin.math.cos
@@ -25,6 +27,8 @@ import kotlin.math.sqrt
  * - 신호 A([tagKeywords]): 명소 제목에 카테고리 [BloomCategory.keywordHints] 가 포함되면 KEYWORD 태그.
  * - 신호 B([tagFestivals]): 활성 꽃축제의 장소 토큰([FestivalPlaceTokenizer])이 후보 반경 안 명소 제목과 일치하면 FESTIVAL 태그.
  *   축제 좌표는 주최 기관 주소일 수 있어 후보를 좁히는 데만 쓴다.
+ *
+ * 두 신호는 매 실행 태그를 다시 upsert 하므로, [deleteStaleAutoTags] 로 이번 실행에서 갱신되지 않은 자동 태그를 지운다.
  *
  * 신호 B 의 대상 유형은 [AttractionEligibilityProperties] 로 쿼리에서 제한한다. 신호 A 는 호출자가 대상 유형만 넘긴다.
  */
@@ -94,6 +98,17 @@ class BloomTaggingService(
         return count
     }
 
+    /**
+     * [runStartedAt] 실행에서 다시 만들어지지 않은 자동(KEYWORD·FESTIVAL) 태그를 삭제하고 삭제 수를 반환.
+     * 앱·DB 시계 차이로 방금 갱신한 태그를 지우지 않도록 [STALE_GRACE] 만큼 여유를 둔다. MANUAL·EXIF_BOOST 는 건드리지 않는다.
+     */
+    @Transactional
+    fun deleteStaleAutoTags(runStartedAt: Instant): Int =
+        attractionBloomRepository.deleteBySourceInAndUpdatedAtBefore(
+            sources = AUTO_SOURCES,
+            before = runStartedAt.minus(STALE_GRACE),
+        )
+
     private fun matchPlaceToken(title: String, tokens: Set<String>): String? {
         val normalizedTitle = FestivalPlaceTokenizer.normalize(title)
         return tokens.firstOrNull { token ->
@@ -152,5 +167,7 @@ class BloomTaggingService(
         private const val EARTH_RADIUS_METERS = 6_371_000.0
         private const val MIN_COS_LAT = 0.01
         private const val MIN_CONTAINED_TITLE_LENGTH = 3
+        private val AUTO_SOURCES = listOf(TagSource.KEYWORD, TagSource.FESTIVAL)
+        private val STALE_GRACE: Duration = Duration.ofHours(1)
     }
 }
