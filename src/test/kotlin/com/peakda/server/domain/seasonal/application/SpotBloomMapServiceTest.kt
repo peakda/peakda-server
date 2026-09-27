@@ -1,5 +1,6 @@
 package com.peakda.server.domain.seasonal.application
 
+import com.peakda.server.domain.attraction.application.AttractionEligibilityProperties
 import com.peakda.server.domain.attraction.entity.Attraction
 import com.peakda.server.domain.attraction.repository.AttractionRepository
 import com.peakda.server.domain.seasonal.application.estimator.UserRecordEstimatorProperties
@@ -56,6 +57,7 @@ class SpotBloomMapServiceTest {
         spotRepository,
         spotRecordRepository,
         localSpotBloomResolver,
+        AttractionEligibilityProperties(setOf("12")),
     )
 
     private val baseDate = LocalDate.of(2026, 3, 30)
@@ -308,13 +310,13 @@ class SpotBloomMapServiceTest {
 
     private fun stubAttractions(vararg attractions: Attraction) {
         `when`(bloomBaseDateResolver.currentBaseDate()).thenReturn(baseDate)
-        `when`(attractionRepository.findVisibleInBoundingBox(MIN_LAT, MAX_LAT, MIN_LNG, MAX_LNG))
+        `when`(attractionRepository.findVisibleInBoundingBoxByContentTypes(setOf("12"), MIN_LAT, MAX_LAT, MIN_LNG, MAX_LNG))
             .thenReturn(attractions.toList())
     }
 
     private fun stubNoAttractions() {
         `when`(bloomBaseDateResolver.currentBaseDate()).thenReturn(baseDate)
-        `when`(attractionRepository.findVisibleInBoundingBox(MIN_LAT, MAX_LAT, MIN_LNG, MAX_LNG))
+        `when`(attractionRepository.findVisibleInBoundingBoxByContentTypes(setOf("12"), MIN_LAT, MAX_LAT, MIN_LNG, MAX_LNG))
             .thenReturn(emptyList())
     }
 

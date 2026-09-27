@@ -1,22 +1,26 @@
 package com.peakda.server.domain.spot.application
 
+import com.peakda.server.domain.attraction.application.AttractionEligibilityProperties
 import com.peakda.server.domain.attraction.entity.Attraction
 import com.peakda.server.domain.attraction.repository.AttractionRepository
 import com.peakda.server.domain.spot.entity.Spot
 import com.peakda.server.domain.spot.entity.SpotType
+import com.peakda.server.domain.spot.exception.AttractionNotFoundException
 import com.peakda.server.domain.spot.repository.SpotRepository
 import org.assertj.core.api.Assertions.assertThat
+import org.assertj.core.api.Assertions.assertThatThrownBy
 import org.junit.jupiter.api.Test
 import org.mockito.Mockito.doReturn
 import org.mockito.Mockito.mock
 import org.mockito.Mockito.never
 import org.mockito.Mockito.verify
 import org.springframework.test.util.ReflectionTestUtils
+import java.util.Optional
 
 class SpotServiceTest {
     private val spotRepository = mock(SpotRepository::class.java)
     private val attractionRepository = mock(AttractionRepository::class.java)
-    private val service = SpotService(spotRepository, attractionRepository)
+    private val service = SpotService(spotRepository, attractionRepository, AttractionEligibilityProperties(setOf("12")))
 
     @Test
     fun `명소형 Spot이 이미 있으면 새로 저장하지 않는다`() {
@@ -31,9 +35,32 @@ class SpotServiceTest {
         verify(spotRepository, never()).save(existing)
     }
 
-    private fun attraction(id: Long): Attraction {
+    @Test
+    fun `서비스 대상이 아닌 유형의 명소로는 Spot을 만들지 않는다`() {
+        val restaurant = attraction(102L, contentTypeCode = "39")
+        doReturn(Optional.of(restaurant)).`when`(attractionRepository).findById(102L)
+
+        assertThatThrownBy {
+            service.findOrCreate(
+                SpotResolveInput(
+                    existingSpotId = null,
+                    type = SpotType.ATTRACTION,
+                    attractionId = 102L,
+                    name = "음식점",
+                    address = null,
+                    latitude = 37.5,
+                    longitude = 127.0,
+                    kakaoPlaceId = null,
+                    userId = 1L,
+                ),
+            )
+        }.isInstanceOf(AttractionNotFoundException::class.java)
+    }
+
+    private fun attraction(id: Long, contentTypeCode: String? = "12"): Attraction {
         val attraction = Attraction(
             tourApiContentId = "content-$id",
+            contentTypeCode = contentTypeCode,
             title = "명소 $id",
             latitude = 37.5,
             longitude = 127.0,
