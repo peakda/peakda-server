@@ -15,4 +15,6 @@ data class BloomTaggingProperties(
     val festivalConfidence: Double = 0.9,
     /** 축제 장소명 매칭 후보를 찾는 반경(km). 축제 좌표가 주최 기관 주소일 수 있어 넉넉히 잡는다. */
     val festivalCandidateRadiusKm: Double = 20.0,
+    /** 축제 종료 후 FESTIVAL 태그를 유지하는 기간(일). 내년 축제 데이터가 들어오기 전까지 명소가 꽃 목록에서 빠지지 않게 한다. */
+    val festivalTagRetentionDays: Long = 365,
 )

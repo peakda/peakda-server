@@ -9,6 +9,7 @@ import com.peakda.server.domain.seasonal.entity.TagSource
 import com.peakda.server.domain.seasonal.repository.AttractionBloomRepository
 import com.peakda.server.domain.seasonal.repository.AttractionBloomUpsertCommand
 import org.assertj.core.api.Assertions.assertThat
+import org.assertj.core.api.Assertions.assertThatThrownBy
 import org.junit.jupiter.api.Test
 import org.mockito.Mockito.mock
 import org.mockito.Mockito.mockingDetails
@@ -107,7 +108,7 @@ class BloomTaggingServiceTest {
     }
 
     @Test
-    fun `끝난 축제는 태깅하지 않는다`() {
+    fun `종료 후 유지 기간이 지난 축제는 태깅하지 않는다`() {
         festivals = listOf(
             festival(
                 id = 1L,
@@ -116,7 +117,7 @@ class BloomTaggingServiceTest {
                 roadAddress = null,
                 latitude = 35.97,
                 longitude = 128.72,
-                endsOn = LocalDate.of(2026, 10, 1),
+                endsOn = LocalDate.of(2025, 10, 19),
             ),
         )
         nearbyAttractions = listOf(attraction(2L, "팔공산 갓바위", latitude = 35.9770, longitude = 128.7230))
@@ -127,16 +128,46 @@ class BloomTaggingServiceTest {
     }
 
     @Test
-    fun `오래된 태그 정리는 자동 출처만 실행 시작 1시간 전 기준으로 지운다`() {
+    fun `종료 후 유지 기간 안의 축제는 계속 태깅한다`() {
+        festivals = listOf(
+            festival(
+                id = 1L,
+                name = "팔공산 단풍축제",
+                venue = "팔공산",
+                roadAddress = null,
+                latitude = 35.97,
+                longitude = 128.72,
+                endsOn = LocalDate.of(2025, 10, 20),
+            ),
+        )
+        nearbyAttractions = listOf(attraction(2L, "팔공산 갓바위", latitude = 35.9770, longitude = 128.7230))
+
+        val count = service.tagFestivals(LocalDate.of(2026, 10, 20))
+
+        assertThat(count).isEqualTo(1)
+    }
+
+    @Test
+    fun `오래된 태그 정리는 요청한 자동 출처만 실행 시작 1시간 전 기준으로 지운다`() {
         val runStartedAt = Instant.parse("2026-09-27T20:45:00Z")
 
-        service.deleteStaleAutoTags(runStartedAt)
+        service.deleteStaleAutoTags(runStartedAt, setOf(TagSource.KEYWORD, TagSource.FESTIVAL))
 
         val delete = mockingDetails(attractionBloomRepository).invocations.single()
         assertThat(delete.method.name).isEqualTo("deleteBySourceInAndUpdatedAtBefore")
         assertThat(delete.arguments[0] as Collection<*>)
             .containsExactlyInAnyOrder(TagSource.KEYWORD, TagSource.FESTIVAL)
         assertThat(delete.arguments[1]).isEqualTo(Instant.parse("2026-09-27T19:45:00Z"))
+    }
+
+    @Test
+    fun `정리할 출처가 없으면 삭제 쿼리를 실행하지 않고 수동 태그는 거부한다`() {
+        val runStartedAt = Instant.parse("2026-09-27T20:45:00Z")
+
+        assertThat(service.deleteStaleAutoTags(runStartedAt, emptySet())).isZero()
+        assertThat(mockingDetails(attractionBloomRepository).invocations).isEmpty()
+        assertThatThrownBy { service.deleteStaleAutoTags(runStartedAt, setOf(TagSource.MANUAL)) }
+            .isInstanceOf(IllegalArgumentException::class.java)
     }
 
     private fun upserts(): List<AttractionBloomUpsertCommand> =

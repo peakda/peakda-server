@@ -258,6 +258,7 @@ peakda:
       keyword-exact-boost: 0.2
       festival-confidence: 0.9
       festival-candidate-radius-km: 20.0
+      festival-tag-retention-days: 365
     festival:
       proximity-radius-km: 5.0
       early-window-days: 3

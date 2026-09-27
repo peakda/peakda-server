@@ -3,10 +3,12 @@ package com.peakda.server.infrastructure.scheduler.seasonal
 import com.peakda.server.domain.attraction.application.AttractionEligibilityProperties
 import com.peakda.server.domain.attraction.repository.AttractionRepository
 import com.peakda.server.domain.seasonal.application.BloomTaggingService
+import com.peakda.server.domain.seasonal.entity.TagSource
 import com.peakda.server.infrastructure.scheduler.JobLogger
 import com.peakda.server.infrastructure.scheduler.ManualTriggerableJob
 import com.peakda.server.infrastructure.scheduler.SchedulerProperties
 import org.springframework.data.domain.PageRequest
+import org.springframework.data.domain.Sort
 import org.springframework.scheduling.annotation.Scheduled
 import org.springframework.stereotype.Component
 import java.time.Instant
@@ -18,7 +20,8 @@ import java.time.ZoneId
  *
  * 신호 A(키워드)는 visible 명소를 페이지 단위로 스캔하며, 페이지마다 별도 트랜잭션으로 커밋한다.
  * 신호 B(축제)는 활성 축제를 장소명이 일치하는 명소에 매칭한다.
- * 두 신호가 끝나면 이번 실행에서 갱신되지 않은 자동 태그를 정리한다. 생성된 태그가 하나도 없으면(데이터 공백·장애 의심) 정리를 건너뛴다.
+ * 두 신호가 끝나면 이번 실행에서 갱신되지 않은 자동 태그를 출처별로 정리한다. 한 출처의 태그가 하나도 만들어지지 않았으면
+ * (데이터 공백·장애 의심) 그 출처는 정리를 건너뛴다. 정리가 누락을 곧 삭제로 만들므로 키워드 순회는 id 순으로 고정한다.
  */
 @Component
 class AttractionBloomTaggingJob(
@@ -48,7 +51,7 @@ class AttractionBloomTaggingJob(
         while (true) {
             val slice = attractionRepository.findByVisibleTrueAndContentTypeCodeIn(
                 eligibilityProperties.eligibleContentTypes,
-                PageRequest.of(page, PAGE_SIZE),
+                PageRequest.of(page, PAGE_SIZE, Sort.by(Sort.Direction.ASC, "id")),
             )
             if (slice.isEmpty) break
             keywordTags += taggingService.tagKeywords(slice.content)
@@ -57,15 +60,18 @@ class AttractionBloomTaggingJob(
             page++
         }
         val festivalTags = taggingService.tagFestivals(LocalDate.now(KST))
-        val totalTags = keywordTags + festivalTags
-        val staleDeleted = if (totalTags > 0) taggingService.deleteStaleAutoTags(runStartedAt) else null
+        val cleanupSources = buildSet {
+            if (keywordTags > 0) add(TagSource.KEYWORD)
+            if (festivalTags > 0) add(TagSource.FESTIVAL)
+        }
+        val staleDeleted = taggingService.deleteStaleAutoTags(runStartedAt, cleanupSources)
         return mapOf(
-            JobLogger.KEY_PROCESSED to totalTags,
+            JobLogger.KEY_PROCESSED to keywordTags + festivalTags,
             "attractions" to processedAttractions,
             "keywordTags" to keywordTags,
             "festivalTags" to festivalTags,
             "staleDeleted" to staleDeleted,
-            "staleSkipped" to (staleDeleted == null),
+            "staleCleanedSources" to cleanupSources.map(TagSource::name),
         )
     }
 

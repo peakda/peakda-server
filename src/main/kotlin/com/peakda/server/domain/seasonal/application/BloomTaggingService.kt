@@ -64,13 +64,13 @@ class BloomTaggingService(
         return count
     }
 
-    /** 신호 B. 활성 꽃축제의 장소명과 일치하는 후보 반경 안 명소에 FESTIVAL 태그를 upsert 하고 처리한 태그 수를 반환. */
+    /** 신호 B. 종료 후 [BloomTaggingProperties.festivalTagRetentionDays] 이내인 꽃축제의 장소명과 일치하는 후보 반경 안 명소에 FESTIVAL 태그를 upsert 하고 처리한 태그 수를 반환. */
     @Transactional
     fun tagFestivals(today: LocalDate): Int {
         var count = 0
         val radiusMeters = properties.festivalCandidateRadiusKm * METERS_PER_KM
         for (festival in festivalRepository.findByLatitudeIsNotNullAndLongitudeIsNotNull()) {
-            if (!isActive(festival, today)) continue
+            if (!isWithinRetention(festival, today)) continue
             val lat = festival.latitude ?: continue
             val lng = festival.longitude ?: continue
             val category = BloomCategory.ofFestivalName(festival.name) ?: continue
@@ -99,15 +99,18 @@ class BloomTaggingService(
     }
 
     /**
-     * [runStartedAt] 실행에서 다시 만들어지지 않은 자동(KEYWORD·FESTIVAL) 태그를 삭제하고 삭제 수를 반환.
-     * 앱·DB 시계 차이로 방금 갱신한 태그를 지우지 않도록 [STALE_GRACE] 만큼 여유를 둔다. MANUAL·EXIF_BOOST 는 건드리지 않는다.
+     * [runStartedAt] 실행에서 다시 만들어지지 않은 자동 태그 중 [sources] 출처만 삭제하고 삭제 수를 반환.
+     * 앱·DB 시계 차이로 방금 갱신한 태그를 지우지 않도록 [STALE_GRACE] 만큼 여유를 둔다. MANUAL·EXIF_BOOST 는 지울 수 없다.
      */
     @Transactional
-    fun deleteStaleAutoTags(runStartedAt: Instant): Int =
-        attractionBloomRepository.deleteBySourceInAndUpdatedAtBefore(
-            sources = AUTO_SOURCES,
+    fun deleteStaleAutoTags(runStartedAt: Instant, sources: Set<TagSource>): Int {
+        require(AUTO_SOURCES.containsAll(sources)) { "자동 태그 출처만 정리할 수 있다: $sources" }
+        if (sources.isEmpty()) return 0
+        return attractionBloomRepository.deleteBySourceInAndUpdatedAtBefore(
+            sources = sources,
             before = runStartedAt.minus(STALE_GRACE),
         )
+    }
 
     private fun matchPlaceToken(title: String, tokens: Set<String>): String? {
         val normalizedTitle = FestivalPlaceTokenizer.normalize(title)
@@ -126,9 +129,9 @@ class BloomTaggingService(
         return KeywordMatch(confidence = minOf(confidence, 1.0), evidence = "keyword:$hint")
     }
 
-    private fun isActive(festival: Festival, today: LocalDate): Boolean {
+    private fun isWithinRetention(festival: Festival, today: LocalDate): Boolean {
         val end = festival.endsOn ?: festival.startsOn ?: return false
-        return !end.isBefore(today)
+        return !end.isBefore(today.minusDays(properties.festivalTagRetentionDays))
     }
 
     private fun findNearbyAttractions(lat: Double, lng: Double, radiusMeters: Double): List<Attraction> {
@@ -167,7 +170,7 @@ class BloomTaggingService(
         private const val EARTH_RADIUS_METERS = 6_371_000.0
         private const val MIN_COS_LAT = 0.01
         private const val MIN_CONTAINED_TITLE_LENGTH = 3
-        private val AUTO_SOURCES = listOf(TagSource.KEYWORD, TagSource.FESTIVAL)
+        private val AUTO_SOURCES = setOf(TagSource.KEYWORD, TagSource.FESTIVAL)
         private val STALE_GRACE: Duration = Duration.ofHours(1)
     }
 }
