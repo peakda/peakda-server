@@ -1,5 +1,6 @@
 package com.peakda.server.domain.seasonal.application
 
+import com.peakda.server.domain.attraction.application.AttractionEligibilityProperties
 import com.peakda.server.domain.attraction.entity.Attraction
 import com.peakda.server.domain.attraction.repository.AttractionRepository
 import com.peakda.server.domain.seasonal.entity.BloomCategory
@@ -23,7 +24,7 @@ import java.time.LocalDate
 /**
  * 지도 영역(bbox) 내 Spot 핀별 개화 상태를 조립한다 (결정 A — Spot 중심 지도).
  *
- * - 명소형 핀: 좌표 보유 visible 명소를 [SeasonalBloomEstimate] 최신 산출일 기준으로 상속한다.
+ * - 명소형 핀: 좌표 보유 visible 서비스 대상 유형 명소를 [SeasonalBloomEstimate] 최신 산출일 기준으로 상속한다.
  *   이미 materialize 된 Spot 행이 있으면 spotId 를 채운다.
  * - 동네형 핀: 사용자 생성 LOCAL Spot 을 [LocalSpotBloomResolver] 의 최근 관측 신호로 산출한다 (결정 D 변환).
  * - 방문예정일 [date] 가 주어지면 명소형 슬롯을 절정 구간 기준으로 재계산한다 (결정 C MVP 산식).
@@ -40,6 +41,7 @@ class SpotBloomMapService(
     private val spotRepository: SpotRepository,
     private val spotRecordRepository: SpotRecordRepository,
     private val localSpotBloomResolver: LocalSpotBloomResolver,
+    private val eligibilityProperties: AttractionEligibilityProperties,
 ) {
     @Transactional(readOnly = true)
     fun map(
@@ -92,7 +94,13 @@ class SpotBloomMapService(
     ): List<BloomMapPin> {
         if (baseDate == null) return emptyList()
         val attractionsById = attractionRepository
-            .findVisibleInBoundingBox(minLat = minLat, maxLat = maxLat, minLng = minLng, maxLng = maxLng)
+            .findVisibleInBoundingBoxByContentTypes(
+                contentTypeCodes = eligibilityProperties.eligibleContentTypes,
+                minLat = minLat,
+                maxLat = maxLat,
+                minLng = minLng,
+                maxLng = maxLng,
+            )
             .filter { attraction -> region == null || Region.ofAreaCode(attraction.areaCode.orEmpty()) == region }
             .associateBy { requireNotNull(it.id) }
         if (attractionsById.isEmpty()) return emptyList()
