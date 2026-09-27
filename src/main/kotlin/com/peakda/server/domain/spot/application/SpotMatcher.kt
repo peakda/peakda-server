@@ -1,5 +1,6 @@
 package com.peakda.server.domain.spot.application
 
+import com.peakda.server.domain.attraction.application.AttractionEligibilityProperties
 import com.peakda.server.domain.attraction.entity.Attraction
 import com.peakda.server.domain.attraction.repository.AttractionRepository
 import com.peakda.server.domain.spot.entity.Spot
@@ -18,6 +19,7 @@ class SpotMatcher(
     private val spotRepository: SpotRepository,
     private val attractionRepository: AttractionRepository,
     private val properties: SpotMatcherProperties,
+    private val eligibilityProperties: AttractionEligibilityProperties,
 ) {
 
     fun match(latitude: Double, longitude: Double, kakaoPlaceId: String?): MatchResult {
@@ -37,7 +39,8 @@ class SpotMatcher(
         val latDelta = radius / METERS_PER_DEGREE_LAT
         val cosLat = max(cos(Math.toRadians(latitude)), MIN_COS_LAT)
         val lngDelta = radius / (METERS_PER_DEGREE_LAT * cosLat)
-        val candidates = attractionRepository.findVisibleInBoundingBox(
+        val candidates = attractionRepository.findVisibleInBoundingBoxByContentTypes(
+            contentTypeCodes = eligibilityProperties.eligibleContentTypes,
             minLat = latitude - latDelta,
             maxLat = latitude + latDelta,
             minLng = longitude - lngDelta,

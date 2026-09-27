@@ -1,5 +1,6 @@
 package com.peakda.server.domain.spot.application
 
+import com.peakda.server.domain.attraction.application.AttractionEligibilityProperties
 import com.peakda.server.domain.attraction.entity.Attraction
 import com.peakda.server.domain.attraction.repository.AttractionRepository
 import com.peakda.server.domain.spot.entity.Spot
@@ -14,6 +15,7 @@ import org.springframework.transaction.annotation.Transactional
 class SpotService(
     private val spotRepository: SpotRepository,
     private val attractionRepository: AttractionRepository,
+    private val eligibilityProperties: AttractionEligibilityProperties,
 ) {
 
     @Transactional(readOnly = true)
@@ -50,6 +52,8 @@ class SpotService(
         val attractionId = input.attractionId ?: throw AttractionNotFoundException()
         val attraction = attractionRepository.findById(attractionId)
             .orElseThrow { AttractionNotFoundException() }
+        // 음식점·행사 등 서비스 대상이 아닌 명소는 Spot 으로 만들지 않는다. 클라이언트는 LOCAL 경로로 기록한다.
+        if (attraction.contentTypeCode !in eligibilityProperties.eligibleContentTypes) throw AttractionNotFoundException()
         return findOrCreateForAttraction(attraction)
     }
 

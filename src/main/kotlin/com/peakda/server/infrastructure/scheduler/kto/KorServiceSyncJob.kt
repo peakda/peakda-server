@@ -47,6 +47,8 @@ class KorServiceSyncJob(
             "modifiedtime" to modifiedTime,
             "spotProcessed" to materialization.processed,
             "spotSkippedNoCoordinates" to materialization.skippedNoCoordinates,
+            "spotHidden" to materialization.hidden,
+            "spotShown" to materialization.shown,
         )
     }
 

@@ -3,6 +3,7 @@ package com.peakda.server.domain.attraction.repository
 import com.peakda.server.domain.attraction.entity.Attraction
 import org.springframework.data.domain.Page
 import org.springframework.data.domain.Pageable
+import org.springframework.data.domain.Slice
 import org.springframework.data.jpa.repository.JpaRepository
 import org.springframework.data.jpa.repository.Modifying
 import org.springframework.data.jpa.repository.Query
@@ -47,6 +48,24 @@ interface AttractionRepository : JpaRepository<Attraction, Long> {
 
     fun findByVisibleTrue(pageable: Pageable): Page<Attraction>
 
+    fun findByVisibleTrueAndContentTypeCodeIn(
+        contentTypeCodes: Collection<String>,
+        pageable: Pageable,
+    ): Slice<Attraction>
+
+    @Query(
+        """
+            SELECT a.id FROM Attraction a
+            WHERE a.id IN :ids
+              AND a.visible = true
+              AND a.contentTypeCode IN :contentTypeCodes
+        """,
+    )
+    fun findVisibleIdsByIdInAndContentTypes(
+        @Param("ids") ids: Collection<Long>,
+        @Param("contentTypeCodes") contentTypeCodes: Collection<String>,
+    ): List<Long>
+
     @Modifying
     @Query(value = ATTRACTION_UPSERT_SQL, nativeQuery = true)
     fun upsert(@Param("command") command: AttractionUpsertCommand): Int
@@ -55,13 +74,15 @@ interface AttractionRepository : JpaRepository<Attraction, Long> {
         """
             SELECT a FROM Attraction a
             WHERE a.visible = true
+              AND a.contentTypeCode IN :contentTypeCodes
               AND a.latitude IS NOT NULL
               AND a.longitude IS NOT NULL
               AND a.latitude BETWEEN :minLat AND :maxLat
               AND a.longitude BETWEEN :minLng AND :maxLng
         """,
     )
-    fun findVisibleInBoundingBox(
+    fun findVisibleInBoundingBoxByContentTypes(
+        @Param("contentTypeCodes") contentTypeCodes: Collection<String>,
         @Param("minLat") minLat: Double,
         @Param("maxLat") maxLat: Double,
         @Param("minLng") minLng: Double,

@@ -2,12 +2,14 @@ package com.peakda.server.domain.seasonal.repository
 
 import com.peakda.server.domain.seasonal.entity.AttractionBloom
 import com.peakda.server.domain.seasonal.entity.BloomCategory
+import com.peakda.server.domain.seasonal.entity.TagSource
 import org.springframework.data.domain.Page
 import org.springframework.data.domain.Pageable
 import org.springframework.data.jpa.repository.JpaRepository
 import org.springframework.data.jpa.repository.Modifying
 import org.springframework.data.jpa.repository.Query
 import org.springframework.data.repository.query.Param
+import java.time.Instant
 
 private const val ATTRACTION_BLOOM_UPSERT_SQL = """
     INSERT INTO attraction_blooms (
@@ -38,6 +40,14 @@ interface AttractionBloomRepository : JpaRepository<AttractionBloom, Long> {
     @Modifying
     @Query(value = ATTRACTION_BLOOM_UPSERT_SQL, nativeQuery = true)
     fun upsert(@Param("command") command: AttractionBloomUpsertCommand): Int
+
+    /** 주어진 출처 중 [before] 이전에 마지막으로 갱신된 태그를 삭제한다. */
+    @Modifying
+    @Query("DELETE FROM AttractionBloom ab WHERE ab.source IN :sources AND ab.updatedAt < :before")
+    fun deleteBySourceInAndUpdatedAtBefore(
+        @Param("sources") sources: Collection<TagSource>,
+        @Param("before") before: Instant,
+    ): Int
 }
 
 /**
