@@ -18,6 +18,8 @@ interface NoticeRepository : JpaRepository<Notice, Long> {
 
     fun findFirstByStatusOrderByIdAsc(status: NoticeStatus): Notice?
 
+    fun existsByStatus(status: NoticeStatus): Boolean
+
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("SELECT n FROM Notice n WHERE n.id = :id")
     fun findByIdForUpdate(@Param("id") id: Long): Notice?
