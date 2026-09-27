@@ -1,5 +1,6 @@
 package com.peakda.server.infrastructure.scheduler.seasonal
 
+import com.peakda.server.domain.attraction.application.AttractionEligibilityProperties
 import com.peakda.server.domain.attraction.repository.AttractionRepository
 import com.peakda.server.domain.seasonal.application.BloomTaggingService
 import com.peakda.server.infrastructure.scheduler.JobLogger
@@ -21,6 +22,7 @@ import java.time.ZoneId
 class AttractionBloomTaggingJob(
     private val taggingService: BloomTaggingService,
     private val attractionRepository: AttractionRepository,
+    private val eligibilityProperties: AttractionEligibilityProperties,
     private val props: SchedulerProperties,
     private val jobLogger: JobLogger,
 ) : ManualTriggerableJob {
@@ -41,7 +43,10 @@ class AttractionBloomTaggingJob(
         var processedAttractions = 0
         var keywordTags = 0
         while (true) {
-            val slice = attractionRepository.findByVisibleTrue(PageRequest.of(page, PAGE_SIZE))
+            val slice = attractionRepository.findByVisibleTrueAndContentTypeCodeIn(
+                eligibilityProperties.eligibleContentTypes,
+                PageRequest.of(page, PAGE_SIZE),
+            )
             if (slice.isEmpty) break
             keywordTags += taggingService.tagKeywords(slice.content)
             processedAttractions += slice.numberOfElements

@@ -239,6 +239,8 @@ external:
       device-token-cleanup: { cron: "0 30 3 * * *", enabled: true }
 
 peakda:
+  attraction:
+    eligible-content-types: ["12"]
   festival: { ending-soon-days: 7 }
   spot:
     favorite:
