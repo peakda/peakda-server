@@ -73,6 +73,25 @@ interface AttractionRepository : JpaRepository<Attraction, Long> {
         @Param("minLng") minLng: Double,
         @Param("maxLng") maxLng: Double,
     ): List<Attraction>
+
+    @Query(
+        """
+            SELECT a FROM Attraction a
+            WHERE a.visible = true
+              AND a.contentTypeCode IN :contentTypeCodes
+              AND a.latitude IS NOT NULL
+              AND a.longitude IS NOT NULL
+              AND a.latitude BETWEEN :minLat AND :maxLat
+              AND a.longitude BETWEEN :minLng AND :maxLng
+        """,
+    )
+    fun findVisibleInBoundingBoxByContentTypes(
+        @Param("contentTypeCodes") contentTypeCodes: Collection<String>,
+        @Param("minLat") minLat: Double,
+        @Param("maxLat") maxLat: Double,
+        @Param("minLng") minLng: Double,
+        @Param("maxLng") maxLng: Double,
+    ): List<Attraction>
 }
 
 data class AttractionUpsertCommand(
