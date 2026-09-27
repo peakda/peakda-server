@@ -53,6 +53,19 @@ interface AttractionRepository : JpaRepository<Attraction, Long> {
         pageable: Pageable,
     ): Slice<Attraction>
 
+    @Query(
+        """
+            SELECT a.id FROM Attraction a
+            WHERE a.id IN :ids
+              AND a.visible = true
+              AND a.contentTypeCode IN :contentTypeCodes
+        """,
+    )
+    fun findVisibleIdsByIdInAndContentTypes(
+        @Param("ids") ids: Collection<Long>,
+        @Param("contentTypeCodes") contentTypeCodes: Collection<String>,
+    ): List<Long>
+
     @Modifying
     @Query(value = ATTRACTION_UPSERT_SQL, nativeQuery = true)
     fun upsert(@Param("command") command: AttractionUpsertCommand): Int

@@ -160,8 +160,21 @@ class SearchServiceTest {
         assertThat(response.items.first().favoriteCount).isEqualTo(5L)
     }
 
-    private fun spot(id: Long, name: String): Spot {
-        val spot = Spot(type = SpotType.ATTRACTION, name = name, latitude = 37.5, longitude = 127.0)
+    @Test
+    fun `트렌딩은 숨김 처리된 스팟을 제외한다`() {
+        `when`(spotFavoriteRepository.findTrendingSpotIds(SpringPageRequest.of(0, 10))).thenReturn(
+            listOf(favoriteCount(8714L, 9L), favoriteCount(100L, 5L)),
+        )
+        `when`(spotRepository.findAllById(listOf(8714L, 100L)))
+            .thenReturn(listOf(spot(8714L, "COSMOS BIGBANG", visible = false), spot(100L, "남산타워")))
+
+        val response = service.trending()
+
+        assertThat(response.items).extracting<Long> { it.spotId }.containsExactly(100L)
+    }
+
+    private fun spot(id: Long, name: String, visible: Boolean = true): Spot {
+        val spot = Spot(type = SpotType.ATTRACTION, name = name, latitude = 37.5, longitude = 127.0, visible = visible)
         ReflectionTestUtils.setField(spot, "id", id)
         return spot
     }
