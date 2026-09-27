@@ -79,7 +79,7 @@ class KorServiceSyncJobTest {
             Mockito.mock(SpotRepository::class.java),
         ) {
         override fun materializeVisibleAttractions(): AttractionSpotMaterializationResult =
-            AttractionSpotMaterializationResult(processed = 0, skippedNoCoordinates = 0, pages = 0, hidden = 0)
+            AttractionSpotMaterializationResult(processed = 0, skippedNoCoordinates = 0, pages = 0, hidden = 0, shown = 0)
     }
 
     companion object {

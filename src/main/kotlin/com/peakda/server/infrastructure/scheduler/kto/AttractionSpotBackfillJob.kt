@@ -5,7 +5,7 @@ import com.peakda.server.infrastructure.scheduler.JobLogger
 import com.peakda.server.infrastructure.scheduler.ManualTriggerableJob
 import org.springframework.stereotype.Component
 
-/** 관리자 수동 트리거로 서비스 대상 명소의 명소형 Spot을 일괄 생성하고 대상이 아닌 명소형 Spot을 숨긴다. */
+/** 관리자 수동 트리거로 서비스 대상 명소의 명소형 Spot을 일괄 생성하고 명소형 Spot 공개 여부를 명소 상태에 맞춘다. */
 @Component
 class AttractionSpotBackfillJob(
     private val materializationService: AttractionSpotMaterializationService,
@@ -25,6 +25,7 @@ class AttractionSpotBackfillJob(
             "skippedNoCoordinates" to result.skippedNoCoordinates,
             "pages" to result.pages,
             "hidden" to result.hidden,
+            "shown" to result.shown,
         )
     }
 

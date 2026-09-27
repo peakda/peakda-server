@@ -5,4 +5,5 @@ data class AttractionSpotMaterializationResult(
     val skippedNoCoordinates: Int,
     val pages: Int,
     val hidden: Int,
+    val shown: Int,
 )

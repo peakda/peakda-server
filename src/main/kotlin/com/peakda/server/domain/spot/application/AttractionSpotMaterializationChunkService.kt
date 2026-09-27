@@ -3,8 +3,8 @@ package com.peakda.server.domain.spot.application
 import com.peakda.server.domain.attraction.application.AttractionEligibilityProperties
 import com.peakda.server.domain.attraction.entity.Attraction
 import com.peakda.server.domain.attraction.repository.AttractionRepository
-import com.peakda.server.domain.spot.entity.Spot
 import com.peakda.server.domain.spot.repository.SpotRepository
+import com.peakda.server.domain.spot.repository.SpotVisibilityRow
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 
@@ -32,12 +32,13 @@ class AttractionSpotMaterializationChunkService(
     }
 
     /**
-     * 명소형 Spot 중 연결된 명소가 비공개이거나 서비스 대상 유형이 아니면 숨기고 숨긴 수를 반환한다.
-     * 기록·찜이 달려 있을 수 있어 삭제하지 않는다.
+     * 명소형 Spot 의 공개 여부를 연결 명소 상태에 맞춘다. 명소가 공개이고 서비스 대상 유형이면 공개, 아니면 숨긴다.
+     * 명소형 Spot 의 visible 은 이 동기화만 바꾸므로(관리자 수동 숨김 없음) 명소가 다시 공개되거나 대상 유형이 넓어지면 복구된다.
+     * attractionId 가 없는 명소형 Spot 은 연결 명소가 없으므로 숨긴다. 기록·찜이 달려 있을 수 있어 삭제하지 않는다.
      */
     @Transactional
-    fun hideIneligible(spots: List<Spot>): Int {
-        val attractionIds = spots.mapNotNull(Spot::attractionId)
+    fun syncVisibility(rows: List<SpotVisibilityRow>): AttractionSpotVisibilitySyncResult {
+        val attractionIds = rows.mapNotNull(SpotVisibilityRow::attractionId)
         val eligibleIds = if (attractionIds.isEmpty()) {
             emptySet()
         } else {
@@ -46,7 +47,12 @@ class AttractionSpotMaterializationChunkService(
                 eligibilityProperties.eligibleContentTypes,
             ).toSet()
         }
-        val hideIds = spots.filter { it.attractionId !in eligibleIds }.mapNotNull(Spot::id)
-        return if (hideIds.isEmpty()) 0 else spotRepository.hideByIdIn(hideIds)
+        val (shouldShow, shouldHide) = rows.partition { it.attractionId in eligibleIds }
+        val hideIds = shouldHide.filter { it.visible }.map(SpotVisibilityRow::id)
+        val showIds = shouldShow.filterNot { it.visible }.map(SpotVisibilityRow::id)
+        return AttractionSpotVisibilitySyncResult(
+            hidden = if (hideIds.isEmpty()) 0 else spotRepository.updateVisibleByIdIn(hideIds, false),
+            shown = if (showIds.isEmpty()) 0 else spotRepository.updateVisibleByIdIn(showIds, true),
+        )
     }
 }
