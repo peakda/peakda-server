@@ -30,6 +30,9 @@ class NoticeFanoutService(
 ) {
     private val transactionTemplate = TransactionTemplate(transactionManager)
 
+    /** 발송 대기(DISPATCHING) 공지가 있는지. 폴링 잡이 할 일이 없을 때 실행 이력을 남기지 않도록 먼저 확인한다. */
+    fun hasPendingDispatch(): Boolean = noticeRepository.existsByStatus(NoticeStatus.DISPATCHING)
+
     fun dispatchPending(): Int {
         val notice = noticeRepository.findFirstByStatusOrderByIdAsc(NoticeStatus.DISPATCHING) ?: return 0
         val noticeId = requireNotNull(notice.id)
