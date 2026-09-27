@@ -16,9 +16,15 @@ class NoticeDispatchJob(
     override val jobName: String
         get() = JOB_NAME
 
+    /**
+     * 30초 폴링이라 발송할 공지가 없을 때까지 실행 이력을 남기면 `scheduler_job_runs` 가 처리 0건 행으로 뒤덮인다.
+     * 발송 대기 공지가 있을 때만 락·이력 경로로 들어간다. 수동 실행([runNow])은 항상 이력을 남긴다.
+     */
     @Scheduled(fixedDelayString = "\${external.scheduler.notification.notice-dispatch.fixed-delay}")
     fun run() {
-        jobLogger.runIfEnabled(JOB_NAME, props.enabled && props.notification.noticeDispatch.enabled) { execute() }
+        val enabled = props.enabled && props.notification.noticeDispatch.enabled
+        if (enabled && !service.hasPendingDispatch()) return
+        jobLogger.runIfEnabled(JOB_NAME, enabled) { execute() }
     }
 
     override fun runNow() {
