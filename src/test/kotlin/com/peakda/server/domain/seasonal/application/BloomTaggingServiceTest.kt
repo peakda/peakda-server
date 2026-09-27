@@ -53,8 +53,8 @@ class BloomTaggingServiceTest {
     }
 
     @Test
-    fun `제외어 한국화가 있으면 국화로 태깅하지 않는다`() {
-        val count = service.tagKeywords(listOf(attraction(1L, "한국화 미술관")))
+    fun `제외어 한국화·수국사가 있으면 해당 꽃으로 태깅하지 않는다`() {
+        val count = service.tagKeywords(listOf(attraction(1L, "한국화 미술관"), attraction(2L, "수국사")))
 
         assertThat(count).isZero()
         assertThat(upserts()).isEmpty()

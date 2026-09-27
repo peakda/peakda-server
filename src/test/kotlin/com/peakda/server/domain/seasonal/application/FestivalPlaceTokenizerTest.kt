@@ -40,8 +40,19 @@ class FestivalPlaceTokenizerTest {
             addresses = listOf("전남광주통합특별시 무안군 몽탄면 이산리 612"),
         )
 
-        assertThat(tokens).containsExactlyInAnyOrder("강진만", "춤추는")
+        assertThat(tokens).containsExactlyInAnyOrder("강진만")
         assertThat(villageTokens).containsExactlyInAnyOrder("식영정")
+    }
+
+    @Test
+    fun `하이픈으로 이어진 장소와 일반 시설명을 나눠 처리한다`() {
+        val tokens = FestivalPlaceTokenizer.tokenize(
+            venue = "경화역-여좌천 일원, 시민공원",
+            festivalName = "진해 벚꽃 마라톤",
+            addresses = listOf("경상남도 창원시 진해구 충장로 1"),
+        )
+
+        assertThat(tokens).containsExactlyInAnyOrder("경화역", "여좌천")
     }
 
     @Test

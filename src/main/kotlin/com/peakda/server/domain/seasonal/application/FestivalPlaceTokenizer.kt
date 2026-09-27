@@ -8,14 +8,20 @@ import com.peakda.server.domain.seasonal.entity.BloomCategory
  * 공공데이터 축제 좌표는 주최 기관 주소로 들어오는 경우가 있어, 축제 ↔ 명소 연결은 좌표가 아니라 장소명 일치로 판정한다.
  * - venue: 괄호·구분자로 나누고 `일원`·`시설지구` 같은 일반 접미사를 뗀다. 예: `팔공산 갓바위 시설지구 일원` → {팔공산, 갓바위}
  * - 축제명: 회차·연도·꽃 이름·`축제` 조각을 버린다. 지역명(`포천`, `하동`)은 주소에 들어 있으면 버린다.
+ *   venue 보다 잡음이 많아 3글자 이상만 쓰고, `춤추는` 같은 관형형 조각은 버린다.
  *   예: `2026년 제25회 팔공산 단풍축제` → {팔공산}
  * 토큰은 공백 제거·소문자로 정규화되며, [normalize] 한 명소 제목과 비교한다.
  */
 object FestivalPlaceTokenizer {
 
-    private val SEPARATORS = Regex("""[\s()\[\]{}~,·/&+]+""")
+    private val SEPARATORS = Regex("""[\s()\[\]{}<>「」『』~,，·・/&+\-:'"“”‘’]+""")
     private val GENERIC_SUFFIXES = listOf("시설지구", "특설무대", "행사장", "일원", "일대", "주변", "광장")
-    private val STOPWORDS = setOf("공원", "생태공원", "체육공원", "주차장", "시내", "전역", "관내", "야외", "특설")
+    private val STOPWORDS = setOf(
+        "공원", "생태공원", "체육공원", "시민공원", "호수공원", "한강공원", "근린공원", "수변공원",
+        "종합운동장", "운동장", "체육관", "문화회관", "주차장", "시내", "전역", "관내", "야외", "특설",
+        "마라톤", "걷기대회", "대회", "행사", "체험", "야행", "음악회", "콘서트",
+    )
+    private val ADNOMINAL = Regex("""^.+[는은]$""")
     private val ADMIN_UNIT = Regex("""^.{1,3}(시|군|구|읍|면|동|리)$""")
     private val ORDINAL = Regex("""^(제?\d.*)$""")
     private val FESTIVAL_WORDS = listOf("축제", "페스티벌", "한마당", "문화제", "큰잔치")
@@ -31,6 +37,8 @@ object FestivalPlaceTokenizer {
             .filterNot { piece -> FESTIVAL_WORDS.any { piece.contains(it) } }
             .filterNot { piece -> FLOWER_WORDS.any { piece.contains(it) } }
             .filterNot { normalizedAddress.contains(normalize(it)) }
+            .filterNot { ADNOMINAL.matches(it) }
+            .filter { normalize(it).length >= MIN_NAME_TOKEN_LENGTH }
         return (venueTokens + nameTokens)
             .map(::normalize)
             .filter(::isPlaceToken)
@@ -51,4 +59,5 @@ object FestivalPlaceTokenizer {
         token.length >= MIN_TOKEN_LENGTH && token !in STOPWORDS && !ADMIN_UNIT.matches(token)
 
     private const val MIN_TOKEN_LENGTH = 2
+    private const val MIN_NAME_TOKEN_LENGTH = 3
 }
