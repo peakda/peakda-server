@@ -8,4 +8,5 @@ enum class AdminAuditTargetType {
     FESTIVAL,
     NOTICE,
     SCHEDULER_JOB,
+    CONGESTION_LINK,
 }
