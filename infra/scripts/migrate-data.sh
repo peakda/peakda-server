@@ -11,6 +11,7 @@
 #   migrate-data.sh export --dir DIR [--s3 s3://bucket/prefix] [--skip-redis]
 #   migrate-data.sh import --dir DIR [--s3 s3://bucket/prefix] [--skip-redis] [--reset-target]
 #   migrate-data.sh verify --dir DIR [--s3 s3://bucket/prefix] [--side source|target]
+#   전체 절차: infra/scripts/data-migration.md
 #
 # 접속 정보는 명령행이 아니라 환경변수로 받는다. 비밀번호가 프로세스 목록에 남지 않게 하기 위함이다.
 #   SOURCE_PGHOST  SOURCE_PGUSER  SOURCE_PGPASSWORD
