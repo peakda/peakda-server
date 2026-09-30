@@ -5,6 +5,7 @@ import com.peakda.server.domain.seasonal.entity.BloomCategory
 import com.peakda.server.domain.seasonal.entity.TagSource
 import org.springframework.data.domain.Page
 import org.springframework.data.domain.Pageable
+import org.springframework.data.domain.Slice
 import org.springframework.data.jpa.repository.JpaRepository
 import org.springframework.data.jpa.repository.Modifying
 import org.springframework.data.jpa.repository.Query
@@ -36,6 +37,10 @@ interface AttractionBloomRepository : JpaRepository<AttractionBloom, Long> {
         @Param("category") category: BloomCategory,
         pageable: Pageable,
     ): Page<Long>
+
+    /** 개화 태그가 하나라도 있는 명소 id. 예보 구역 매핑처럼 계절 명소 전체를 훑는 배치가 페이지 단위로 읽는다. */
+    @Query("SELECT DISTINCT ab.attractionId FROM AttractionBloom ab ORDER BY ab.attractionId")
+    fun findDistinctAttractionIds(pageable: Pageable): Slice<Long>
 
     @Modifying
     @Query(value = ATTRACTION_BLOOM_UPSERT_SQL, nativeQuery = true)

@@ -1,5 +1,6 @@
 package com.peakda.server.infrastructure.scheduler.kma
 
+import com.peakda.server.domain.weather.application.AttractionForecastAreaMappingService
 import com.peakda.server.domain.weather.application.WeatherShortForecastSyncService
 import com.peakda.server.infrastructure.external.kma.vilagefcst.VilageFcstClient
 import com.peakda.server.infrastructure.scheduler.JobLogger
@@ -17,6 +18,7 @@ import java.time.LocalDateTime
 class VilageFcstSyncJob(
     private val client: VilageFcstClient,
     private val syncService: WeatherShortForecastSyncService,
+    private val forecastAreaService: AttractionForecastAreaMappingService,
     private val props: SchedulerProperties,
     private val jobLogger: JobLogger,
 ) : ManualTriggerableJob {
@@ -33,7 +35,7 @@ class VilageFcstSyncJob(
     }
 
     private fun execute(): Map<String, Any?> {
-        val grids = props.kma.vilageFcst.grids.ifEmpty { listOf(DEFAULT_GRID) }
+        val grids = collectionGrids()
         val base = latestVilageBase()
         val baseDate = base.format(YMD)
         val baseTime = base.format(HH00)
@@ -54,6 +56,20 @@ class VilageFcstSyncJob(
             "baseDate" to baseDate,
             "baseTime" to baseTime,
         )
+    }
+
+    /**
+     * 설정 격자(광역시 대표 지점 — 개화 GDD 계산용)에 계절 명소가 모인 격자를 더한다.
+     * 격자 하나가 하루 8회 호출이므로 명소 격자 수는 [SchedulerProperties.VilageFcstJobProps.maxAttractionGrids] 로 제한한다.
+     */
+    private fun collectionGrids(): List<SchedulerProperties.VilageFcstJobProps.Grid> {
+        val configured = props.kma.vilageFcst.grids.ifEmpty { listOf(DEFAULT_GRID) }
+        val known = configured.map { it.nx to it.ny }.toMutableSet()
+        val attractionGrids = forecastAreaService
+            .findCollectionGrids(props.kma.vilageFcst.maxAttractionGrids)
+            .filter { known.add(it.gridX to it.gridY) }
+            .map { SchedulerProperties.VilageFcstJobProps.Grid("attraction", it.gridX, it.gridY) }
+        return configured + attractionGrids
     }
 
     private fun latestVilageBase(): LocalDateTime {

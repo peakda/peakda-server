@@ -26,6 +26,8 @@ data class SchedulerProperties(
         val cron: String = "",
         val enabled: Boolean = true,
         val grids: List<Grid> = emptyList(),
+        /** [grids] 외에 계절 명소 격자를 최대 몇 개까지 더 수집할지. 격자당 하루 8회 호출한다. */
+        val maxAttractionGrids: Int = 300,
     ) {
         data class Grid(
             val name: String = "",
@@ -57,6 +59,7 @@ data class SchedulerProperties(
     data class KmaSchedulerProps(
         val vilageFcst: VilageFcstJobProps = VilageFcstJobProps(),
         val midFcst: JobProps = JobProps(),
+        val forecastAreaMapping: JobProps = JobProps(),
         val asosDaly: AsosDalyJobProps = AsosDalyJobProps(),
         val flowerObservation: JobProps = JobProps(),
     )

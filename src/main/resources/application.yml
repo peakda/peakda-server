@@ -221,7 +221,9 @@ external:
           - { name: "인천", nx: 55, ny: 124 }
           - { name: "광주", nx: 58, ny: 74 }
           - { name: "대전", nx: 67, ny: 100 }
+        max-attraction-grids: ${KMA_VILAGE_FCST_MAX_ATTRACTION_GRIDS:300}
       mid-fcst: { cron: "0 30 6,18 * * *", enabled: true }
+      forecast-area-mapping: { cron: "0 20 6 * * *", enabled: true }
       asos-daly:
         cron: "0 0 4 * * *"
         enabled: true

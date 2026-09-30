@@ -1,7 +1,11 @@
 package com.peakda.server.infrastructure.scheduler.kma
 
+import com.peakda.server.domain.weather.application.AttractionForecastAreaMappingService
 import com.peakda.server.domain.weather.application.WeatherShortForecastSyncService
+import com.peakda.server.domain.weather.repository.AttractionForecastAreaRepository
+import com.peakda.server.domain.weather.repository.ForecastGrid
 import com.peakda.server.domain.weather.repository.WeatherShortForecastRepository
+import com.peakda.server.infrastructure.external.kma.GridConverter
 import com.peakda.server.infrastructure.external.kma.vilagefcst.VilageFcstClient
 import com.peakda.server.infrastructure.external.kma.vilagefcst.response.VilageFcstItem
 import com.peakda.server.infrastructure.scheduler.SchedulerProperties
@@ -11,6 +15,8 @@ import com.peakda.server.infrastructure.scheduler.testJobLogger
 import com.peakda.server.infrastructure.scheduler.testObjectMapper
 import com.peakda.server.infrastructure.scheduler.testResilience
 import org.assertj.core.api.Assertions.assertThat
+import org.hamcrest.Matchers.allOf
+import org.hamcrest.Matchers.containsString
 import org.hamcrest.Matchers.startsWith
 import org.junit.jupiter.api.Test
 import org.mockito.Mockito
@@ -24,6 +30,7 @@ class VilageFcstSyncJobTest {
         VilageFcstClient(it, testObjectMapper, testErrorDecoder, testResilience)
     }
     private val syncService = RecordingShortFcstSync()
+    private val noAttractionGrids = StubForecastAreas(emptyList())
 
     @Test
     fun `run 시 grid 별로 getVilageFcst를 호출해 sync service에 페이지를 전달한다`() {
@@ -31,7 +38,7 @@ class VilageFcstSyncJobTest {
             requestTo(startsWith("https://example.test/vilage/getVilageFcst?numOfRows=1000&pageNo=1&base_date=")),
         ).andRespond(withSuccess(SUCCESS_JSON, MediaType.APPLICATION_JSON))
 
-        val job = VilageFcstSyncJob(fixture.client, syncService, enabled(true), testJobLogger())
+        val job = VilageFcstSyncJob(fixture.client, syncService, noAttractionGrids, enabled(true), testJobLogger())
         job.run()
 
         fixture.server.verify()
@@ -40,12 +47,27 @@ class VilageFcstSyncJobTest {
 
     @Test
     fun `enabled=false 이면 client와 sync service 모두 호출하지 않는다`() {
-        val job = VilageFcstSyncJob(fixture.client, syncService, enabled(false), testJobLogger())
+        val job = VilageFcstSyncJob(fixture.client, syncService, noAttractionGrids, enabled(false), testJobLogger())
 
         job.run()
 
         fixture.server.verify()
         assertThat(syncService.pages).isEmpty()
+    }
+
+    @Test
+    fun `설정 격자에 계절 명소 격자를 중복 없이 상한만큼 더해 수집한다`() {
+        fixture.server.expect(requestTo(gridUri(60, 127)))
+            .andRespond(withSuccess(SUCCESS_JSON, MediaType.APPLICATION_JSON))
+        fixture.server.expect(requestTo(gridUri(91, 106)))
+            .andRespond(withSuccess(SUCCESS_JSON, MediaType.APPLICATION_JSON))
+        val areas = StubForecastAreas(listOf(ForecastGrid(60, 127, 9), ForecastGrid(91, 106, 4), ForecastGrid(52, 38, 1)))
+
+        val job = VilageFcstSyncJob(fixture.client, syncService, areas, enabled(true, maxAttractionGrids = 2), testJobLogger())
+        job.run()
+
+        fixture.server.verify()
+        assertThat(areas.requestedLimit).isEqualTo(2)
     }
 
     @Test
@@ -69,13 +91,19 @@ class VilageFcstSyncJobTest {
         assertThat(base).isEqualTo(LocalDateTime.of(2026, 5, 11, 23, 0))
     }
 
-    private fun enabled(jobEnabled: Boolean) = SchedulerProperties(
+    private fun gridUri(nx: Int, ny: Int) = allOf(
+        startsWith("https://example.test/vilage/getVilageFcst?numOfRows=1000&pageNo=1&base_date="),
+        containsString("&nx=$nx&ny=$ny"),
+    )
+
+    private fun enabled(jobEnabled: Boolean, maxAttractionGrids: Int = 300) = SchedulerProperties(
         enabled = true,
         kma = SchedulerProperties.KmaSchedulerProps(
             vilageFcst = SchedulerProperties.VilageFcstJobProps(
                 cron = "* * * * * *",
                 enabled = jobEnabled,
                 grids = listOf(SchedulerProperties.VilageFcstJobProps.Grid("서울", 60, 127)),
+                maxAttractionGrids = maxAttractionGrids,
             ),
         ),
     )
@@ -85,6 +113,16 @@ class VilageFcstSyncJobTest {
         val pages = mutableListOf<List<VilageFcstItem>>()
         override fun upsertPage(items: List<VilageFcstItem>): Int {
             pages += items.toList(); return items.size
+        }
+    }
+
+    /** 상한을 적용해 앞에서부터 잘라 준다 — 실제 쿼리의 LIMIT 와 같다. */
+    private class StubForecastAreas(private val grids: List<ForecastGrid>) :
+        AttractionForecastAreaMappingService(Mockito.mock(AttractionForecastAreaRepository::class.java), GridConverter()) {
+        var requestedLimit: Int? = null
+        override fun findCollectionGrids(limit: Int): List<ForecastGrid> {
+            requestedLimit = limit
+            return grids.take(limit)
         }
     }
 
