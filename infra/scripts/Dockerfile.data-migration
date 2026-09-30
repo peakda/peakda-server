@@ -1,0 +1,23 @@
+# migrate-data.sh 실행 이미지. 계정·환경 간 PostgreSQL·Redis 이관에 쓴다.
+#
+# PostgreSQL 클라이언트는 원본 서버 이상, 대상 서버 이하여야 한다. PG_MAJOR 를 원본 서버의
+# 메이저 버전으로 빌드하면 둘 다 만족한다(대상은 원본과 같거나 새 버전이어야 한다).
+#
+#   docker build -f infra/scripts/Dockerfile.data-migration --build-arg PG_MAJOR=16 \
+#     -t peakda-data-migration infra/scripts
+ARG PG_MAJOR=16
+ARG REDIS_VERSION=8.2.1
+
+# redis-cli 는 TLS(ElastiCache 전송 암호화), PEXPIRETIME(7.0+), SET ... PXAT(6.2+) 를 지원해야 한다.
+# 공식 이미지의 redis-cli 를 그대로 가져온다.
+FROM public.ecr.aws/docker/library/redis:${REDIS_VERSION}-alpine AS redis
+
+FROM public.ecr.aws/docker/library/postgres:${PG_MAJOR}-alpine
+COPY --from=redis /usr/local/bin/redis-cli /usr/local/bin/redis-cli
+RUN apk add --no-cache aws-cli bash ca-certificates coreutils \
+    && redis-cli --version \
+    && pg_dump --version
+COPY migrate-data.sh /opt/migration/migrate-data.sh
+RUN chmod 0755 /opt/migration/migrate-data.sh
+WORKDIR /work
+ENTRYPOINT ["/opt/migration/migrate-data.sh"]
