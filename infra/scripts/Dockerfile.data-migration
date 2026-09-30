@@ -1,9 +1,10 @@
 # migrate-data.sh 실행 이미지. 계정·환경 간 PostgreSQL·Redis 이관에 쓴다.
 #
-# PostgreSQL 클라이언트는 원본 서버 이상, 대상 서버 이하여야 한다. PG_MAJOR 를 원본 서버의
+# PostgreSQL 클라이언트는 원본 서버 이상, 대상 서버 이하여야 한다. PG_MAJOR 를 대상 서버의
 # 메이저 버전으로 빌드하면 둘 다 만족한다(대상은 원본과 같거나 새 버전이어야 한다).
+# export 와 import 는 같은 이미지로 실행한다. 실행할 호스트의 아키텍처로 빌드한다.
 #
-#   docker build -f infra/scripts/Dockerfile.data-migration --build-arg PG_MAJOR=16 \
+#   docker build -f infra/scripts/Dockerfile.data-migration --build-arg PG_MAJOR=<대상 메이저> \
 #     -t peakda-data-migration infra/scripts
 ARG PG_MAJOR=16
 ARG REDIS_VERSION=8.2.1
@@ -14,7 +15,10 @@ FROM public.ecr.aws/docker/library/redis:${REDIS_VERSION}-alpine AS redis
 
 FROM public.ecr.aws/docker/library/postgres:${PG_MAJOR}-alpine
 COPY --from=redis /usr/local/bin/redis-cli /usr/local/bin/redis-cli
+# RDS 서버 인증서 검증용 CA 번들. *_PGSSLMODE=verify-full 과 *_PGSSLROOTCERT 로 쓴다.
+ADD https://truststore.pki.rds.amazonaws.com/global/global-bundle.pem /opt/migration/rds-global-bundle.pem
 RUN apk add --no-cache aws-cli bash ca-certificates coreutils \
+    && chmod 0644 /opt/migration/rds-global-bundle.pem \
     && redis-cli --version \
     && pg_dump --version
 COPY migrate-data.sh /opt/migration/migrate-data.sh
