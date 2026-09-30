@@ -61,6 +61,16 @@ class BloomTaggingServiceTest {
     }
 
     @Test
+    fun `꽃 이름이 우연히 들어간 화석지·다리 이름은 태깅하지 않는다`() {
+        val count = service.tagKeywords(
+            listOf(attraction(1L, "여수 낭도리 공룡발자국화석 산지"), attraction(2L, "동백대교")),
+        )
+
+        assertThat(count).isZero()
+        assertThat(upserts()).isEmpty()
+    }
+
+    @Test
     fun `축제 좌표 근처라도 장소명이 다르면 태깅하지 않고 멀리 있어도 장소명이 같으면 태깅한다`() {
         // 축제 좌표는 동구청(도심), 실제 행사장은 약 13km 떨어진 팔공산 갓바위.
         festivals = listOf(

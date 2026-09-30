@@ -12,7 +12,8 @@ import java.time.MonthDay
  * - [typicalPeakRange] 는 평년 절정 기간의 대략값으로 Calendar 추정기의 prior 이며 운영 튜닝 대상이다.
  * - [keywordHints] / [festivalHints] 는 자동 태깅(키워드·축제) 매칭 토큰이다. TourAPI 국문 제목 기준이라 한글만 둔다
  *   (영문 제목은 대부분 전시·공연명이라 `cosmos` 같은 영문 힌트가 오탐을 만든다).
- * - [keywordExclusions] 는 힌트를 포함하지만 해당 꽃이 아닌 단어(예: `한국화` ⊃ `국화`, 사찰 `수국사` ⊃ `수국`)다. 제목에 있으면 키워드 매칭하지 않는다.
+ * - [keywordExclusions] 는 힌트를 포함하지만 해당 꽃이 아닌 단어(예: `한국화` ⊃ `국화`, `발자국화석` ⊃ `국화`, 사찰 `수국사` ⊃ `수국`)다.
+ *   제목에 있으면 키워드 매칭하지 않는다.
  * - GDD 임계치·기준온도 등 물리 상수는 enum 이 아닌 application.yml(`peakda.timing.gdd`)에서 관리한다.
  */
 enum class BloomCategory(
@@ -100,7 +101,7 @@ enum class BloomCategory(
         typicalPeakRange = MonthDayRange(MonthDay.of(10, 10), MonthDay.of(11, 10)),
         keywordHints = listOf("국화"),
         festivalHints = listOf("국화"),
-        keywordExclusions = listOf("한국화"),
+        keywordExclusions = listOf("한국화", "자국화석"),
     ),
     PINK_MUHLY(
         displayName = "핑크뮬리",
@@ -129,6 +130,7 @@ enum class BloomCategory(
         typicalPeakRange = MonthDayRange(MonthDay.of(12, 1), MonthDay.of(3, 15)),
         keywordHints = listOf("동백"),
         festivalHints = listOf("동백"),
+        keywordExclusions = listOf("동백대교"),
     ),
     ;
 
