@@ -32,14 +32,7 @@ inline fun <reified T : Any> RestClient.getDataGoKrBody(
         }
         .retrieve()
         .onStatus({ it.value() == 429 }) { _, response ->
-            val retryAfterHeader = response.headers.getFirst("Retry-After")
-            val retryAfter = parseRetryAfter(retryAfterHeader)
-            val detail = if (retryAfterHeader != null) " Retry-After=$retryAfterHeader" else ""
-            throw ExternalApiException(
-                ExternalApiErrorCode.EXTERNAL_API_UNAVAILABLE,
-                "외부 API rate limit (HTTP 429)$detail",
-                retryAfter = retryAfter,
-            )
+            throw tooManyRequestsException(response.headers.getFirst("Retry-After"))
         }
         .body<String>()
         .orEmpty()
@@ -54,6 +47,30 @@ inline fun <reified T : Any> RestClient.getDataGoKrBody(
         DataGoKrEnvelope(objectMapper.readValue<DataGoKrResponse<T>>(rawBody))
     }
     return errorDecoder.decode(envelope)
+}
+
+/**
+ * HTTP 429 분류.
+ *
+ * - Retry-After 가 있으면 초 단위 속도 제한으로 보고 transient(UNAVAILABLE)로 재시도한다.
+ * - Retry-After 가 없으면 data.go.kr 게이트웨이의 일일 호출 한도 초과로 본다. 같은 날 재시도해도
+ *   계속 429 이고 남은 한도만 태우므로 QUOTA_EXCEEDED(permanent)로 즉시 전파한다.
+ *   초 단위 폭주는 provider rate limiter(token bucket)가 먼저 막는다.
+ */
+@PublishedApi
+internal fun tooManyRequestsException(retryAfterHeader: String?): ExternalApiException {
+    val retryAfter = parseRetryAfter(retryAfterHeader)
+    if (retryAfter == null) {
+        return ExternalApiException(
+            ExternalApiErrorCode.EXTERNAL_API_QUOTA_EXCEEDED,
+            "외부 API 호출 한도 초과 (HTTP 429)",
+        )
+    }
+    return ExternalApiException(
+        ExternalApiErrorCode.EXTERNAL_API_UNAVAILABLE,
+        "외부 API rate limit (HTTP 429) Retry-After=$retryAfterHeader",
+        retryAfter = retryAfter,
+    )
 }
 
 @PublishedApi

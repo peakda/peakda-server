@@ -57,7 +57,7 @@ class DataGoKrRestClientSupportTest {
     }
 
     @Test
-    fun `HTTP 429 응답은 transient ExternalApiException 으로 매핑된다`() {
+    fun `Retry-After 없는 HTTP 429 는 일일 한도 초과(QUOTA_EXCEEDED)로 매핑되어 재시도되지 않는다`() {
         val builder = RestClient.builder().baseUrl("https://example.test")
         val server = MockRestServiceServer.bindTo(builder).build()
         val client = builder.build()
@@ -68,7 +68,7 @@ class DataGoKrRestClientSupportTest {
         assertThatThrownBy {
             client.getDataGoKrBody<TestItem>(objectMapper, errorDecoder, "/probe")
         }.isInstanceOfSatisfying(ExternalApiException::class.java) {
-            assertThat(it.errorCode).isEqualTo(ErrorCode.EXTERNAL_API_UNAVAILABLE)
+            assertThat(it.errorCode).isEqualTo(ErrorCode.EXTERNAL_API_QUOTA_EXCEEDED)
             assertThat(it.message).contains("429")
             assertThat(it.retryAfter).isNull()
         }
@@ -87,6 +87,7 @@ class DataGoKrRestClientSupportTest {
         assertThatThrownBy {
             client.getDataGoKrBody<TestItem>(objectMapper, errorDecoder, "/probe")
         }.isInstanceOfSatisfying(ExternalApiException::class.java) {
+            assertThat(it.errorCode).isEqualTo(ErrorCode.EXTERNAL_API_UNAVAILABLE)
             assertThat(it.message).contains("Retry-After=30")
             assertThat(it.retryAfter).isEqualTo(Duration.ofSeconds(30))
         }
