@@ -47,7 +47,10 @@ data class BloomMapResponse(
         @field:Schema(description = "경도", example = "126.9882")
         val longitude: Double?,
 
-        @field:Schema(description = "이 핀의 꽃 슬롯들")
+        @field:Schema(
+            description = "이 핀의 꽃 슬롯들. 공개 기록이 있는 동네형(LOCAL)은 최근 관측 상태가 없으면 빈 배열이다. " +
+                "꽃 또는 상태 필터를 지정하면 빈 배열인 핀은 제외된다.",
+        )
         val blooms: List<BloomSlot>,
     )
 

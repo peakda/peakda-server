@@ -26,7 +26,8 @@ import java.time.LocalDate
  *
  * - 명소형 핀: 좌표 보유 visible 서비스 대상 유형 명소를 [SeasonalBloomEstimate] 최신 산출일 기준으로 상속한다.
  *   이미 materialize 된 Spot 행이 있으면 spotId 를 채운다.
- * - 동네형 핀: 사용자 생성 LOCAL Spot 을 [LocalSpotBloomResolver] 의 최근 관측 신호로 산출한다 (결정 D 변환).
+ * - 동네형 핀: 공개 기록이 있는 LOCAL Spot 을 반환하고 [LocalSpotBloomResolver] 의 최근 관측 신호로 상태를 채운다.
+ *   유효한 신호가 없으면 빈 꽃 슬롯으로 반환하며, 꽃·상태 필터가 있으면 일치하는 슬롯이 있는 핀만 반환한다.
  * - 방문예정일 [date] 가 주어지면 명소형 슬롯을 절정 구간 기준으로 재계산한다 (결정 C MVP 산식).
  *   동네형은 관측값이라 미래 투영이 불가하므로 최근 관측 상태를 유지한다.
  *
@@ -147,15 +148,18 @@ class SpotBloomMapService(
             .findBySpotIdInAndStatus(spots.mapNotNull { it.id }, SpotRecordStatus.PUBLISHED)
         if (records.isEmpty()) return emptyList()
 
+        val spotIdsWithRecords = records.map { it.spotId }.toSet()
         val signalsBySpot = localSpotBloomResolver.resolve(records)
+        val hasBloomFilter = !categories.isNullOrEmpty() || status != null
 
         return spots.mapNotNull { spot ->
             val spotId = spot.id ?: return@mapNotNull null
+            if (spotId !in spotIdsWithRecords) return@mapNotNull null
             val slots = signalsBySpot[spotId].orEmpty()
                 .filter { categories.isNullOrEmpty() || it.category in categories }
                 .filter { status == null || it.status == status }
                 .map { BloomSlot(it.category, it.category.displayName, it.status, LOCAL_RECORD_CONFIDENCE) }
-            if (slots.isEmpty()) return@mapNotNull null
+            if (hasBloomFilter && slots.isEmpty()) return@mapNotNull null
             spot.toPin(slots)
         }
     }
