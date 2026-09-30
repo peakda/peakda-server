@@ -49,6 +49,7 @@ data class SchedulerProperties(
         val korService: JobProps = JobProps(),
         val durunubi: JobProps = JobProps(),
         val tatsCnctr: JobProps = JobProps(),
+        val congestionLink: JobProps = JobProps(),
         val dataLab: JobProps = JobProps(),
         val photo: JobProps = JobProps(),
     )

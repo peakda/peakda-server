@@ -70,6 +70,34 @@ interface AttractionRepository : JpaRepository<Attraction, Long> {
         @Param("contentTypeCodes") contentTypeCodes: Collection<String>,
     ): List<Long>
 
+    @Query(
+        """
+            SELECT new com.peakda.server.domain.attraction.repository.AttractionNameCandidate(a.id, a.title)
+            FROM Attraction a
+            WHERE a.visible = true
+              AND a.legalDongSigunguCode = :legalDongSigunguCode
+              AND a.contentTypeCode IN :contentTypeCodes
+        """,
+    )
+    fun findNameCandidatesBySigungu(
+        @Param("legalDongSigunguCode") legalDongSigunguCode: String,
+        @Param("contentTypeCodes") contentTypeCodes: Collection<String>,
+    ): List<AttractionNameCandidate>
+
+    @Query(
+        """
+            SELECT new com.peakda.server.domain.attraction.repository.AttractionNameCandidate(a.id, a.title)
+            FROM Attraction a
+            WHERE a.visible = true
+              AND a.legalDongAreaCode IN :legalDongAreaCodes
+              AND a.contentTypeCode IN :contentTypeCodes
+        """,
+    )
+    fun findNameCandidatesByAreas(
+        @Param("legalDongAreaCodes") legalDongAreaCodes: Collection<String>,
+        @Param("contentTypeCodes") contentTypeCodes: Collection<String>,
+    ): List<AttractionNameCandidate>
+
     @Modifying
     @Query(value = ATTRACTION_UPSERT_SQL, nativeQuery = true)
     fun upsert(@Param("command") command: AttractionUpsertCommand): Int
