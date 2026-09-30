@@ -146,6 +146,141 @@ class SpotBloomMapServiceTest {
     }
 
     @Test
+    fun `오래된 공개 기록만 있는 동네 스팟도 상태 없는 핀으로 반환한다`() {
+        stubNoAttractions()
+        val old = record(1L, SPOT_ID, LocalDate.of(2023, 4, 1), BloomStage.PEAK)
+        stubLocalRecords(listOf(localSpot(SPOT_ID, "오래된 벚꽃길")), listOf(old))
+        stubRecordPlant(1L, BloomCategory.CHERRY)
+
+        val response = service.map(MIN_LAT, MAX_LAT, MIN_LNG, MAX_LNG, category = null, date = null)
+
+        assertThat(response.count).isEqualTo(1)
+        val pin = response.pins.single()
+        assertThat(pin.spotId).isEqualTo(SPOT_ID)
+        assertThat(pin.type).isEqualTo(SpotType.LOCAL)
+        assertThat(pin.attractionId).isNull()
+        assertThat(pin.name).isEqualTo("오래된 벚꽃길")
+        assertThat(pin.latitude).isEqualTo(37.56)
+        assertThat(pin.longitude).isEqualTo(126.99)
+        assertThat(pin.blooms).isEmpty()
+        assertThat(response.attractions).isEmpty()
+    }
+
+    @Test
+    fun `꽃 카테고리가 없는 식물의 공개 기록도 상태 없는 핀으로 반환한다`() {
+        stubNoAttractions()
+        val recent = record(1L, SPOT_ID, LocalDate.of(2026, 4, 1), BloomStage.PEAK)
+        stubLocalRecords(listOf(localSpot(SPOT_ID, "장미길")), listOf(recent))
+        stubRecordPlant(1L, category = null)
+
+        val response = service.map(MIN_LAT, MAX_LAT, MIN_LNG, MAX_LNG, category = null, date = null)
+
+        assertThat(response.count).isEqualTo(1)
+        assertThat(response.pins.single().blooms).isEmpty()
+    }
+
+    @Test
+    fun `공개 기록이 없는 동네 스팟은 다른 스팟에 공개 기록이 있어도 제외한다`() {
+        stubNoAttractions()
+        val published = record(1L, SPOT_ID, LocalDate.of(2026, 4, 1), stage = null)
+        stubLocalRecords(
+            listOf(localSpot(SPOT_ID, "공개 기록 있음"), localSpot(SPOT_ID + 1, "공개 기록 없음")),
+            listOf(published),
+        )
+
+        val response = service.map(MIN_LAT, MAX_LAT, MIN_LNG, MAX_LNG, category = null, date = null)
+
+        assertThat(response.count).isEqualTo(1)
+        assertThat(response.pins.single().spotId).isEqualTo(SPOT_ID)
+        assertThat(response.pins.single().blooms).isEmpty()
+    }
+
+    @Test
+    fun `동네 스팟들의 공개 기록이 전혀 없으면 핀을 반환하지 않는다`() {
+        stubNoAttractions()
+        stubLocalRecords(listOf(localSpot(SPOT_ID, "공개 기록 없음")), emptyList())
+
+        val response = service.map(MIN_LAT, MAX_LAT, MIN_LNG, MAX_LNG, category = null, date = null)
+
+        assertThat(response.count).isZero()
+        assertThat(response.pins).isEmpty()
+    }
+
+    @Test
+    fun `상태 없는 핀은 꽃 또는 상태 필터가 있으면 제외하고 빈 꽃 필터면 반환한다`() {
+        stubNoAttractions()
+        val old = record(1L, SPOT_ID, LocalDate.of(2023, 4, 1), BloomStage.PEAK)
+        stubLocalRecords(listOf(localSpot(SPOT_ID, "오래된 벚꽃길")), listOf(old))
+        stubRecordPlant(1L, BloomCategory.CHERRY)
+
+        val categoryFiltered = service.map(
+            MIN_LAT, MAX_LAT, MIN_LNG, MAX_LNG, category = BloomCategory.CHERRY, date = null,
+        )
+        val statusFiltered = service.map(
+            MIN_LAT, MAX_LAT, MIN_LNG, MAX_LNG,
+            categories = null, status = BloomStatus.PEAK, region = null, date = null,
+        )
+        val combinedFiltered = service.map(
+            MIN_LAT, MAX_LAT, MIN_LNG, MAX_LNG,
+            categories = listOf(BloomCategory.CHERRY, BloomCategory.COSMOS),
+            status = BloomStatus.PEAK, region = null, date = null,
+        )
+        val unfiltered = service.map(
+            MIN_LAT, MAX_LAT, MIN_LNG, MAX_LNG,
+            categories = emptyList(), status = null, region = null, date = null,
+        )
+
+        listOf(categoryFiltered, statusFiltered, combinedFiltered).forEach { response ->
+            assertThat(response.count).isZero()
+            assertThat(response.pins).isEmpty()
+        }
+        assertThat(unfiltered.count).isEqualTo(1)
+        assertThat(unfiltered.pins.single().blooms).isEmpty()
+    }
+
+    @Test
+    fun `유효한 상태가 있는 동네 핀도 꽃 또는 상태 필터에 일치하지 않으면 제외한다`() {
+        stubNoAttractions()
+        val recent = record(1L, SPOT_ID, LocalDate.of(2026, 4, 1), BloomStage.PEAK)
+        stubLocalRecords(listOf(localSpot(SPOT_ID, "벚꽃길")), listOf(recent))
+        stubRecordPlant(1L, BloomCategory.CHERRY)
+
+        val categoryFiltered = service.map(
+            MIN_LAT, MAX_LAT, MIN_LNG, MAX_LNG, category = BloomCategory.COSMOS, date = null,
+        )
+        val statusFiltered = service.map(
+            MIN_LAT, MAX_LAT, MIN_LNG, MAX_LNG,
+            categories = null, status = BloomStatus.ENDED, region = null, date = null,
+        )
+
+        listOf(categoryFiltered, statusFiltered).forEach { response ->
+            assertThat(response.count).isZero()
+            assertThat(response.pins).isEmpty()
+        }
+    }
+
+    @Test
+    fun `권역 필터만 지정하면 해당 권역의 상태 없는 동네 핀도 반환한다`() {
+        stubNoAttractions()
+        val capital = localSpot(SPOT_ID, "서울 장미길").also { it.address = "서울특별시 중구" }
+        val other = localSpot(SPOT_ID + 1, "부산 장미길").also { it.address = "부산광역시 중구" }
+        val unknown = localSpot(SPOT_ID + 2, "주소 불명")
+        `when`(spotRepository.findVisibleInBoundingBox(SpotType.LOCAL, MIN_LAT, MAX_LAT, MIN_LNG, MAX_LNG))
+            .thenReturn(listOf(capital, other, unknown))
+        `when`(spotRecordRepository.findBySpotIdInAndStatus(listOf(SPOT_ID), SpotRecordStatus.PUBLISHED))
+            .thenReturn(listOf(record(1L, SPOT_ID, LocalDate.of(2026, 4, 1), stage = null)))
+
+        val response = service.map(
+            MIN_LAT, MAX_LAT, MIN_LNG, MAX_LNG,
+            categories = null, status = null, region = Region.CAPITAL, date = null,
+        )
+
+        assertThat(response.count).isEqualTo(1)
+        assertThat(response.pins.single().spotId).isEqualTo(SPOT_ID)
+        assertThat(response.pins.single().blooms).isEmpty()
+    }
+
+    @Test
     fun `방문예정일이 주어지면 명소형 상태를 절정 구간 기준으로 재계산한다`() {
         stubAttractions(attraction(ATTRACTION_ID, "여좌천"))
         // 저장 상태는 PREPARING 이지만 방문예정일이 절정 구간 안이면 PEAK 로 재계산된다.
@@ -308,6 +443,19 @@ class SpotBloomMapServiceTest {
 
     // --- fixtures ---
 
+    private fun stubLocalRecords(spots: List<Spot>, records: List<SpotRecord>) {
+        `when`(spotRepository.findVisibleInBoundingBox(SpotType.LOCAL, MIN_LAT, MAX_LAT, MIN_LNG, MAX_LNG))
+            .thenReturn(spots)
+        `when`(spotRecordRepository.findBySpotIdInAndStatus(spots.mapNotNull { it.id }, SpotRecordStatus.PUBLISHED))
+            .thenReturn(records)
+    }
+
+    private fun stubRecordPlant(recordId: Long, category: BloomCategory?) {
+        `when`(spotRecordPlantRepository.findByIdSpotRecordIdIn(listOf(recordId)))
+            .thenReturn(listOf(SpotRecordPlant(SpotRecordPlantId(recordId, 10L))))
+        `when`(plantRepository.findAllById(setOf(10L))).thenReturn(listOf(plant(10L, category)))
+    }
+
     private fun stubAttractions(vararg attractions: Attraction) {
         `when`(bloomBaseDateResolver.currentBaseDate()).thenReturn(baseDate)
         `when`(attractionRepository.findVisibleInBoundingBoxByContentTypes(setOf("12"), MIN_LAT, MAX_LAT, MIN_LNG, MAX_LNG))
@@ -378,7 +526,7 @@ class SpotBloomMapServiceTest {
         peakEndDate = peakEnd,
     )
 
-    private fun record(id: Long, spotId: Long, visitedDate: LocalDate, stage: BloomStage): SpotRecord {
+    private fun record(id: Long, spotId: Long, visitedDate: LocalDate, stage: BloomStage?): SpotRecord {
         val record = SpotRecord(
             spotId = spotId,
             userId = 7L,
@@ -390,7 +538,7 @@ class SpotBloomMapServiceTest {
         return record
     }
 
-    private fun plant(id: Long, category: BloomCategory): Plant {
+    private fun plant(id: Long, category: BloomCategory?): Plant {
         val plant = Plant(name = "p-$id", status = PlantStatus.ACTIVE, bloomCategory = category)
         ReflectionTestUtils.setField(plant, "id", id)
         return plant
