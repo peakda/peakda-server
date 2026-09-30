@@ -43,6 +43,7 @@ class SpotDetailServiceTest {
     private val spotRecordRepository = mock(SpotRecordRepository::class.java)
     private val spotFavoriteRepository = mock(SpotFavoriteRepository::class.java)
     private val assembler = mock(SpotRecordResponseAssembler::class.java)
+    private val visitTimingService = mock(com.peakda.server.domain.visittiming.application.VisitTimingService::class.java)
 
     private val service = SpotDetailService(
         spotRepository,
@@ -52,6 +53,7 @@ class SpotDetailServiceTest {
         spotRecordRepository,
         spotFavoriteRepository,
         assembler,
+        visitTimingService,
     )
 
     private val baseDate = LocalDate.of(2026, 3, 30)
