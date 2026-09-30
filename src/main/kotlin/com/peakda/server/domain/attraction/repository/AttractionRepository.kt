@@ -12,13 +12,15 @@ import org.springframework.data.repository.query.Param
 private const val ATTRACTION_UPSERT_SQL = """
     INSERT INTO attractions (
         tour_api_content_id, content_type_code, title, address_main, address_detail,
-        area_code, sigungu_code, longitude, latitude, primary_image_url, thumbnail_image_url,
+        area_code, sigungu_code, legal_dong_area_code, legal_dong_sigungu_code,
+        longitude, latitude, primary_image_url, thumbnail_image_url,
         category_major, category_medium, category_minor, external_created_at, external_modified_at,
         visible, created_at, updated_at
     ) VALUES (
         :#{#command.tourApiContentId}, :#{#command.contentTypeCode}, :#{#command.title},
         :#{#command.addressMain}, :#{#command.addressDetail}, :#{#command.areaCode},
-        :#{#command.sigunguCode}, :#{#command.longitude}, :#{#command.latitude},
+        :#{#command.sigunguCode}, :#{#command.legalDongAreaCode}, :#{#command.legalDongSigunguCode},
+        :#{#command.longitude}, :#{#command.latitude},
         :#{#command.primaryImageUrl}, :#{#command.thumbnailImageUrl}, :#{#command.categoryMajor},
         :#{#command.categoryMedium}, :#{#command.categoryMinor}, :#{#command.externalCreatedAt},
         :#{#command.externalModifiedAt}, :#{#command.visible}, now(), now()
@@ -30,6 +32,8 @@ private const val ATTRACTION_UPSERT_SQL = """
         address_detail = COALESCE(EXCLUDED.address_detail, attractions.address_detail),
         area_code = COALESCE(EXCLUDED.area_code, attractions.area_code),
         sigungu_code = COALESCE(EXCLUDED.sigungu_code, attractions.sigungu_code),
+        legal_dong_area_code = COALESCE(EXCLUDED.legal_dong_area_code, attractions.legal_dong_area_code),
+        legal_dong_sigungu_code = COALESCE(EXCLUDED.legal_dong_sigungu_code, attractions.legal_dong_sigungu_code),
         longitude = COALESCE(EXCLUDED.longitude, attractions.longitude),
         latitude = COALESCE(EXCLUDED.latitude, attractions.latitude),
         primary_image_url = COALESCE(EXCLUDED.primary_image_url, attractions.primary_image_url),
@@ -98,6 +102,8 @@ data class AttractionUpsertCommand(
     val addressDetail: String?,
     val areaCode: String?,
     val sigunguCode: String?,
+    val legalDongAreaCode: String?,
+    val legalDongSigunguCode: String?,
     val longitude: Double?,
     val latitude: Double?,
     val primaryImageUrl: String?,
