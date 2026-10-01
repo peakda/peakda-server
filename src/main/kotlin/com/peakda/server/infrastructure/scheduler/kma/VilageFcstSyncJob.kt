@@ -50,9 +50,11 @@ class VilageFcstSyncJob(
             )
             processed += result.processed
         }
+        val purged = syncService.deleteBefore(base.toLocalDate().minusDays(RETENTION_DAYS).format(YMD))
         return mapOf(
             JobLogger.KEY_PROCESSED to processed,
             "grids" to grids.size,
+            "purged" to purged,
             "baseDate" to baseDate,
             "baseTime" to baseTime,
         )
@@ -80,6 +82,9 @@ class VilageFcstSyncJob(
         const val JOB_NAME = "vilageFcstSync"
         private const val PAGE_SIZE = 1000
         private const val MAX_PAGES = 20
+
+        /** 기준일 며칠 전까지의 예보를 남길지. 지난 날짜 예보는 조회 경로가 읽지 않는다. */
+        private const val RETENTION_DAYS = 1L
         private val DEFAULT_GRID = SchedulerProperties.VilageFcstJobProps.Grid("서울", 60, 127)
         private val BASE_HOURS = listOf(2, 5, 8, 11, 14, 17, 20, 23)
 

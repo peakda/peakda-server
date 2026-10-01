@@ -27,7 +27,7 @@ data class SchedulerProperties(
         val enabled: Boolean = true,
         val grids: List<Grid> = emptyList(),
         /** [grids] 외에 계절 명소 격자를 최대 몇 개까지 더 수집할지. 격자당 하루 8회 호출한다. */
-        val maxAttractionGrids: Int = 300,
+        val maxAttractionGrids: Int = 100,
     ) {
         data class Grid(
             val name: String = "",

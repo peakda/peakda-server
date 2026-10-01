@@ -126,7 +126,9 @@ interface WeatherMidForecastRepository : JpaRepository<WeatherMidForecast, Long>
     fun upsertTemperature(@Param("command") command: WeatherMidTemperatureForecastUpsertCommand): Int
 }
 
-interface WeatherShortForecastRepository : JpaRepository<WeatherShortForecast, Long> {
+interface WeatherShortForecastRepository :
+    JpaRepository<WeatherShortForecast, Long>,
+    WeatherShortForecastBatchRepository {
     fun findByGridXAndGridYAndForecastDateAndForecastTimeAndForecastCategory(
         gridX: Int,
         gridY: Int,
@@ -146,6 +148,11 @@ interface WeatherShortForecastRepository : JpaRepository<WeatherShortForecast, L
     @Modifying
     @Query(value = WEATHER_SHORT_FORECAST_UPSERT_SQL, nativeQuery = true)
     fun upsert(@Param("command") command: WeatherShortForecastUpsertCommand): Int
+
+    /** 지난 예보 정리. 예보는 다음 발표로 덮어써지므로 지난 날짜 행은 다시 읽히지 않는다. */
+    @Modifying
+    @Query("DELETE FROM WeatherShortForecast w WHERE w.forecastDate < :forecastDate")
+    fun deleteByForecastDateBefore(@Param("forecastDate") forecastDate: String): Int
 }
 
 data class WeatherShortForecastUpsertCommand(
