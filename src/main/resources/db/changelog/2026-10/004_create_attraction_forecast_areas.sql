@@ -1,6 +1,6 @@
 --liquibase formatted sql
 
---changeset peakda:20260930-006-create-attraction-forecast-areas
+--changeset peakda:20261001-004-create-attraction-forecast-areas
 CREATE TABLE attraction_forecast_areas (
     id               BIGSERIAL   PRIMARY KEY,
     attraction_id    BIGINT      NOT NULL,

@@ -1,6 +1,6 @@
 --liquibase formatted sql
 
---changeset peakda:20260930-004-add-attraction-legal-dong-codes
+--changeset peakda:20261001-002-add-attraction-legal-dong-codes
 ALTER TABLE attractions ADD COLUMN legal_dong_area_code TEXT;
 ALTER TABLE attractions ADD COLUMN legal_dong_sigungu_code TEXT;
 CREATE INDEX idx_attractions_legal_dong_sigungu_code ON attractions (legal_dong_sigungu_code);

@@ -1,6 +1,6 @@
 --liquibase formatted sql
 
---changeset peakda:20260930-005-create-congestion-attraction-links
+--changeset peakda:20261001-003-create-congestion-attraction-links
 CREATE TABLE congestion_attraction_links (
     id                        BIGSERIAL   PRIMARY KEY,
     area_code                 TEXT        NOT NULL,
