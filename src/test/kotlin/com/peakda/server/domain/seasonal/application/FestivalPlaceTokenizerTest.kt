@@ -56,6 +56,34 @@ class FestivalPlaceTokenizerTest {
     }
 
     @Test
+    fun `venue 의 시군구 이름과 시도 약칭은 지역 전체와 겹치므로 버린다`() {
+        val tokens = FestivalPlaceTokenizer.tokenize(
+            venue = "광양 매화마을 일원",
+            festivalName = "제25회 광양 매화축제",
+            addresses = listOf("전라남도 광양시 다압면 지막1길 55"),
+        )
+        val provinceTokens = FestivalPlaceTokenizer.tokenize(
+            venue = "전남 강진 남미륵사",
+            festivalName = "강진수국길축제",
+            addresses = listOf("전남광주통합특별시 강진군 군동면 풍동1길 24-11"),
+        )
+
+        assertThat(tokens).containsExactlyInAnyOrder("매화마을")
+        assertThat(provinceTokens).containsExactlyInAnyOrder("남미륵사")
+    }
+
+    @Test
+    fun `지역명으로 시작하는 고유 장소명은 남기고 공원 등급명은 버린다`() {
+        val tokens = FestivalPlaceTokenizer.tokenize(
+            venue = "순창 강천산 군립공원",
+            festivalName = "순창 강천산 단풍축제",
+            addresses = listOf("전북특별자치도 순창군 팔덕면 강천산길 97"),
+        )
+
+        assertThat(tokens).containsExactlyInAnyOrder("강천산")
+    }
+
+    @Test
     fun `축제명의 지역명은 주소에 포함되면 버린다`() {
         val tokens = FestivalPlaceTokenizer.tokenize(
             venue = "산정호수 일원",

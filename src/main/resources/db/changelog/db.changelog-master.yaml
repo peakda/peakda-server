@@ -21,3 +21,6 @@ databaseChangeLog:
   - includeAll:
       path: db/changelog/2026-09/
       relativeToChangelogFile: false
+  - includeAll:
+      path: db/changelog/2026-10/
+      relativeToChangelogFile: false
