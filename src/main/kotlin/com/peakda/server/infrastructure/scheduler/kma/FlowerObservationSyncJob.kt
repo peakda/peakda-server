@@ -70,7 +70,8 @@ class FlowerObservationSyncJob(
 
     companion object {
         const val JOB_NAME = "flowerObservationSync"
-        private val TREE_TYPES = 1..3
+        /** 봄꽃 개화 관측 1~3 과 유명산 단풍 관측. */
+        private val TREE_TYPES = (1..3) + FlowerObservationClient.MAPLE_TREE_TYPE
         private val log = LoggerFactory.getLogger(FlowerObservationSyncJob::class.java)
     }
 }
