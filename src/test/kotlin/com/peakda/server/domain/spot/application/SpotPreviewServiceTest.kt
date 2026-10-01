@@ -4,7 +4,7 @@ import com.peakda.server.domain.attraction.entity.Attraction
 import com.peakda.server.domain.attraction.repository.AttractionRepository
 import com.peakda.server.domain.seasonal.application.BloomBaseDateResolver
 import com.peakda.server.domain.seasonal.application.LocalSpotBloomResolver
-import com.peakda.server.domain.seasonal.application.estimator.UserRecordEstimatorProperties
+import com.peakda.server.domain.seasonal.application.LocalSpotBloomProperties
 import com.peakda.server.domain.seasonal.entity.BloomCategory
 import com.peakda.server.domain.seasonal.entity.BloomStatus
 import com.peakda.server.domain.seasonal.entity.Estimator
@@ -61,7 +61,7 @@ class SpotPreviewServiceTest {
     private val localSpotBloomResolver = LocalSpotBloomResolver(
         spotRecordPlantRepository,
         plantRepository,
-        UserRecordEstimatorProperties(),
+        LocalSpotBloomProperties(),
         Clock.fixed(LocalDate.of(2026, 3, 30).atStartOfDay(KST).toInstant(), KST),
     )
 

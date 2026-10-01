@@ -1,6 +1,5 @@
 package com.peakda.server.domain.seasonal.application
 
-import com.peakda.server.domain.seasonal.application.estimator.UserRecordEstimatorProperties
 import com.peakda.server.domain.seasonal.entity.BloomCategory
 import com.peakda.server.domain.seasonal.entity.BloomStatus
 import com.peakda.server.domain.spot.entity.SpotRecord
@@ -23,10 +22,9 @@ import java.time.temporal.ChronoUnit
  * 최신 판정은 방문일 → 작성 시각 → id 순으로 내림차순이다. 방문일만 비교하면 같은 날짜로 올린 기록끼리
  * 순서가 정해지지 않아, 어느 기록이 상태를 결정할지 조회 순서에 따라 달라진다.
  *
- * 관측일이 [UserRecordEstimatorProperties.maxAgeDays] 를 넘긴 기록은 아예 신호로 쓰지 않는다. 기록은 그 시점의
+ * 관측일이 [LocalSpotBloomProperties.maxAgeDays] 를 넘긴 기록은 아예 신호로 쓰지 않는다. 기록은 그 시점의
  * 관측일 뿐 현재 상태가 아니어서, 봄에 올린 절정 기록을 가을까지 들고 있으면 철 지난 스팟이 계속 절정으로 보인다.
- * 명소형 [com.peakda.server.domain.seasonal.application.estimator.UserRecordBloomEstimator] 와 같은 기준을
- * 쓰도록 튜닝값을 공유한다.
+ * 동네형 관측의 유효 기간은 [LocalSpotBloomProperties] 로 관리한다.
  *
  * 지도 핀·핀 프리뷰·검색 뱃지가 같은 규칙을 쓰도록 한 곳에 모은다.
  */
@@ -34,7 +32,7 @@ import java.time.temporal.ChronoUnit
 class LocalSpotBloomResolver(
     private val spotRecordPlantRepository: SpotRecordPlantRepository,
     private val plantRepository: PlantRepository,
-    private val properties: UserRecordEstimatorProperties,
+    private val properties: LocalSpotBloomProperties,
     private val clock: Clock = Clock.system(KST),
 ) {
 
@@ -70,7 +68,7 @@ class LocalSpotBloomResolver(
             .filterValues { it.isNotEmpty() }
     }
 
-    /** 관측일이 [UserRecordEstimatorProperties.maxAgeDays] 이내인 기록만 현재 상태의 근거로 인정한다. */
+    /** 관측일이 [LocalSpotBloomProperties.maxAgeDays] 이내인 기록만 현재 상태의 근거로 인정한다. */
     private fun SpotRecord.isFreshOn(today: LocalDate): Boolean =
         ChronoUnit.DAYS.between(observedDate, today).coerceAtLeast(0) <= properties.maxAgeDays
 

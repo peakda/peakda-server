@@ -253,6 +253,8 @@ peakda:
     festival-candidate-size: 200
     curation-size: 5
   timing:
+    local-spot:
+      max-age-days: 30
     tagging:
       keyword-base-confidence: 0.5
       keyword-exact-boost: 0.2

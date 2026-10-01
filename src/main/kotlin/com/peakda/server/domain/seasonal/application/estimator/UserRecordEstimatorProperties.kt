@@ -4,10 +4,7 @@ import org.springframework.boot.context.properties.ConfigurationProperties
 
 /**
  * 사용자 기록 신호(신호 D) 튜닝값. 운영 중 yml 로 조정한다.
- *
- * 명소형 융합의 [UserRecordBloomEstimator] 와 동네형 산출의
- * [com.peakda.server.domain.seasonal.application.LocalSpotBloomResolver] 가 [maxAgeDays] 를 공유한다.
- * 같은 "사용자 기록" 신호인데 스팟 유형에 따라 유효 기간이 달라지면 안 되기 때문이다.
+ * 명소형 융합의 [UserRecordBloomEstimator] 에 적용한다. 동네형 관측 유효 기간은 별도 설정으로 관리한다.
  */
 @ConfigurationProperties(prefix = "peakda.timing.user-record")
 data class UserRecordEstimatorProperties(

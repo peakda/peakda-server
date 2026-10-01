@@ -1,6 +1,5 @@
 package com.peakda.server.domain.seasonal.application
 
-import com.peakda.server.domain.seasonal.application.estimator.UserRecordEstimatorProperties
 import com.peakda.server.domain.seasonal.entity.BloomCategory
 import com.peakda.server.domain.seasonal.entity.BloomStatus
 import com.peakda.server.domain.spot.entity.BloomStage
@@ -101,17 +100,30 @@ class LocalSpotBloomResolverTest {
     }
 
     @Test
-    fun `유효 기간 경계일의 기록은 아직 인정한다`() {
+    fun `방문 후 30일째 기록은 표시하고 31일째부터 제외한다`() {
         val observed = LocalDate.of(2026, 4, 1)
         val record = record(1L, visitedDate = observed, stage = BloomStage.PEAK)
         stubCherry(record)
 
-        val lastValidDay = observed.plusDays(UserRecordEstimatorProperties().maxAgeDays)
+        val lastValidDay = observed.plusDays(30)
         val signals = resolverOn(lastValidDay).resolve(listOf(record))
 
         assertThat(signals.getValue(SPOT_ID))
             .containsExactly(LocalBloomSignal(BloomCategory.CHERRY, BloomStatus.PEAK))
         assertThat(resolverOn(lastValidDay.plusDays(1)).resolve(listOf(record))).isEmpty()
+    }
+
+    @Test
+    fun `방문 후 14일이 지나도 30일 이내 기록은 상태의 근거로 사용한다`() {
+        val observed = LocalDate.of(2026, 4, 1)
+        val record = record(1L, visitedDate = observed, stage = BloomStage.PEAK)
+        stubCherry(record)
+
+        for (age in listOf(15L, 29L)) {
+            val signals = resolverOn(observed.plusDays(age)).resolve(listOf(record))
+            assertThat(signals.getValue(SPOT_ID))
+                .containsExactly(LocalBloomSignal(BloomCategory.CHERRY, BloomStatus.PEAK))
+        }
     }
 
     @Test
@@ -129,7 +141,7 @@ class LocalSpotBloomResolverTest {
     private fun resolverOn(today: LocalDate) = LocalSpotBloomResolver(
         spotRecordPlantRepository,
         plantRepository,
-        UserRecordEstimatorProperties(),
+        LocalSpotBloomProperties(),
         Clock.fixed(today.atStartOfDay(KST).toInstant(), KST),
     )
 

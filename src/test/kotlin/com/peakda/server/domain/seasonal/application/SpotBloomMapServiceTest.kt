@@ -3,7 +3,6 @@ package com.peakda.server.domain.seasonal.application
 import com.peakda.server.domain.attraction.application.AttractionEligibilityProperties
 import com.peakda.server.domain.attraction.entity.Attraction
 import com.peakda.server.domain.attraction.repository.AttractionRepository
-import com.peakda.server.domain.seasonal.application.estimator.UserRecordEstimatorProperties
 import com.peakda.server.domain.seasonal.entity.BloomCategory
 import com.peakda.server.domain.seasonal.entity.BloomStatus
 import com.peakda.server.domain.seasonal.entity.Estimator
@@ -45,7 +44,7 @@ class SpotBloomMapServiceTest {
     private val localSpotBloomResolver = LocalSpotBloomResolver(
         spotRecordPlantRepository,
         plantRepository,
-        UserRecordEstimatorProperties(),
+        LocalSpotBloomProperties(),
         Clock.fixed(LocalDate.of(2026, 4, 2).atStartOfDay(KST).toInstant(), KST),
     )
 
@@ -143,6 +142,46 @@ class SpotBloomMapServiceTest {
             .containsExactly(BloomStatus.ENDED, BloomStatus.PEAK)
         // 동네형은 하위호환 alias(attractions)에 포함되지 않는다.
         assertThat(response.attractions).isEmpty()
+    }
+
+    @Test
+    fun `동네 핀은 방문 후 30일까지 표시하고 오래되거나 상태 없는 기록은 제외한다`() {
+        stubNoAttractions()
+        val spots = (0L..4L).map { localSpot(SPOT_ID + it, "동네 스팟 $it") }
+        `when`(spotRepository.findVisibleInBoundingBox(SpotType.LOCAL, MIN_LAT, MAX_LAT, MIN_LNG, MAX_LNG))
+            .thenReturn(spots)
+        val records = listOf(
+            record(1L, SPOT_ID, LocalDate.of(2026, 3, 2), BloomStage.PEAK), // 31일 경과
+            record(2L, SPOT_ID + 1, LocalDate.of(2026, 3, 3), BloomStage.PEAK), // 30일 경과
+            record(3L, SPOT_ID + 2, LocalDate.of(2026, 3, 4), BloomStage.STARTING), // 29일 경과
+            record(4L, SPOT_ID + 3, LocalDate.of(2026, 4, 1), BloomStage.PEAK), // 카테고리 없음
+        )
+        `when`(spotRecordRepository.findBySpotIdInAndStatus(spots.map { requireNotNull(it.id) }, SpotRecordStatus.PUBLISHED))
+            .thenReturn(records)
+        `when`(spotRecordPlantRepository.findByIdSpotRecordIdIn(listOf(1L, 2L, 3L, 4L))).thenReturn(
+            listOf(
+                SpotRecordPlant(SpotRecordPlantId(1L, 10L)),
+                SpotRecordPlant(SpotRecordPlantId(2L, 10L)),
+                SpotRecordPlant(SpotRecordPlantId(3L, 10L)),
+                SpotRecordPlant(SpotRecordPlantId(4L, 11L)),
+            ),
+        )
+        val untagged = Plant(name = "장미", status = PlantStatus.ACTIVE).also {
+            ReflectionTestUtils.setField(it, "id", 11L)
+        }
+        `when`(plantRepository.findAllById(setOf(10L, 11L)))
+            .thenReturn(listOf(plant(10L, BloomCategory.CHERRY), untagged))
+
+        val response = service.map(MIN_LAT, MAX_LAT, MIN_LNG, MAX_LNG, category = null, date = null)
+
+        assertThat(response.count).isEqualTo(2)
+        assertThat(response.pins.map { it.spotId }).containsExactly(SPOT_ID + 1, SPOT_ID + 2)
+        assertThat(response.pins).allSatisfy { pin ->
+            assertThat(pin.type).isEqualTo(SpotType.LOCAL)
+            assertThat(pin.blooms).isNotEmpty()
+        }
+        assertThat(response.pins.map { it.blooms.single().status })
+            .containsExactly(BloomStatus.PEAK, BloomStatus.STARTED)
     }
 
     @Test
