@@ -11,6 +11,7 @@ import jakarta.persistence.Id
 import jakarta.persistence.Index
 import jakarta.persistence.Table
 import jakarta.persistence.UniqueConstraint
+import jakarta.persistence.Version
 
 /**
  * 관광지 집중률의 관광지(자연키: 지역·시군구·관광지명)와 명소의 연결.
@@ -62,6 +63,12 @@ class CongestionAttractionLink(
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "id")
     var id: Long? = null
+        protected set
+
+    /** 매칭 잡과 관리자 검토가 같은 행을 동시에 바꿀 때 나중 쓰기가 앞선 결정을 덮지 않도록 한다. */
+    @Version
+    @Column(name = "version", nullable = false)
+    var version: Long = 0
         protected set
 
     val candidateIds: List<Long>

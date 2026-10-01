@@ -1,6 +1,7 @@
 package com.peakda.server.domain.congestion.application
 
 import com.peakda.server.domain.attraction.application.AttractionEligibilityProperties
+import com.peakda.server.domain.attraction.repository.AttractionNameCandidate
 import com.peakda.server.domain.attraction.repository.AttractionRepository
 import com.peakda.server.domain.congestion.entity.CongestionAttractionLink
 import com.peakda.server.domain.congestion.repository.CongestionAttractionKey
@@ -27,8 +28,17 @@ class CongestionAttractionLinkService(
      * 한 시군구의 관광지명들을 판정해 연결을 upsert 한다.
      * 확정·거절된 연결은 사람이 내렸거나 이미 신뢰하는 결정이라 건너뛴다.
      */
+    /**
+     * @param reformCandidateCache 개편 후 시도 범위 후보를 배치 실행 한 번 동안 재사용하는 캐시.
+     *   같은 시도의 사라진 시군구(광주·전남 약 27개)마다 시도 전체를 다시 읽지 않도록 잡이 실행마다 하나 만들어 넘긴다.
+     */
     @Transactional
-    fun linkSigungu(areaCode: String, sigunguCode: String, names: List<String>): CongestionLinkSummary {
+    fun linkSigungu(
+        areaCode: String,
+        sigunguCode: String,
+        names: List<String>,
+        reformCandidateCache: MutableMap<Set<String>, List<AttractionNameCandidate>> = mutableMapOf(),
+    ): CongestionLinkSummary {
         val existing = linkRepository.findByAreaCodeAndSigunguCode(areaCode, sigunguCode)
             .associateBy { it.touristAttractionName }
         val targets = names.distinct().filter { existing[it]?.status?.reevaluable ?: true }
@@ -38,7 +48,9 @@ class CongestionAttractionLinkService(
         val sameSigungu = attractionRepository.findNameCandidatesBySigungu(sigunguCode, contentTypes)
         val reformArea = if (sameSigungu.isEmpty()) {
             val reformAreaCodes = CongestionAttractionMatcher.reformAreaCodes(areaCode)
-            attractionRepository.findNameCandidatesByAreas(reformAreaCodes, contentTypes)
+            reformCandidateCache.getOrPut(reformAreaCodes) {
+                attractionRepository.findNameCandidatesByAreas(reformAreaCodes, contentTypes)
+            }
         } else {
             emptyList()
         }

@@ -15,6 +15,7 @@ import org.mockito.ArgumentMatchers.anyCollection
 import org.mockito.ArgumentMatchers.anyString
 import org.mockito.Mockito.mock
 import org.mockito.Mockito.never
+import org.mockito.Mockito.times
 import org.mockito.Mockito.verify
 import org.mockito.Mockito.`when`
 
@@ -66,6 +67,20 @@ class CongestionAttractionLinkServiceTest {
         assertThat(saved.status).isEqualTo(CongestionLinkStatus.CONFIRMED)
         assertThat(saved.matchType).isEqualTo(CongestionMatchType.REGION_REFORM)
         assertThat(saved.attractionId).isEqualTo(8)
+    }
+
+    @Test
+    fun `같은 실행에서 같은 시도의 사라진 시군구가 여럿이면 시도 후보를 한 번만 읽는다`() {
+        `when`(linkRepository.findByAreaCodeAndSigunguCode(anyString(), anyString())).thenReturn(emptyList())
+        `when`(attractionRepository.findNameCandidatesBySigungu(anyString(), anyCollection())).thenReturn(emptyList())
+        `when`(attractionRepository.findNameCandidatesByAreas(setOf("12"), setOf("12")))
+            .thenReturn(listOf(AttractionNameCandidate(8, "양림동 역사문화마을")))
+        val cache = mutableMapOf<Set<String>, List<AttractionNameCandidate>>()
+
+        service.linkSigungu("29", "29110", listOf("양림동 역사문화마을"), cache)
+        service.linkSigungu("46", "46110", listOf("갓바위"), cache)
+
+        verify(attractionRepository, times(1)).findNameCandidatesByAreas(setOf("12"), setOf("12"))
     }
 
     @Test

@@ -4,7 +4,6 @@ import com.peakda.server.domain.congestion.entity.CongestionLinkStatus
 import com.peakda.server.domain.congestion.repository.CongestionAttractionLinkRepository
 import com.peakda.server.domain.congestion.repository.CongestionRepository
 import org.springframework.stereotype.Service
-import org.springframework.transaction.annotation.Transactional
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 
@@ -18,7 +17,6 @@ class CongestionForecastService(
      * [from]~[to] (양 끝 포함) 예측. 확정 연결이 없거나 예측이 없으면 빈 목록.
      * 한 명소에 관광지명이 여럿 연결돼 있으면 먼저 확정된 연결을 쓴다.
      */
-    @Transactional(readOnly = true)
     fun findDailyForecast(attractionId: Long, from: LocalDate, to: LocalDate): List<DailyCongestion> {
         val link = linkRepository
             .findByAttractionIdAndStatusOrderByIdAsc(attractionId, CongestionLinkStatus.CONFIRMED)
