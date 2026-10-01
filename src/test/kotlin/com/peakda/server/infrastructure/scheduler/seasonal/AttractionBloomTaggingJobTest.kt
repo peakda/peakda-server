@@ -23,9 +23,11 @@ class AttractionBloomTaggingJobTest {
         title = "벚꽃 명소",
     )
     private var keywordTags = 1
+    private var categoryTags = 0
     private val taggingService = mock(BloomTaggingService::class.java) { invocation ->
         when (invocation.method.name) {
             "tagKeywords" -> keywordTags
+            "tagCategories" -> categoryTags
             "tagFestivals", "deleteStaleAutoTags" -> 0
             else -> null
         }
@@ -62,6 +64,19 @@ class AttractionBloomTaggingJobTest {
         val cleanup = mockingDetails(taggingService).invocations.single { it.method.name == "deleteStaleAutoTags" }
         assertThat(cleanup.arguments[0] as Instant).isBetween(before, Instant.now())
         assertThat(cleanup.arguments[1]).isEqualTo(setOf(TagSource.KEYWORD))
+    }
+
+    @Test
+    fun `분류 신호도 같은 명소 페이지로 태깅하고 만든 출처를 정리 대상에 넣는다`() {
+        keywordTags = 0
+        categoryTags = 1
+
+        job.runNow()
+
+        val invocations = mockingDetails(taggingService).invocations
+        assertThat(invocations.single { it.method.name == "tagCategories" }.arguments[0]).isEqualTo(listOf(attraction))
+        val cleanup = invocations.single { it.method.name == "deleteStaleAutoTags" }
+        assertThat(cleanup.arguments[1]).isEqualTo(setOf(TagSource.CATEGORY))
     }
 
     @Test

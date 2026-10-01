@@ -27,10 +27,12 @@ import kotlin.math.sqrt
  * - 신호 A([tagKeywords]): 명소 제목에 카테고리 [BloomCategory.keywordHints] 가 포함되면 KEYWORD 태그.
  * - 신호 B([tagFestivals]): 활성 꽃축제의 장소 토큰([FestivalPlaceTokenizer])이 후보 반경 안 명소 제목과 일치하면 FESTIVAL 태그.
  *   축제 좌표는 주최 기관 주소일 수 있어 후보를 좁히는 데만 쓴다.
+ * - 신호 C([tagCategories]): TourAPI 소분류가 [BloomTaggingProperties.categoryTags] 에 있으면 CATEGORY 태그.
+ *   이름에 꽃 단어가 없는 국립공원·수목원 같은 명소를 유형으로 보강한다.
  *
- * 두 신호는 매 실행 태그를 다시 upsert 하므로, [deleteStaleAutoTags] 로 이번 실행에서 갱신되지 않은 자동 태그를 지운다.
+ * 세 신호는 매 실행 태그를 다시 upsert 하므로, [deleteStaleAutoTags] 로 이번 실행에서 갱신되지 않은 자동 태그를 지운다.
  *
- * 신호 B 의 대상 유형은 [AttractionEligibilityProperties] 로 쿼리에서 제한한다. 신호 A 는 호출자가 대상 유형만 넘긴다.
+ * 신호 B 의 대상 유형은 [AttractionEligibilityProperties] 로 쿼리에서 제한한다. 신호 A·C 는 호출자가 대상 유형만 넘긴다.
  */
 @Service
 class BloomTaggingService(
@@ -90,6 +92,31 @@ class BloomTaggingService(
                         source = TagSource.FESTIVAL.name,
                         confidence = properties.festivalConfidence,
                         evidence = "festival:${festival.id},name:${festival.name},token:$token",
+                    ),
+                )
+                count++
+            }
+        }
+        return count
+    }
+
+    /** 신호 C. TourAPI 소분류가 설정된 코드와 같은 명소에 CATEGORY 태그를 upsert 하고 처리한 태그 수를 반환. */
+    @Transactional
+    fun tagCategories(attractions: List<Attraction>): Int {
+        if (properties.categoryTags.isEmpty()) return 0
+        var count = 0
+        for (attraction in attractions) {
+            val attractionId = attraction.id ?: continue
+            val code = attraction.categoryMinor ?: continue
+            for ((category, codes) in properties.categoryTags) {
+                if (code !in codes) continue
+                attractionBloomRepository.upsert(
+                    AttractionBloomUpsertCommand(
+                        attractionId = attractionId,
+                        bloomCategory = category.name,
+                        source = TagSource.CATEGORY.name,
+                        confidence = properties.categoryConfidence,
+                        evidence = "category:$code",
                     ),
                 )
                 count++
@@ -170,7 +197,7 @@ class BloomTaggingService(
         private const val EARTH_RADIUS_METERS = 6_371_000.0
         private const val MIN_COS_LAT = 0.01
         private const val MIN_CONTAINED_TITLE_LENGTH = 3
-        private val AUTO_SOURCES = setOf(TagSource.KEYWORD, TagSource.FESTIVAL)
+        private val AUTO_SOURCES = setOf(TagSource.KEYWORD, TagSource.FESTIVAL, TagSource.CATEGORY)
         private val STALE_GRACE: Duration = Duration.ofHours(1)
     }
 }
