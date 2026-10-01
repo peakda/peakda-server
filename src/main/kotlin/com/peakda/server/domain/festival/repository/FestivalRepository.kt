@@ -68,6 +68,28 @@ interface FestivalRepository : JpaRepository<Festival, Long> {
     )
     fun findOngoing(@Param("today") today: LocalDate, pageable: Pageable): List<Festival>
 
+    /**
+     * 좌표 범위(bbox) 안에서 [from]~[to] 기간과 하루라도 겹치는 축제. 종료일이 없으면 시작일을 종료일로 본다.
+     * 정확한 반경 판정과 정렬은 호출측(application)이 거리 계산으로 한다.
+     */
+    @Query(
+        """
+            SELECT f FROM Festival f
+            WHERE f.latitude BETWEEN :minLat AND :maxLat
+              AND f.longitude BETWEEN :minLng AND :maxLng
+              AND f.startsOn <= :to
+              AND COALESCE(f.endsOn, f.startsOn) >= :from
+        """,
+    )
+    fun findInBoundingBoxOverlapping(
+        @Param("minLat") minLat: Double,
+        @Param("maxLat") maxLat: Double,
+        @Param("minLng") minLng: Double,
+        @Param("maxLng") maxLng: Double,
+        @Param("from") from: LocalDate,
+        @Param("to") to: LocalDate,
+    ): List<Festival>
+
     @Modifying
     @Query(value = FESTIVAL_UPSERT_SQL, nativeQuery = true)
     fun upsert(@Param("command") command: FestivalUpsertCommand): Int

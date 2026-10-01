@@ -32,6 +32,7 @@ external:
       kor-service: { cron: "0/30 * * * * *", enabled: false }
       durunubi:    { cron: "0/30 * * * * *", enabled: false }
       tats-cnctr:  { cron: "0/30 * * * * *", enabled: false }
+      congestion-link: { cron: "0/30 * * * * *", enabled: false }
       data-lab:    { cron: "0/30 * * * * *", enabled: false }
       photo:       { cron: "0/30 * * * * *", enabled: false }
     kma:
@@ -41,6 +42,7 @@ external:
         grids:
           - { name: "서울", nx: 60, ny: 127 }
       mid-fcst:    { cron: "0/30 * * * * *", enabled: false }
+      forecast-area-mapping: { cron: "0/30 * * * * *", enabled: false }
     pubdata:
       festival:    { cron: "0/30 * * * * *", enabled: false }
     notification:

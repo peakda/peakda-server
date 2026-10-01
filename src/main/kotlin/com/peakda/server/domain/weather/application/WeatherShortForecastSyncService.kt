@@ -11,8 +11,13 @@ class WeatherShortForecastSyncService(
 ) {
     @Transactional
     fun upsertPage(items: List<VilageFcstItem>): Int {
-        return items
+        val commands = items
             .filter { it.category.isNotBlank() && it.fcstDate.isNotBlank() && it.fcstTime.isNotBlank() }
-            .sumOf { repository.upsert(it.toUpsertCommand()) }
+            .map { it.toUpsertCommand() }
+        return repository.upsertAll(commands)
     }
+
+    /** [forecastDate](yyyyMMdd) 이전 예보를 지우고 지운 행 수를 반환한다. */
+    @Transactional
+    fun deleteBefore(forecastDate: String): Int = repository.deleteByForecastDateBefore(forecastDate)
 }

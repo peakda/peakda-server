@@ -3,6 +3,7 @@ package com.peakda.server.domain.spot.presentation.response
 import com.peakda.server.domain.seasonal.entity.BloomCategory
 import com.peakda.server.domain.seasonal.entity.BloomStatus
 import com.peakda.server.domain.spot.entity.SpotType
+import com.peakda.server.domain.visittiming.presentation.response.VisitTimingResponse
 import io.swagger.v3.oas.annotations.media.Schema
 import java.time.LocalDate
 
@@ -36,6 +37,12 @@ data class SpotDetailResponse(
 
     @field:Schema(description = "올해 만개 시기 배너 (개화 추정 연동). 추정 데이터가 없으면 null")
     val bloom: BloomBanner?,
+
+    @field:Schema(
+        description = "방문 타이밍 — 향후 혼잡도·날씨·주변 축제와 추천 방문일. 명소형 스팟만 제공하며 보여줄 데이터가 없으면 null",
+        nullable = true,
+    )
+    val visitTiming: VisitTimingResponse?,
 
     @field:Schema(description = "게시된 방문 기록 수", example = "12")
     val recordCount: Long,
