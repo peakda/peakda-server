@@ -12,6 +12,8 @@ import com.peakda.server.domain.weather.application.AttractionWeatherForecastSer
 import com.peakda.server.domain.weather.application.DailyWeather
 import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Service
+import org.springframework.transaction.annotation.Propagation
+import org.springframework.transaction.annotation.Transactional
 import java.time.Clock
 import java.time.LocalDate
 import java.time.ZoneId
@@ -23,8 +25,9 @@ import kotlin.math.roundToInt
  * 각 도메인은 자기 조회 서비스로만 읽고, 조합과 판단은 여기서 한다(도메인 간 조인 없음).
  *
  * 명소 상세의 부가 정보라서 한 출처가 실패해도 상세 전체를 실패시키지 않는다. 출처별로 예외를 잡아 그 항목만
- * 비운다. 하위 조회 서비스는 일부러 `@Transactional` 을 달지 않는다 — 트랜잭션 프록시를 지나는 예외는
- * 바깥(명소 상세) 트랜잭션을 rollback-only 로 만들어, 여기서 잡아도 커밋 시점에 실패하기 때문이다.
+ * 비운다. 이를 위해 [resolve] 는 바깥(명소 상세) 트랜잭션을 잠시 내려놓고(NOT_SUPPORTED) 실행한다. 바깥
+ * 트랜잭션에 참여한 채 저장소에서 DB 예외가 나면 그 트랜잭션이 rollback-only 가 되어, 여기서 잡아도 명소 상세가
+ * 커밋 시점에 실패하기 때문이다. 하위 조회 서비스에 `@Transactional` 을 달지 않은 것도 같은 이유다.
  */
 @Service
 class VisitTimingService(
@@ -36,6 +39,7 @@ class VisitTimingService(
     private val clock: Clock = Clock.system(KST),
 ) {
     /** 보여줄 데이터가 하나도 없으면 null. */
+    @Transactional(propagation = Propagation.NOT_SUPPORTED)
     fun resolve(attractionId: Long, latitude: Double, longitude: Double, bloom: VisitTimingBloom?): VisitTimingResponse? {
         val today = LocalDate.now(clock)
         val dates = (0 until properties.forecastDays.coerceAtLeast(1)).map { today.plusDays(it) }

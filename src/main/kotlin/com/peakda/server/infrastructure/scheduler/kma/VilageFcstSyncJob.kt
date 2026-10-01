@@ -83,8 +83,11 @@ class VilageFcstSyncJob(
         private const val PAGE_SIZE = 1000
         private const val MAX_PAGES = 20
 
-        /** 기준일 며칠 전까지의 예보를 남길지. 지난 날짜 예보는 조회 경로가 읽지 않는다. */
-        private const val RETENTION_DAYS = 1L
+        /**
+         * 기준일 며칠 전까지의 예보를 남길지. 방문 타이밍은 오늘 이후만 읽지만, 개화 GDD 계산은 ASOS 관측이
+         * 늦게 들어온 날을 지난 예보로 메우므로 관측 지연보다 넉넉하게 둔다. 목적은 무한 증가 방지다.
+         */
+        private const val RETENTION_DAYS = 7L
         private val DEFAULT_GRID = SchedulerProperties.VilageFcstJobProps.Grid("서울", 60, 127)
         private val BASE_HOURS = listOf(2, 5, 8, 11, 14, 17, 20, 23)
 
