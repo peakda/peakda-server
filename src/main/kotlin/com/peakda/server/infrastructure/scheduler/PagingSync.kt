@@ -9,6 +9,10 @@ internal data class PagingResult(val processed: Int, val totalCount: Int)
  *
  * 첫 페이지의 totalCount 를 기준으로 stop 조건을 잡고, 빈 페이지가 오면 즉시 종료한다.
  * extras 는 numOfRows/pageNo 외에 매 호출에 함께 보낼 쿼리 파라미터.
+ *
+ * 서버가 요청한 [pageSize] 보다 작은 상한으로 잘라 응답하면(첫 페이지 건수 < pageSize 이면서
+ * totalCount 보다도 작음) 이후 페이지를 그 건수 기준으로 요청한다. 그대로 pageNo 만 올리면
+ * 서버는 자기 상한 기준 offset 을 쓰지 않으므로 중간 구간이 통째로 누락된다.
  */
 internal inline fun <T> runPaging(
     pageSize: Int = 100,
@@ -20,10 +24,15 @@ internal inline fun <T> runPaging(
     var page = 1
     var totalCount = 0
     var processed = 0
+    var effectivePageSize = pageSize
     while (page <= maxPages) {
-        val params = mapOf("numOfRows" to pageSize, "pageNo" to page) + extras
+        val params = mapOf("numOfRows" to effectivePageSize, "pageNo" to page) + extras
         val body = fetch(params)
-        if (page == 1) totalCount = body.totalCount
+        if (page == 1) {
+            totalCount = body.totalCount
+            val served = body.item.size
+            if (served in 1 until effectivePageSize && served < totalCount) effectivePageSize = served
+        }
         if (body.item.isEmpty()) break
         processed += upsert(body.item)
         if (totalCount > 0 && processed >= totalCount) break

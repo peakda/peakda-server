@@ -17,6 +17,9 @@ import com.peakda.server.domain.spot.presentation.response.SpotRecordSummaryResp
 import com.peakda.server.domain.spot.repository.SpotFavoriteRepository
 import com.peakda.server.domain.spot.repository.SpotRecordRepository
 import com.peakda.server.domain.spot.repository.SpotRepository
+import com.peakda.server.domain.visittiming.application.VisitTimingBloom
+import com.peakda.server.domain.visittiming.application.VisitTimingService
+import com.peakda.server.domain.visittiming.presentation.response.VisitTimingResponse
 import org.springframework.data.domain.PageRequest
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
@@ -24,7 +27,7 @@ import java.time.LocalDate
 
 /**
  * 스팟 상세 화면(SCR-025) 조회 — 단일 스팟의 대표 사진, 올해 만개 시기 배너(개화 추정 연동),
- * 게시된 방문 기록 수와 최신 프리뷰, 현재 사용자의 찜 상태를 한 번에 조합한다.
+ * 방문 타이밍(혼잡도·날씨·주변 축제), 게시된 방문 기록 수와 최신 프리뷰, 현재 사용자의 찜 상태를 한 번에 조합한다.
  */
 @Service
 class SpotDetailService(
@@ -35,6 +38,7 @@ class SpotDetailService(
     private val spotRecordRepository: SpotRecordRepository,
     private val spotFavoriteRepository: SpotFavoriteRepository,
     private val spotRecordResponseAssembler: SpotRecordResponseAssembler,
+    private val visitTimingService: VisitTimingService,
 ) {
 
     @Transactional(readOnly = true)
@@ -46,6 +50,7 @@ class SpotDetailService(
             .findBySpotIdAndStatusOrderByCreatedAtDesc(spotId, SpotRecordStatus.PUBLISHED, PageRequest.of(0, PREVIEW_SIZE))
             .content
         val recordPreview = spotRecordResponseAssembler.assembleSummaries(previewRecords, userId)
+        val bloom = resolveBloomBanner(spot)
 
         return SpotDetailResponse(
             id = requireNotNull(spot.id),
@@ -56,7 +61,8 @@ class SpotDetailService(
             longitude = spot.longitude,
             attractionId = spot.attractionId,
             representativeImageUrl = resolveRepresentativeImage(spot, recordPreview),
-            bloom = resolveBloomBanner(spot),
+            bloom = bloom,
+            visitTiming = resolveVisitTiming(spot, bloom),
             recordCount = recordCount,
             recordPreview = recordPreview,
             favorite = resolveFavorite(spotId, userId),
@@ -88,6 +94,13 @@ class SpotDetailService(
             .minWithOrNull(BloomEstimateOrdering.REPRESENTATIVE_FIRST)
             ?: return null
         return representative.toBanner(baseDate)
+    }
+
+    /** 명소에 연결된 스팟만 혼잡도·예보 구역을 가진다. 개화 배너와 같은 추정으로 꽃을 볼 수 있는 날을 판단한다. */
+    private fun resolveVisitTiming(spot: Spot, bloom: BloomBanner?): VisitTimingResponse? {
+        val attractionId = spot.attractionId ?: return null
+        val visitBloom = bloom?.let { VisitTimingBloom(it.status, it.peakStartDate, it.peakEndDate) }
+        return visitTimingService.resolve(attractionId, spot.latitude, spot.longitude, visitBloom)
     }
 
     private fun resolveFavorite(spotId: Long, userId: Long?): FavoriteState {

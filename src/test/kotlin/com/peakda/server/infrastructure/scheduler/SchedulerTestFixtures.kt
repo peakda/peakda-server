@@ -92,3 +92,11 @@ internal fun testJobLogger(): JobLogger {
         SchedulerJobSuccessGauge(registry),
     )
 }
+
+internal class InMemorySchedulerJobCursor(initial: Map<String, Int> = emptyMap()) : SchedulerJobCursor {
+    val positions = initial.toMutableMap()
+    override fun load(jobName: String): Int = positions[jobName] ?: 0
+    override fun save(jobName: String, index: Int) {
+        positions[jobName] = index
+    }
+}

@@ -209,6 +209,7 @@ external:
       durunubi: { cron: "0 0 8 * * *", enabled: true }
       data-lab: { cron: "0 30 8 * * *", enabled: true }
       tats-cnctr: { cron: "0 0 9 * * *", enabled: true }
+      congestion-link: { cron: "0 40 9 * * *", enabled: true }
     kma:
       vilage-fcst:
         cron: "0 15 */3 * * *"
@@ -220,7 +221,9 @@ external:
           - { name: "인천", nx: 55, ny: 124 }
           - { name: "광주", nx: 58, ny: 74 }
           - { name: "대전", nx: 67, ny: 100 }
+        max-attraction-grids: ${KMA_VILAGE_FCST_MAX_ATTRACTION_GRIDS:100}
       mid-fcst: { cron: "0 30 6,18 * * *", enabled: true }
+      forecast-area-mapping: { cron: "0 20 6 * * *", enabled: true }
       asos-daly:
         cron: "0 0 4 * * *"
         enabled: true
@@ -242,6 +245,14 @@ peakda:
   attraction:
     eligible-content-types: ["12"]
   festival: { ending-soon-days: 7 }
+  visit-timing:
+    forecast-days: 7
+    festival-radius-meters: 5000
+    festival-lookahead-days: 14
+    max-festivals: 2
+    rainy-probability-threshold: 60
+    clear-probability-threshold: 30
+    congestion: { quiet-below: 35, normal-below: 65, busy-below: 85 }
   spot:
     favorite:
       banner-lead-days: 7
