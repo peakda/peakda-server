@@ -53,6 +53,34 @@ class AttractionMapperTest {
     }
 
     @Test
+    fun `신 분류체계 코드를 명소와 upsert 명령 모두에 담는다`() {
+        val item = AreaBasedSyncListItem(
+            contentid = "1",
+            title = "경복궁",
+            lclsSystm1 = "MAJOR",
+            lclsSystm2 = "MEDIUM",
+            lclsSystm3 = "MINOR",
+        )
+
+        val attraction = item.toAttraction()
+        val command = item.toUpsertCommand()
+
+        assertThat(listOf(attraction.lclsSystmMajor, attraction.lclsSystmMedium, attraction.lclsSystmMinor))
+            .containsExactly("MAJOR", "MEDIUM", "MINOR")
+        assertThat(listOf(command.lclsSystmMajor, command.lclsSystmMedium, command.lclsSystmMinor))
+            .containsExactly("MAJOR", "MEDIUM", "MINOR")
+    }
+
+    @Test
+    fun `갱신 응답에 신 분류체계 코드가 비어 있으면 기존 값을 유지한다`() {
+        val attraction = AreaBasedSyncListItem(contentid = "1", title = "경복궁", lclsSystm3 = "MINOR").toAttraction()
+
+        attraction.applyUpdate(AreaBasedSyncListItem(contentid = "1", title = "경복궁"))
+
+        assertThat(attraction.lclsSystmMinor).isEqualTo("MINOR")
+    }
+
+    @Test
     fun `갱신 응답에 법정동 코드가 비어 있으면 기존 값을 유지한다`() {
         val attraction = AreaBasedSyncListItem(contentid = "1", title = "경복궁", lDongRegnCd = "11", lDongSignguCd = "110")
             .toAttraction()

@@ -14,15 +14,16 @@ private const val ATTRACTION_UPSERT_SQL = """
         tour_api_content_id, content_type_code, title, address_main, address_detail,
         area_code, sigungu_code, legal_dong_area_code, legal_dong_sigungu_code,
         longitude, latitude, primary_image_url, thumbnail_image_url,
-        category_major, category_medium, category_minor, external_created_at, external_modified_at,
-        visible, created_at, updated_at
+        category_major, category_medium, category_minor, lcls_systm_major, lcls_systm_medium, lcls_systm_minor,
+        external_created_at, external_modified_at, visible, created_at, updated_at
     ) VALUES (
         :#{#command.tourApiContentId}, :#{#command.contentTypeCode}, :#{#command.title},
         :#{#command.addressMain}, :#{#command.addressDetail}, :#{#command.areaCode},
         :#{#command.sigunguCode}, :#{#command.legalDongAreaCode}, :#{#command.legalDongSigunguCode},
         :#{#command.longitude}, :#{#command.latitude},
         :#{#command.primaryImageUrl}, :#{#command.thumbnailImageUrl}, :#{#command.categoryMajor},
-        :#{#command.categoryMedium}, :#{#command.categoryMinor}, :#{#command.externalCreatedAt},
+        :#{#command.categoryMedium}, :#{#command.categoryMinor}, :#{#command.lclsSystmMajor},
+        :#{#command.lclsSystmMedium}, :#{#command.lclsSystmMinor}, :#{#command.externalCreatedAt},
         :#{#command.externalModifiedAt}, :#{#command.visible}, now(), now()
     )
     ON CONFLICT ON CONSTRAINT uk_attractions_tour_api_content_id DO UPDATE SET
@@ -41,6 +42,9 @@ private const val ATTRACTION_UPSERT_SQL = """
         category_major = COALESCE(EXCLUDED.category_major, attractions.category_major),
         category_medium = COALESCE(EXCLUDED.category_medium, attractions.category_medium),
         category_minor = COALESCE(EXCLUDED.category_minor, attractions.category_minor),
+        lcls_systm_major = COALESCE(EXCLUDED.lcls_systm_major, attractions.lcls_systm_major),
+        lcls_systm_medium = COALESCE(EXCLUDED.lcls_systm_medium, attractions.lcls_systm_medium),
+        lcls_systm_minor = COALESCE(EXCLUDED.lcls_systm_minor, attractions.lcls_systm_minor),
         external_created_at = COALESCE(EXCLUDED.external_created_at, attractions.external_created_at),
         external_modified_at = COALESCE(EXCLUDED.external_modified_at, attractions.external_modified_at),
         visible = EXCLUDED.visible,
@@ -139,6 +143,9 @@ data class AttractionUpsertCommand(
     val categoryMajor: String?,
     val categoryMedium: String?,
     val categoryMinor: String?,
+    val lclsSystmMajor: String?,
+    val lclsSystmMedium: String?,
+    val lclsSystmMinor: String?,
     val externalCreatedAt: String?,
     val externalModifiedAt: String?,
     val visible: Boolean,
