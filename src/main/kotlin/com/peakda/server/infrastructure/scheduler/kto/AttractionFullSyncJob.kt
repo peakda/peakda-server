@@ -6,6 +6,7 @@ import com.peakda.server.infrastructure.external.kto.korservice.KorServiceClient
 import com.peakda.server.infrastructure.scheduler.JobLogger
 import com.peakda.server.infrastructure.scheduler.ManualTriggerableJob
 import com.peakda.server.infrastructure.scheduler.runPaging
+import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Component
 
 /**
@@ -35,6 +36,9 @@ class AttractionFullSyncJob(
             fetch = client::areaBasedSyncList,
             upsert = syncService::upsertPage,
         )
+        if (result.processed < result.totalCount) {
+            log.warn("[attractionFullSync] stopped early processed={} total={}", result.processed, result.totalCount)
+        }
         val materialization = materializationService.materializeVisibleAttractions()
         return mapOf(
             JobLogger.KEY_PROCESSED to result.processed,
@@ -48,6 +52,9 @@ class AttractionFullSyncJob(
     companion object {
         const val JOB_NAME = "attractionFullSync"
         private const val PAGE_SIZE = 1000
-        private const val MAX_PAGES = 100
+
+        /** 서버가 페이지를 100건으로 잘라도 약 5만 건을 끝까지 받을 수 있게 넉넉히 둔다. */
+        private const val MAX_PAGES = 1000
+        private val log = LoggerFactory.getLogger(AttractionFullSyncJob::class.java)
     }
 }

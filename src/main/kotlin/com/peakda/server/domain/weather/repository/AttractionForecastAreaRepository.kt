@@ -34,6 +34,11 @@ interface AttractionForecastAreaRepository : JpaRepository<AttractionForecastAre
     )
     fun findGridsByAttractionCount(pageable: Pageable): List<ForecastGrid>
 
+    /** 이번 매핑 대상에서 빠진 명소(개화 태그가 사라진 명소)의 구역을 지운다. 수집 격자 자리를 차지하지 않게 한다. */
+    @Modifying
+    @Query("DELETE FROM AttractionForecastArea a WHERE a.attractionId NOT IN :attractionIds")
+    fun deleteByAttractionIdNotIn(@Param("attractionIds") attractionIds: Collection<Long>): Int
+
     @Modifying
     @Query(value = ATTRACTION_FORECAST_AREA_UPSERT_SQL, nativeQuery = true)
     fun upsert(@Param("command") command: AttractionForecastAreaUpsertCommand): Int

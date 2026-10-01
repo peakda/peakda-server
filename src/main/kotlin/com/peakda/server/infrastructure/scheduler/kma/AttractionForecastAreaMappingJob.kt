@@ -39,16 +39,17 @@ class AttractionForecastAreaMappingJob(
     private fun execute(): Map<String, Any?> {
         var page = 0
         var processed = 0
-        var total = 0
+        val targetIds = mutableSetOf<Long>()
         while (true) {
             val ids = attractionBloomRepository.findDistinctAttractionIds(PageRequest.of(page, PAGE_SIZE))
             if (ids.isEmpty) break
-            total += ids.numberOfElements
+            targetIds += ids.content
             processed += mappingService.mapPage(attractionRepository.findAllById(ids.content))
             if (!ids.hasNext()) break
             page++
         }
-        return mapOf(JobLogger.KEY_PROCESSED to processed, JobLogger.KEY_TOTAL to total)
+        val removed = mappingService.deleteExcept(targetIds)
+        return mapOf(JobLogger.KEY_PROCESSED to processed, JobLogger.KEY_TOTAL to targetIds.size, "removed" to removed)
     }
 
     companion object {

@@ -44,6 +44,17 @@ class AttractionForecastAreaRepositoryTest {
         assertThat(repository.findByAttractionId(1)?.midRegionCode).isEqualTo("GYEONGNAM")
     }
 
+    @Test
+    fun `대상 명소 밖의 매핑만 지운다`() {
+        repository.upsert(AttractionForecastAreaUpsertCommand(1, 60, 127, "SEOUL"))
+        repository.upsert(AttractionForecastAreaUpsertCommand(2, 91, 106, "GYEONGNAM"))
+
+        val removed = repository.deleteByAttractionIdNotIn(setOf(1L))
+
+        assertThat(removed).isEqualTo(1)
+        assertThat(repository.findAll()).extracting<Long> { it.attractionId }.containsExactly(1L)
+    }
+
     companion object {
         @Container
         @ServiceConnection

@@ -39,6 +39,15 @@ class AttractionForecastAreaMappingService(
         return count
     }
 
+    /** [keptAttractionIds] 밖의 매핑을 지우고 지운 건수를 반환한다. 대상이 비면 전부 지운다. */
+    @Transactional
+    fun deleteExcept(keptAttractionIds: Set<Long>): Int =
+        if (keptAttractionIds.isEmpty()) {
+            repository.count().toInt().also { repository.deleteAllInBatch() }
+        } else {
+            repository.deleteByAttractionIdNotIn(keptAttractionIds)
+        }
+
     /** 단기예보 수집 대상 격자. 명소가 많이 모인 격자부터 [limit] 개. */
     @Transactional(readOnly = true)
     fun findCollectionGrids(limit: Int): List<ForecastGrid> =
