@@ -87,6 +87,31 @@ class AttractionWeatherForecastServiceTest {
         assertThat(day3.maxTemperature).isEqualTo(21.0)
     }
 
+    @Test
+    fun `밤 시간만 있는 단기예보 날은 비어 있는 항목을 중기예보로 채운다`() {
+        `when`(areaRepository.findByAttractionId(1)).thenReturn(AttractionForecastArea(1, 60, 127, "SEOUL"))
+        `when`(shortRepository.findByGridXAndGridYAndForecastCategoryInAndForecastDateBetween(
+            anyInt(), anyInt(), anyCollection(), anyString(), anyString(),
+        )).thenReturn(listOf(short("20260404", "0000", "TMP", "7.0")))
+        `when`(midRepository.findFirstByRegionCodeOrderByAnnounceTimeDesc("SEOUL")).thenReturn(
+            WeatherMidForecast(regionCode = "SEOUL", announceTime = "202604010600").apply {
+                weatherDay3Am = "맑음"
+                weatherDay3Pm = "맑음"
+                rainProbabilityDay3Am = 10
+                rainProbabilityDay3Pm = 20
+                temperatureMinDay3 = 9
+                temperatureMaxDay3 = 21
+            },
+        )
+
+        val day = service.findForecast(1, today, today.plusDays(6))!!.daily.single { it.date == today.plusDays(3) }
+
+        assertThat(day.sky).isEqualTo(WeatherSky.CLEAR)
+        assertThat(day.precipitationProbability).isEqualTo(20)
+        assertThat(day.minTemperature).isEqualTo(9.0)
+        assertThat(day.maxTemperature).isEqualTo(21.0)
+    }
+
     private fun short(date: String, time: String, category: String, value: String) = WeatherShortForecast(
         gridX = 60,
         gridY = 127,

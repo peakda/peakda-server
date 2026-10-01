@@ -14,7 +14,7 @@ import java.time.LocalDate
  * 2. 비 올 가능성이 높은 날은 뺀다.
  * 3. 남은 후보 중 집중률이 가장 낮은 날, 같으면 강수확률이 낮은 날, 그래도 같으면 이른 날.
  *
- * 혼잡도도 날씨도 모르는 날은 고를 근거가 없어 후보에서 뺀다.
+ * 혼잡도 데이터가 있으면 혼잡도를 아는 날만, 없으면 날씨를 아는 날만 후보로 둔다.
  */
 object VisitTimingRecommender {
     fun recommend(
@@ -25,12 +25,13 @@ object VisitTimingRecommender {
         festivals: List<NearbyFestival>,
         properties: VisitTimingProperties,
     ): VisitRecommendation? {
+        // 혼잡도를 아는 날이 있으면 그날들끼리만 비교한다. 모르는 날을 임의 값으로 끼우면 실제로 붐비는 날보다 앞설 수 있다.
         val candidates = dates
-            .filter { it in congestion || it in weather }
+            .filter { if (congestion.isEmpty()) it in weather else it in congestion }
             .filter { bloomStatusByDate == null || bloomStatusByDate[it] in VISIBLE_BLOOM }
             .filterNot { isRainy(weather[it], properties) }
         val chosen = candidates.minWithOrNull(
-            compareBy<LocalDate> { congestion[it]?.rate ?: UNKNOWN_RATE }
+            compareBy<LocalDate> { congestion[it]?.rate ?: 0.0 }
                 .thenBy { weather[it]?.precipitationProbability ?: 0 }
                 .thenBy { it },
         ) ?: return null
@@ -70,9 +71,6 @@ object VisitTimingRecommender {
         val probability = weather.precipitationProbability ?: return false
         return sky <= WeatherSky.PARTLY_CLOUDY && probability < properties.clearProbabilityThreshold
     }
-
-    /** 혼잡도를 모르는 날은 중간값으로 보고 비교한다. */
-    private const val UNKNOWN_RATE = 50.0
 
     private val VISIBLE_BLOOM = setOf(BloomStatus.STARTED, BloomStatus.PEAK)
 }

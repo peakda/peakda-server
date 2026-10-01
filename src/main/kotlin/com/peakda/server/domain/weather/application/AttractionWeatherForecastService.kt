@@ -6,7 +6,6 @@ import com.peakda.server.domain.weather.repository.AttractionForecastAreaReposit
 import com.peakda.server.domain.weather.repository.WeatherMidForecastRepository
 import com.peakda.server.domain.weather.repository.WeatherShortForecastRepository
 import org.springframework.stereotype.Service
-import org.springframework.transaction.annotation.Transactional
 import java.time.Clock
 import java.time.LocalDate
 import java.time.LocalDateTime
@@ -28,7 +27,6 @@ class AttractionWeatherForecastService(
     private val clock: Clock = Clock.system(KST),
 ) {
     /** [from]~[to] (양 끝 포함). 예보 구역 매핑이 없으면 null. */
-    @Transactional(readOnly = true)
     fun findForecast(attractionId: Long, from: LocalDate, to: LocalDate): AttractionWeatherForecast? {
         val area = forecastAreaRepository.findByAttractionId(attractionId) ?: return null
         val shortRows = shortForecastRepository.findByGridXAndGridYAndForecastCategoryInAndForecastDateBetween(
@@ -46,10 +44,27 @@ class AttractionWeatherForecastService(
             .filter { it.date in from..to }
             .associateBy(DailyWeather::date)
 
-        val daily = (midDaily + shortDaily).values.sortedBy(DailyWeather::date)
+        val daily = (midDaily.keys + shortDaily.keys).sorted().mapNotNull { date ->
+            mergeDay(shortDaily[date], midDaily[date])
+        }
         val now = LocalDateTime.now(clock)
         val rainWindows = rainWindows(shortRows).filter { it.end.isAfter(now) }
         return AttractionWeatherForecast(daily, rainWindows)
+    }
+
+    /**
+     * 단기예보의 마지막 날은 밤 시간만 있어 낮 대표값이 비기도 한다. 그런 날까지 단기예보로 통째로 덮으면
+     * 멀쩡한 중기예보 값이 사라지므로 항목별로 단기 값이 있으면 쓰고 없으면 중기 값으로 채운다.
+     */
+    private fun mergeDay(short: DailyWeather?, mid: DailyWeather?): DailyWeather? {
+        if (short == null || mid == null) return short ?: mid
+        return DailyWeather(
+            date = short.date,
+            sky = short.sky ?: mid.sky,
+            precipitationProbability = short.precipitationProbability ?: mid.precipitationProbability,
+            minTemperature = short.minTemperature ?: mid.minTemperature,
+            maxTemperature = short.maxTemperature ?: mid.maxTemperature,
+        )
     }
 
     private fun summarizeShort(rows: List<WeatherShortForecast>): List<DailyWeather> =
@@ -59,7 +74,8 @@ class AttractionWeatherForecastService(
             val precipitation = daytime.categoryValues(PTY).mapNotNull(WeatherSky::fromPrecipitationCode)
             val sky = precipitation.maxOrNull()
                 ?: daytime.categoryValues(SKY).mapNotNull(WeatherSky::fromShortSkyCode).mostFrequentWorst()
-            val temperatures = dayRows.categoryValues(TMP).mapNotNull(String::toDoubleOrNull)
+            // TMN·TMX 가 없는 날(예보 범위 끝의 일부 시간만 있는 날)은 낮 시간 기온으로만 대신한다. 밤 기온 한두 개를 최고기온으로 쓰면 틀린다.
+            val temperatures = daytime.categoryValues(TMP).mapNotNull(String::toDoubleOrNull)
             DailyWeather(
                 date = date,
                 sky = sky,

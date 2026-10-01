@@ -2,7 +2,6 @@ package com.peakda.server.domain.festival.application
 
 import com.peakda.server.domain.festival.repository.FestivalRepository
 import org.springframework.stereotype.Service
-import org.springframework.transaction.annotation.Transactional
 import java.time.LocalDate
 import kotlin.math.atan2
 import kotlin.math.cos
@@ -19,7 +18,6 @@ class NearbyFestivalService(
      * 반경 [radiusMeters] 안에서 [today] 에 진행 중이거나 [lookaheadDays] 안에 시작하는 축제를
      * 진행 중 우선, 가까운 순으로 최대 [limit] 개.
      */
-    @Transactional(readOnly = true)
     fun findNearby(
         latitude: Double,
         longitude: Double,
