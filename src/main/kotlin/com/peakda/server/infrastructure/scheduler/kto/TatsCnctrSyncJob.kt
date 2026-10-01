@@ -1,6 +1,8 @@
 package com.peakda.server.infrastructure.scheduler.kto
 
+import com.peakda.server.common.exception.ErrorCode
 import com.peakda.server.domain.congestion.application.CongestionSyncService
+import com.peakda.server.infrastructure.external.common.ExternalApiException
 import com.peakda.server.infrastructure.external.kto.tatscnctr.TatsCnctrClient
 import com.peakda.server.infrastructure.external.kto.tatscnctr.TatsCnctrRegionCatalog
 import com.peakda.server.infrastructure.scheduler.JobLogger
@@ -8,6 +10,7 @@ import com.peakda.server.infrastructure.scheduler.ManualTriggerableJob
 import com.peakda.server.infrastructure.scheduler.SchedulerJobCursor
 import com.peakda.server.infrastructure.scheduler.SchedulerProperties
 import com.peakda.server.infrastructure.scheduler.runPaging
+import org.slf4j.LoggerFactory
 import org.springframework.scheduling.annotation.Scheduled
 import org.springframework.stereotype.Component
 
@@ -47,18 +50,27 @@ class TatsCnctrSyncJob(
         val start = cursor.load(JOB_NAME).takeIf { it in regions.indices } ?: 0
         var processed = 0
         var totalCount = 0
+        val failedRegions = mutableListOf<String>()
         for (offset in regions.indices) {
             val index = (start + offset) % regions.size
             val region = regions[index]
-            val result = runPaging(
-                pageSize = PAGE_SIZE,
-                maxPages = MAX_PAGES,
-                extras = mapOf("areaCd" to region.areaCd, "signguCd" to region.signguCd),
-                fetch = client::tatsCnctrRatedList,
-                upsert = syncService::upsertPage,
-            )
-            processed += result.processed
-            totalCount += result.totalCount
+            try {
+                val result = runPaging(
+                    pageSize = PAGE_SIZE,
+                    maxPages = MAX_PAGES,
+                    extras = mapOf("areaCd" to region.areaCd, "signguCd" to region.signguCd),
+                    fetch = client::tatsCnctrRatedList,
+                    upsert = syncService::upsertPage,
+                )
+                processed += result.processed
+                totalCount += result.totalCount
+            } catch (e: ExternalApiException) {
+                // 한도 초과는 같은 날 계속 실패하므로 여기서 멈추고, 다음 실행이 이 시군구부터 다시 시도한다.
+                if (e.errorCode == ErrorCode.EXTERNAL_API_QUOTA_EXCEEDED) throw e
+                // 그 밖의 오류(코드 개편으로 사라진 시군구 등)에 막혀 전체 순회가 멈추지 않도록 건너뛴다.
+                log.warn("[tatsCnctrSync] region skipped signguCd={} error={}", region.signguCd, e.message)
+                failedRegions += region.signguCd
+            }
             cursor.save(JOB_NAME, (index + 1) % regions.size)
         }
         return mapOf(
@@ -66,6 +78,7 @@ class TatsCnctrSyncJob(
             JobLogger.KEY_TOTAL to totalCount,
             "regions" to regions.size,
             "startIndex" to start,
+            "failedRegions" to failedRegions.size,
         )
     }
 
@@ -75,5 +88,6 @@ class TatsCnctrSyncJob(
         /** 시군구당 약 25개 관광지 × 30일 ≈ 750행이라 1000 이면 대부분 한 번에 끝난다. */
         private const val PAGE_SIZE = 1000
         private const val MAX_PAGES = 50
+        private val log = LoggerFactory.getLogger(TatsCnctrSyncJob::class.java)
     }
 }

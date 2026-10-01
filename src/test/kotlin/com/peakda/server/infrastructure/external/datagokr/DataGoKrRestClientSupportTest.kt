@@ -94,6 +94,14 @@ class DataGoKrRestClientSupportTest {
     }
 
     @Test
+    fun `읽을 수 없는 Retry-After 가 붙은 HTTP 429 는 한도 초과가 아니라 일시 제한으로 본다`() {
+        val exception = tooManyRequestsException("soon")
+
+        assertThat(exception.errorCode).isEqualTo(ErrorCode.EXTERNAL_API_UNAVAILABLE)
+        assertThat(exception.retryAfter).isNull()
+    }
+
+    @Test
     fun `Retry-After HTTP-date 도 Duration 으로 파싱된다`() {
         val future = ZonedDateTime.now(ZoneOffset.UTC).plusSeconds(45)
         val httpDate = future.format(DateTimeFormatter.RFC_1123_DATE_TIME)

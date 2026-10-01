@@ -87,6 +87,21 @@ class TatsCnctrSyncJobTest {
     }
 
     @Test
+    fun `한도 초과가 아닌 오류로 실패한 시군구는 건너뛰고 나머지를 계속 수집한다`() {
+        fixture.server.expect(requestTo(uriFor("11", "11110")))
+            .andRespond(withSuccess(ERROR_JSON, MediaType.APPLICATION_JSON))
+        fixture.server.expect(requestTo(uriFor("26", "26110")))
+            .andRespond(withSuccess(successJson("중구 관광지"), MediaType.APPLICATION_JSON))
+
+        val job = TatsCnctrSyncJob(fixture.client, twoRegionCatalog(), syncService, enabled(true), testJobLogger(), cursor)
+        job.run()
+
+        fixture.server.verify()
+        assertThat(syncService.pages.flatten()).extracting<String> { it.tAtsNm }.containsExactly("중구 관광지")
+        assertThat(cursor.load(TatsCnctrSyncJob.JOB_NAME)).isEqualTo(0)
+    }
+
+    @Test
     fun `커서가 시군구 목록 범위를 벗어나면 처음부터 순회한다`() {
         cursor.save(TatsCnctrSyncJob.JOB_NAME, 99)
         fixture.server.expect(requestTo(uriFor("11", "11110")))
@@ -129,6 +144,11 @@ class TatsCnctrSyncJobTest {
             "https://example.test/tats/tatsCnctrRatedList" +
                 "?numOfRows=1000&pageNo=1&areaCd=$areaCd&signguCd=$signguCd" +
                 "&serviceKey=test-key&MobileOS=ETC&MobileApp=peakda-test&_type=json"
+
+        private val ERROR_JSON = """
+            { "response": { "header": { "resultCode": "10", "resultMsg": "INVALID_REQUEST_PARAMETER_ERROR" },
+              "body": { "items": "", "totalCount": 0 } } }
+        """.trimIndent()
 
         private fun successJson(attractionName: String) = """
             { "response": { "header": { "resultCode": "0000", "resultMsg": "OK" },
