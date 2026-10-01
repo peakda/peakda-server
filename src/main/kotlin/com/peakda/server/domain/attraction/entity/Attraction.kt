@@ -67,6 +67,15 @@ class Attraction(
     @Column(name = "category_minor", columnDefinition = "TEXT")
     var categoryMinor: String? = null,
 
+    @Column(name = "lcls_systm_major", columnDefinition = "TEXT")
+    var lclsSystmMajor: String? = null,
+
+    @Column(name = "lcls_systm_medium", columnDefinition = "TEXT")
+    var lclsSystmMedium: String? = null,
+
+    @Column(name = "lcls_systm_minor", columnDefinition = "TEXT")
+    var lclsSystmMinor: String? = null,
+
     @Column(name = "external_created_at", columnDefinition = "TEXT")
     var externalCreatedAt: String? = null,
 

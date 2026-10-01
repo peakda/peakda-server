@@ -21,6 +21,9 @@ fun AreaBasedSyncListItem.toAttraction(): Attraction = Attraction(
     categoryMajor = cat1.ifBlank { null },
     categoryMedium = cat2.ifBlank { null },
     categoryMinor = cat3.ifBlank { null },
+    lclsSystmMajor = lclsSystm1.ifBlank { null },
+    lclsSystmMedium = lclsSystm2.ifBlank { null },
+    lclsSystmMinor = lclsSystm3.ifBlank { null },
     externalCreatedAt = createdtime.ifBlank { null },
     externalModifiedAt = modifiedtime.ifBlank { null },
     visible = showflag != "0",
@@ -42,6 +45,9 @@ fun Attraction.applyUpdate(item: AreaBasedSyncListItem) {
     categoryMajor = item.cat1.ifBlank { categoryMajor }
     categoryMedium = item.cat2.ifBlank { categoryMedium }
     categoryMinor = item.cat3.ifBlank { categoryMinor }
+    lclsSystmMajor = item.lclsSystm1.ifBlank { lclsSystmMajor }
+    lclsSystmMedium = item.lclsSystm2.ifBlank { lclsSystmMedium }
+    lclsSystmMinor = item.lclsSystm3.ifBlank { lclsSystmMinor }
     externalCreatedAt = item.createdtime.ifBlank { externalCreatedAt }
     externalModifiedAt = item.modifiedtime.ifBlank { externalModifiedAt }
     visible = item.showflag != "0"
@@ -64,6 +70,9 @@ fun AreaBasedSyncListItem.toUpsertCommand(): AttractionUpsertCommand = Attractio
     categoryMajor = cat1.ifBlank { null },
     categoryMedium = cat2.ifBlank { null },
     categoryMinor = cat3.ifBlank { null },
+    lclsSystmMajor = lclsSystm1.ifBlank { null },
+    lclsSystmMedium = lclsSystm2.ifBlank { null },
+    lclsSystmMinor = lclsSystm3.ifBlank { null },
     externalCreatedAt = createdtime.ifBlank { null },
     externalModifiedAt = modifiedtime.ifBlank { null },
     visible = showflag != "0",
