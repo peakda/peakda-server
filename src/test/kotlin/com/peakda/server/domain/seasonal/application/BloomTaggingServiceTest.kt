@@ -5,6 +5,7 @@ import com.peakda.server.domain.attraction.entity.Attraction
 import com.peakda.server.domain.attraction.repository.AttractionRepository
 import com.peakda.server.domain.festival.entity.Festival
 import com.peakda.server.domain.festival.repository.FestivalRepository
+import com.peakda.server.domain.seasonal.entity.BloomCategory
 import com.peakda.server.domain.seasonal.entity.TagSource
 import com.peakda.server.domain.seasonal.repository.AttractionBloomRepository
 import com.peakda.server.domain.seasonal.repository.AttractionBloomUpsertCommand
@@ -55,6 +56,16 @@ class BloomTaggingServiceTest {
     @Test
     fun `제외어 한국화·수국사가 있으면 해당 꽃으로 태깅하지 않는다`() {
         val count = service.tagKeywords(listOf(attraction(1L, "한국화 미술관"), attraction(2L, "수국사")))
+
+        assertThat(count).isZero()
+        assertThat(upserts()).isEmpty()
+    }
+
+    @Test
+    fun `꽃 이름이 우연히 들어간 화석지·다리 이름은 태깅하지 않는다`() {
+        val count = service.tagKeywords(
+            listOf(attraction(1L, "여수 낭도리 공룡발자국화석 산지"), attraction(2L, "동백대교")),
+        )
 
         assertThat(count).isZero()
         assertThat(upserts()).isEmpty()
@@ -148,6 +159,47 @@ class BloomTaggingServiceTest {
     }
 
     @Test
+    fun `설정한 TourAPI 소분류의 명소에만 분류 태그를 만든다`() {
+        val categoryService = BloomTaggingService(
+            attractionRepository,
+            festivalRepository,
+            attractionBloomRepository,
+            BloomTaggingProperties(categoryTags = mapOf(BloomCategory.MAPLE to setOf("A01010100"))),
+            AttractionEligibilityProperties(setOf("12")),
+        )
+
+        val count = categoryService.tagCategories(
+            listOf(
+                attraction(1L, "주왕산국립공원", categoryMinor = "A01010100"),
+                attraction(2L, "해수욕장", categoryMinor = "A01011200"),
+                attraction(3L, "분류 없는 명소"),
+            ),
+        )
+
+        assertThat(count).isEqualTo(1)
+        val upsert = upserts().single()
+        assertThat(upsert.attractionId).isEqualTo(1L)
+        assertThat(upsert.source).isEqualTo("CATEGORY")
+        assertThat(upsert.evidence).isEqualTo("category:A01010100")
+    }
+
+    @Test
+    fun `분류 설정이 비어 있으면 분류 태그를 만들지 않는다`() {
+        val count = service.tagCategories(listOf(attraction(1L, "주왕산국립공원", categoryMinor = "A01010100")))
+
+        assertThat(count).isZero()
+        assertThat(upserts()).isEmpty()
+    }
+
+    @Test
+    fun `분류 태그도 자동 출처로 정리할 수 있다`() {
+        service.deleteStaleAutoTags(Instant.parse("2026-10-01T20:45:00Z"), setOf(TagSource.CATEGORY))
+
+        val delete = mockingDetails(attractionBloomRepository).invocations.single()
+        assertThat(delete.arguments[0] as Collection<*>).containsExactly(TagSource.CATEGORY)
+    }
+
+    @Test
     fun `오래된 태그 정리는 요청한 자동 출처만 실행 시작 1시간 전 기준으로 지운다`() {
         val runStartedAt = Instant.parse("2026-09-27T20:45:00Z")
 
@@ -180,13 +232,17 @@ class BloomTaggingServiceTest {
         title: String,
         latitude: Double? = null,
         longitude: Double? = null,
+        addressMain: String? = null,
+        categoryMinor: String? = null,
     ): Attraction =
         Attraction(
             tourApiContentId = "content-$id",
             contentTypeCode = "12",
             title = title,
+            addressMain = addressMain,
             latitude = latitude,
             longitude = longitude,
+            categoryMinor = categoryMinor,
         ).also { ReflectionTestUtils.setField(it, "id", id) }
 
     private fun festival(

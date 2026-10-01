@@ -259,6 +259,10 @@ peakda:
       festival-confidence: 0.9
       festival-candidate-radius-km: 20.0
       festival-tag-retention-days: 365
+      category-confidence: 0.4
+      # TourAPI 소분류(cat3): 국립공원·도립공원·군립공원·수목원
+      category-tags:
+        MAPLE: ["A01010100", "A01010200", "A01010300", "A01010700"]
     festival:
       proximity-radius-km: 5.0
       early-window-days: 3
