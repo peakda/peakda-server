@@ -1,5 +1,6 @@
 package com.peakda.server.domain.spot.application
 
+import com.peakda.server.domain.attraction.repository.AttractionOperatingInfoRepository
 import com.peakda.server.domain.attraction.repository.AttractionRepository
 import com.peakda.server.domain.seasonal.application.BloomBaseDateResolver
 import com.peakda.server.domain.seasonal.application.BloomEstimateOrdering
@@ -13,6 +14,7 @@ import com.peakda.server.domain.spot.exception.SpotNotFoundException
 import com.peakda.server.domain.spot.presentation.response.SpotDetailResponse
 import com.peakda.server.domain.spot.presentation.response.SpotDetailResponse.BloomBanner
 import com.peakda.server.domain.spot.presentation.response.SpotDetailResponse.FavoriteState
+import com.peakda.server.domain.spot.presentation.response.SpotDetailResponse.OperatingInfo
 import com.peakda.server.domain.spot.presentation.response.SpotRecordSummaryResponse
 import com.peakda.server.domain.spot.repository.SpotFavoriteRepository
 import com.peakda.server.domain.spot.repository.SpotRecordRepository
@@ -27,12 +29,13 @@ import java.time.LocalDate
 
 /**
  * 스팟 상세 화면(SCR-025) 조회 — 단일 스팟의 대표 사진, 올해 만개 시기 배너(개화 추정 연동),
- * 방문 타이밍(혼잡도·날씨·주변 축제), 게시된 방문 기록 수와 최신 프리뷰, 현재 사용자의 찜 상태를 한 번에 조합한다.
+ * 방문 타이밍(혼잡도·날씨·주변 축제), 운영 정보, 게시된 방문 기록 수와 최신 프리뷰, 현재 사용자의 찜 상태를 한 번에 조합한다.
  */
 @Service
 class SpotDetailService(
     private val spotRepository: SpotRepository,
     private val attractionRepository: AttractionRepository,
+    private val attractionOperatingInfoRepository: AttractionOperatingInfoRepository,
     private val seasonalBloomEstimateRepository: SeasonalBloomEstimateRepository,
     private val bloomBaseDateResolver: BloomBaseDateResolver,
     private val spotRecordRepository: SpotRecordRepository,
@@ -63,6 +66,7 @@ class SpotDetailService(
             representativeImageUrl = resolveRepresentativeImage(spot, recordPreview),
             bloom = bloom,
             visitTiming = resolveVisitTiming(spot, bloom),
+            operatingInfo = resolveOperatingInfo(spot),
             recordCount = recordCount,
             recordPreview = recordPreview,
             favorite = resolveFavorite(spotId, userId),
@@ -103,6 +107,26 @@ class SpotDetailService(
         return visitTimingService.resolve(attractionId, spot.latitude, spot.longitude, visitBloom)
     }
 
+    /**
+     * 명소에 연결된 스팟만 운영 정보를 가진다. 받아 둔 항목이 하나도 없으면 화면에서 영역을 빼도록 null 을 준다.
+     *
+     * 화면(SCR-025a)에는 쉬는 날 줄이 없어 운영 시간 끝에 붙인다. 이용시간에 이미 같은 문구가 있으면 붙이지 않는다.
+     */
+    private fun resolveOperatingInfo(spot: Spot): OperatingInfo? {
+        val attractionId = spot.attractionId ?: return null
+        val info = attractionOperatingInfoRepository.findByAttractionId(attractionId) ?: return null
+        val closedDays = info.closedDays?.takeUnless { info.operatingHours?.contains(it) == true }
+        val operatingHours = listOfNotNull(info.operatingHours, closedDays?.let { "$CLOSED_DAYS_LABEL$it" })
+            .joinToString("\n")
+            .ifEmpty { null }
+        if (operatingHours == null && info.admissionFee == null && info.parking == null) return null
+        return OperatingInfo(
+            operatingHours = operatingHours,
+            admissionFee = info.admissionFee,
+            parking = info.parking,
+        )
+    }
+
     private fun resolveFavorite(spotId: Long, userId: Long?): FavoriteState {
         val favorite = userId?.let { spotFavoriteRepository.findByUserIdAndSpotId(it, spotId) }
         return FavoriteState(
@@ -124,5 +148,6 @@ class SpotDetailService(
 
     companion object {
         private const val PREVIEW_SIZE = 3
+        private const val CLOSED_DAYS_LABEL = "쉬는 날: "
     }
 }

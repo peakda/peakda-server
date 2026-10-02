@@ -47,6 +47,13 @@ data class SchedulerProperties(
         val stations: List<String> = emptyList(),
     )
 
+    data class OperatingInfoJobProps(
+        val cron: String = "",
+        val enabled: Boolean = true,
+        /** 1회 실행당 운영 정보를 받을 최대 명소 수. 명소당 국문 관광정보를 2회 호출한다. */
+        val maxAttractions: Int = 4000,
+    )
+
     data class KtoSchedulerProps(
         val korService: JobProps = JobProps(),
         val durunubi: JobProps = JobProps(),
@@ -54,6 +61,7 @@ data class SchedulerProperties(
         val congestionLink: JobProps = JobProps(),
         val dataLab: JobProps = JobProps(),
         val photo: JobProps = JobProps(),
+        val operatingInfo: OperatingInfoJobProps = OperatingInfoJobProps(),
     )
 
     data class KmaSchedulerProps(

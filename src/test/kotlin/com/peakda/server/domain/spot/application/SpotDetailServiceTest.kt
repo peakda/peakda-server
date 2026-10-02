@@ -1,6 +1,8 @@
 package com.peakda.server.domain.spot.application
 
 import com.peakda.server.domain.attraction.entity.Attraction
+import com.peakda.server.domain.attraction.entity.AttractionOperatingInfo
+import com.peakda.server.domain.attraction.repository.AttractionOperatingInfoRepository
 import com.peakda.server.domain.attraction.repository.AttractionRepository
 import com.peakda.server.domain.seasonal.application.BloomBaseDateResolver
 import com.peakda.server.domain.seasonal.entity.BloomCategory
@@ -38,6 +40,7 @@ class SpotDetailServiceTest {
 
     private val spotRepository = mock(SpotRepository::class.java)
     private val attractionRepository = mock(AttractionRepository::class.java)
+    private val attractionOperatingInfoRepository = mock(AttractionOperatingInfoRepository::class.java)
     private val seasonalBloomEstimateRepository = mock(SeasonalBloomEstimateRepository::class.java)
     private val bloomBaseDateResolver = mock(BloomBaseDateResolver::class.java)
     private val spotRecordRepository = mock(SpotRecordRepository::class.java)
@@ -48,6 +51,7 @@ class SpotDetailServiceTest {
     private val service = SpotDetailService(
         spotRepository,
         attractionRepository,
+        attractionOperatingInfoRepository,
         seasonalBloomEstimateRepository,
         bloomBaseDateResolver,
         spotRecordRepository,
@@ -139,6 +143,36 @@ class SpotDetailServiceTest {
     }
 
     @Test
+    fun `명소 스팟은 운영 정보를 반환하고 쉬는 날은 운영 시간 끝 줄에 붙인다`() {
+        stubOperatingInfo(operatingHours = "09:00~18:00", closedDays = "매주 월요일", parking = "가능")
+
+        val response = service.getDetail(SPOT_ID, USER_ID)
+
+        assertThat(response.operatingInfo).isNotNull
+        assertThat(response.operatingInfo!!.operatingHours).isEqualTo("09:00~18:00\n쉬는 날: 매주 월요일")
+        assertThat(response.operatingInfo!!.admissionFee).isNull()
+        assertThat(response.operatingInfo!!.parking).isEqualTo("가능")
+    }
+
+    @Test
+    fun `이용시간이 없으면 쉬는 날만 운영 시간으로 주고, 이용시간에 이미 있으면 다시 붙이지 않는다`() {
+        stubOperatingInfo(operatingHours = null, closedDays = "연중무휴")
+        assertThat(service.getDetail(SPOT_ID, USER_ID).operatingInfo!!.operatingHours).isEqualTo("쉬는 날: 연중무휴")
+
+        stubOperatingInfo(operatingHours = "09:00~18:00 (매주 월요일 휴관)", closedDays = "매주 월요일")
+        assertThat(service.getDetail(SPOT_ID, USER_ID).operatingInfo!!.operatingHours).isEqualTo("09:00~18:00 (매주 월요일 휴관)")
+    }
+
+    @Test
+    fun `운영 정보를 받았어도 항목이 모두 비어 있으면 null 이다`() {
+        stubOperatingInfo()
+
+        val response = service.getDetail(SPOT_ID, USER_ID)
+
+        assertThat(response.operatingInfo).isNull()
+    }
+
+    @Test
     fun `존재하지 않는 스팟이면 SpotNotFoundException 을 던진다`() {
         `when`(spotRepository.findById(SPOT_ID)).thenReturn(Optional.empty())
 
@@ -182,6 +216,27 @@ class SpotDetailServiceTest {
             ),
         ).thenReturn(PageImpl(emptyList<SpotRecord>()))
         `when`(assembler.assembleSummaries(emptyList(), USER_ID)).thenReturn(preview)
+    }
+
+    private fun stubOperatingInfo(
+        operatingHours: String? = null,
+        closedDays: String? = null,
+        admissionFee: String? = null,
+        parking: String? = null,
+    ) {
+        attractionSpot(primaryImageUrl = "https://img/primary.jpg")
+        stubRecords(count = 0, preview = emptyList())
+        stubFavorite(null)
+        stubEstimates()
+        `when`(attractionOperatingInfoRepository.findByAttractionId(ATTRACTION_ID)).thenReturn(
+            AttractionOperatingInfo(
+                attractionId = ATTRACTION_ID,
+                operatingHours = operatingHours,
+                closedDays = closedDays,
+                admissionFee = admissionFee,
+                parking = parking,
+            ),
+        )
     }
 
     private fun stubFavorite(favorite: SpotFavorite?) {
