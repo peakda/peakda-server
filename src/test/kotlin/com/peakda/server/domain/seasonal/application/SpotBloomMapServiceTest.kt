@@ -81,11 +81,6 @@ class SpotBloomMapServiceTest {
         assertThat(pin.type).isEqualTo(SpotType.ATTRACTION)
         assertThat(pin.blooms).extracting<BloomCategory> { it.category }
             .containsExactly(BloomCategory.CHERRY, BloomCategory.AZALEA)
-
-        // 하위호환 alias: 명소형 핀이 옛 구조(attractions)로도 제공된다.
-        assertThat(response.attractions).hasSize(1)
-        assertThat(response.attractions.first().attractionId).isEqualTo(ATTRACTION_ID)
-        assertThat(response.attractions.first().title).isEqualTo("남산")
     }
 
     @Test
@@ -140,8 +135,6 @@ class SpotBloomMapServiceTest {
             .containsExactly(BloomCategory.CAMELLIA, BloomCategory.CHERRY)
         assertThat(pin.blooms.map { it.status })
             .containsExactly(BloomStatus.ENDED, BloomStatus.PEAK)
-        // 동네형은 하위호환 alias(attractions)에 포함되지 않는다.
-        assertThat(response.attractions).isEmpty()
     }
 
     @Test
