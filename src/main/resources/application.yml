@@ -210,6 +210,11 @@ external:
       data-lab: { cron: "0 30 8 * * *", enabled: true }
       tats-cnctr: { cron: "0 0 9 * * *", enabled: true }
       congestion-link: { cron: "0 40 9 * * *", enabled: true }
+      # 명소당 2회 × 4000건 = 8000회(초당 5회 제한으로 약 30분). 수정 시각을 갱신하는 국문 동기화 뒤, 다른 공사 잡이 없는 시간에 돈다.
+      operating-info:
+        cron: "0 0 6 * * *"
+        enabled: true
+        max-attractions: ${KTO_OPERATING_INFO_MAX_ATTRACTIONS:4000}
     kma:
       vilage-fcst:
         cron: "0 15 */3 * * *"

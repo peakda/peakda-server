@@ -44,6 +44,12 @@ data class SpotDetailResponse(
     )
     val visitTiming: VisitTimingResponse?,
 
+    @field:Schema(
+        description = "운영 정보 (SCR-025a) — 한국관광공사 소개정보. 명소형 스팟만 제공하며 받은 항목이 하나도 없으면 null",
+        nullable = true,
+    )
+    val operatingInfo: OperatingInfo?,
+
     @field:Schema(description = "게시된 방문 기록 수", example = "12")
     val recordCount: Long,
 
@@ -53,6 +59,22 @@ data class SpotDetailResponse(
     @field:Schema(description = "현재 로그인 사용자의 찜 상태")
     val favorite: FavoriteState,
 ) {
+    @Schema(description = "운영 정보 — 관광공사 원문을 그대로 담고 줄바꿈(\\n)만 정리한다. 관광공사가 비워 둔 항목은 null")
+    data class OperatingInfo(
+        @field:Schema(
+            description = "운영 시간 — 관광공사 이용시간. 쉬는 날이 있으면 마지막 줄에 '쉬는 날: …' 으로 붙인다",
+            example = "09:00~18:00\n쉬는 날: 매주 월요일",
+            nullable = true,
+        )
+        val operatingHours: String?,
+
+        @field:Schema(description = "입장료", example = "무료", nullable = true)
+        val admissionFee: String?,
+
+        @field:Schema(description = "주차", example = "가능 (유료)", nullable = true)
+        val parking: String?,
+    )
+
     @Schema(description = "올해 만개 시기 배너 — 채택된 개화 추정 1건")
     data class BloomBanner(
         @field:Schema(description = "꽃 카테고리", example = "CHERRY")
