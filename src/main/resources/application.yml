@@ -3,6 +3,12 @@ server:
   # 리다이렉트 URL 과 OAuth {baseUrl} 이 http 로 생성되어,
   # HTTPS 페이지에서 mixed content 로 차단되고 소셜 로그인도 깨진다.
   forward-headers-strategy: framework
+  # prod 는 ALB → ECS 직결이라 Caddy 의 encode gzip 을 거치지 않는다. 앱에서 직접 압축한다.
+  # dev 는 Caddy 가 이미 압축된 응답(Content-Encoding 있음)을 다시 압축하지 않으므로 공통 설정으로 둔다.
+  # mime-types 는 지정하지 않는다(지정하면 application/json 을 포함한 기본 목록을 덮어쓴다).
+  compression:
+    enabled: true
+    min-response-size: 1KB
 
 spring:
   application:
