@@ -35,6 +35,7 @@ external:
       congestion-link: { cron: "0/30 * * * * *", enabled: false }
       data-lab:    { cron: "0/30 * * * * *", enabled: false }
       photo:       { cron: "0/30 * * * * *", enabled: false }
+      operating-info: { cron: "0/30 * * * * *", enabled: false, max-attractions: 10 }
     kma:
       vilage-fcst:
         cron: "0/30 * * * * *"
