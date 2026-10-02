@@ -4,6 +4,8 @@ import com.peakda.server.domain.attraction.application.AttractionEligibilityProp
 import com.peakda.server.domain.attraction.entity.Attraction
 import com.peakda.server.domain.attraction.repository.AttractionRepository
 import com.peakda.server.domain.seasonal.application.BloomTaggingService
+import com.peakda.server.domain.seasonal.application.GalleryFlowerEvidenceService
+import com.peakda.server.domain.seasonal.application.GalleryFlowerIndex
 import com.peakda.server.domain.seasonal.entity.TagSource
 import com.peakda.server.infrastructure.scheduler.SchedulerProperties
 import com.peakda.server.infrastructure.scheduler.testJobLogger
@@ -25,11 +27,17 @@ class AttractionBloomTaggingJobTest {
     private var keywordTags = 1
     private var categoryTags = 0
     private var observationTags = 0
+    private var galleryTags = 0
+    private val galleryIndex = GalleryFlowerIndex(emptyList())
+    private val galleryEvidenceService = mock(GalleryFlowerEvidenceService::class.java) { invocation ->
+        if (invocation.method.name == "loadIndex") galleryIndex else null
+    }
     private val taggingService = mock(BloomTaggingService::class.java) { invocation ->
         when (invocation.method.name) {
             "tagKeywords" -> keywordTags
             "tagCategories" -> categoryTags
             "tagObservationMountains" -> observationTags
+            "tagGallery" -> galleryTags
             "tagFestivals", "deleteStaleAutoTags" -> 0
             else -> null
         }
@@ -39,6 +47,7 @@ class AttractionBloomTaggingJobTest {
     }
     private val job = AttractionBloomTaggingJob(
         taggingService,
+        galleryEvidenceService,
         attractionRepository,
         AttractionEligibilityProperties(setOf("12")),
         SchedulerProperties(),
@@ -93,6 +102,22 @@ class AttractionBloomTaggingJobTest {
             .isEqualTo(listOf(attraction))
         val cleanup = invocations.single { it.method.name == "deleteStaleAutoTags" }
         assertThat(cleanup.arguments[1]).isEqualTo(setOf(TagSource.OBSERVATION))
+    }
+
+    @Test
+    fun `갤러리 색인은 실행마다 한 번 만들어 명소 페이지에 넘기고 만든 출처를 정리 대상에 넣는다`() {
+        keywordTags = 0
+        galleryTags = 3
+
+        job.runNow()
+
+        assertThat(mockingDetails(galleryEvidenceService).invocations.count { it.method.name == "loadIndex" }).isEqualTo(1)
+        val invocations = mockingDetails(taggingService).invocations
+        val gallery = invocations.single { it.method.name == "tagGallery" }
+        assertThat(gallery.arguments[0]).isEqualTo(listOf(attraction))
+        assertThat(gallery.arguments[1]).isSameAs(galleryIndex)
+        val cleanup = invocations.single { it.method.name == "deleteStaleAutoTags" }
+        assertThat(cleanup.arguments[1]).isEqualTo(setOf(TagSource.GALLERY))
     }
 
     @Test

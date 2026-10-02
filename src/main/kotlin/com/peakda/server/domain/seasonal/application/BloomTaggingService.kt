@@ -31,10 +31,12 @@ import kotlin.math.sqrt
  *   이름에 꽃 단어가 없는 국립공원·수목원 같은 명소를 유형으로 보강한다.
  * - 신호 D([tagObservationMountains]): 기상청 유명산 단풍 관측 산에 속한 명소([MapleMountainMatcher])면 단풍 OBSERVATION 태그.
  *   관측 산의 실측 단풍 상태를 받을 명소를 추정 대상에 넣는다.
+ * - 신호 E([tagGallery]): 관광사진 갤러리에 그 명소에서 찍은 꽃 사진이 있으면([GalleryFlowerIndex]) GALLERY 태그.
+ *   이름에 꽃 단어가 없는 사찰·서원·고궁·가로수길 같은 명소를 실제 촬영 기록으로 보강한다.
  *
- * 네 신호는 매 실행 태그를 다시 upsert 하므로, [deleteStaleAutoTags] 로 이번 실행에서 갱신되지 않은 자동 태그를 지운다.
+ * 다섯 신호는 매 실행 태그를 다시 upsert 하므로, [deleteStaleAutoTags] 로 이번 실행에서 갱신되지 않은 자동 태그를 지운다.
  *
- * 신호 B 의 대상 유형은 [AttractionEligibilityProperties] 로 쿼리에서 제한한다. 신호 A·C·D 는 호출자가 대상 유형만 넘긴다.
+ * 신호 B 의 대상 유형은 [AttractionEligibilityProperties] 로 쿼리에서 제한한다. 신호 A·C·D·E 는 호출자가 대상 유형만 넘긴다.
  */
 @Service
 class BloomTaggingService(
@@ -149,6 +151,29 @@ class BloomTaggingService(
         return count
     }
 
+    /** 신호 E. [index] 의 꽃 사진이 근거가 되는 명소에 GALLERY 태그를 upsert 하고 처리한 태그 수를 반환. */
+    @Transactional
+    fun tagGallery(attractions: List<Attraction>, index: GalleryFlowerIndex): Int {
+        if (index.photoCount == 0) return 0
+        var count = 0
+        for (attraction in attractions) {
+            val attractionId = attraction.id ?: continue
+            for ((category, photoId) in index.match(attraction)) {
+                attractionBloomRepository.upsert(
+                    AttractionBloomUpsertCommand(
+                        attractionId = attractionId,
+                        bloomCategory = category.name,
+                        source = TagSource.GALLERY.name,
+                        confidence = properties.galleryConfidence,
+                        evidence = "gallery:$photoId",
+                    ),
+                )
+                count++
+            }
+        }
+        return count
+    }
+
     /**
      * [runStartedAt] 실행에서 다시 만들어지지 않은 자동 태그 중 [sources] 출처만 삭제하고 삭제 수를 반환.
      * 앱·DB 시계 차이로 방금 갱신한 태그를 지우지 않도록 [STALE_GRACE] 만큼 여유를 둔다. MANUAL·EXIF_BOOST 는 지울 수 없다.
@@ -221,7 +246,7 @@ class BloomTaggingService(
         private const val EARTH_RADIUS_METERS = 6_371_000.0
         private const val MIN_COS_LAT = 0.01
         private const val MIN_CONTAINED_TITLE_LENGTH = 3
-        private val AUTO_SOURCES = setOf(TagSource.KEYWORD, TagSource.FESTIVAL, TagSource.CATEGORY, TagSource.OBSERVATION)
+        private val AUTO_SOURCES = setOf(TagSource.KEYWORD, TagSource.FESTIVAL, TagSource.CATEGORY, TagSource.OBSERVATION, TagSource.GALLERY)
         private val STALE_GRACE: Duration = Duration.ofHours(1)
     }
 }

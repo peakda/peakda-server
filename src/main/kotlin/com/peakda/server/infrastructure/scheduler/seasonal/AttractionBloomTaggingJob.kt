@@ -3,6 +3,7 @@ package com.peakda.server.infrastructure.scheduler.seasonal
 import com.peakda.server.domain.attraction.application.AttractionEligibilityProperties
 import com.peakda.server.domain.attraction.repository.AttractionRepository
 import com.peakda.server.domain.seasonal.application.BloomTaggingService
+import com.peakda.server.domain.seasonal.application.GalleryFlowerEvidenceService
 import com.peakda.server.domain.seasonal.entity.TagSource
 import com.peakda.server.infrastructure.scheduler.JobLogger
 import com.peakda.server.infrastructure.scheduler.ManualTriggerableJob
@@ -26,6 +27,7 @@ import java.time.ZoneId
 @Component
 class AttractionBloomTaggingJob(
     private val taggingService: BloomTaggingService,
+    private val galleryEvidenceService: GalleryFlowerEvidenceService,
     private val attractionRepository: AttractionRepository,
     private val eligibilityProperties: AttractionEligibilityProperties,
     private val props: SchedulerProperties,
@@ -50,6 +52,9 @@ class AttractionBloomTaggingJob(
         var keywordTags = 0
         var categoryTags = 0
         var observationTags = 0
+        var galleryTags = 0
+        // 꽃 사진 색인은 실행마다 한 번만 만들어 모든 명소 페이지가 공유한다.
+        val galleryIndex = galleryEvidenceService.loadIndex()
         while (true) {
             val slice = attractionRepository.findByVisibleTrueAndContentTypeCodeIn(
                 eligibilityProperties.eligibleContentTypes,
@@ -59,6 +64,7 @@ class AttractionBloomTaggingJob(
             keywordTags += taggingService.tagKeywords(slice.content)
             categoryTags += taggingService.tagCategories(slice.content)
             observationTags += taggingService.tagObservationMountains(slice.content)
+            galleryTags += taggingService.tagGallery(slice.content, galleryIndex)
             processedAttractions += slice.numberOfElements
             if (!slice.hasNext()) break
             page++
@@ -69,15 +75,18 @@ class AttractionBloomTaggingJob(
             if (festivalTags > 0) add(TagSource.FESTIVAL)
             if (categoryTags > 0) add(TagSource.CATEGORY)
             if (observationTags > 0) add(TagSource.OBSERVATION)
+            if (galleryTags > 0) add(TagSource.GALLERY)
         }
         val staleDeleted = taggingService.deleteStaleAutoTags(runStartedAt, cleanupSources)
         return mapOf(
-            JobLogger.KEY_PROCESSED to keywordTags + festivalTags + categoryTags + observationTags,
+            JobLogger.KEY_PROCESSED to keywordTags + festivalTags + categoryTags + observationTags + galleryTags,
             "attractions" to processedAttractions,
             "keywordTags" to keywordTags,
             "festivalTags" to festivalTags,
             "categoryTags" to categoryTags,
             "observationTags" to observationTags,
+            "galleryTags" to galleryTags,
+            "galleryPhotos" to galleryIndex.photoCount,
             "staleDeleted" to staleDeleted,
             "staleCleanedSources" to cleanupSources.map(TagSource::name),
         )
