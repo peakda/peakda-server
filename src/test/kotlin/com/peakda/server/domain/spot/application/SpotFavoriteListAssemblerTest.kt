@@ -197,6 +197,20 @@ class SpotFavoriteListAssemblerTest {
     }
 
     @Test
+    fun `명소 대체 이미지는 관광공사 썸네일을 원본보다 먼저 쓴다`() {
+        val attractionCard = card(101L, 501L, SpotType.ATTRACTION, "봄 정원")
+        val attraction = attraction(
+            501L,
+            primaryImageUrl = "https://img/primary.jpg",
+            thumbnailImageUrl = "https://img/thumb.jpg",
+        )
+
+        val response = assemble(cards = listOf(attractionCard), attractions = listOf(attraction))
+
+        assertThat(response.favorites.single().photoUrls).containsExactly("https://img/thumb.jpg")
+    }
+
+    @Test
     fun `기록 수 집계에 없는 스팟은 0으로 채운다`() {
         val counted = card(101L, null, SpotType.LOCAL, "기록 있는 곳")
         val empty = card(102L, null, SpotType.LOCAL, "기록 없는 곳")
