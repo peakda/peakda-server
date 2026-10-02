@@ -11,22 +11,28 @@ class MapleObservationMountainCatalogTest {
     fun `배포되는 목록은 기상청 유명산 단풍 관측 21개 산을 모두 담고 있다`() {
         val catalog = MapleObservationMountainCatalog(ClassPathResource(DEFAULT_RESOURCE_PATH))
 
-        assertThat(catalog.areaCodesByMountain).hasSize(21)
-        assertThat(catalog.areaCodesByMountain["설악산"]).containsExactly("51")
-        assertThat(catalog.areaCodesByMountain["지리산"]).containsExactlyInAnyOrder("12", "52", "48")
+        val byName = catalog.mountains.associateBy { it.name }
+        assertThat(catalog.mountains).hasSize(21)
+        assertThat(byName.getValue("설악산").areaCodes).containsExactly("51")
+        assertThat(byName.getValue("지리산").areaCodes).containsExactlyInAnyOrder("12", "52", "48")
+        assertThat(byName.getValue("지리산").excludeKeywords).containsExactly("사량도")
     }
 
     @Test
-    fun `주석과 헤더를 건너뛰고 시도 코드를 세미콜론으로 나눈다`() {
+    fun `주석과 헤더를 건너뛰고 시도 코드와 제외어를 세미콜론으로 나눈다`() {
         val csv = """
             # 주석
-            obsPlace,areaCodes
+            obsPlace,areaCodes,excludeKeywords
             북한산, 11 ; 41
+            지리산,12;48,사량도 ; 다른섬
         """.trimIndent()
 
         val catalog = MapleObservationMountainCatalog(ByteArrayResource(csv.toByteArray()))
 
-        assertThat(catalog.areaCodesByMountain).containsExactlyEntriesOf(mapOf("북한산" to setOf("11", "41")))
+        assertThat(catalog.mountains).containsExactly(
+            MapleObservationMountain("북한산", setOf("11", "41"), emptyList()),
+            MapleObservationMountain("지리산", setOf("12", "48"), listOf("사량도", "다른섬")),
+        )
     }
 
     @Test

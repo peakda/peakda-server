@@ -11,10 +11,11 @@ class MapleMountainMatcherTest {
         MapleObservationMountainCatalog(
             ByteArrayResource(
                 """
-                    obsPlace,areaCodes
-                    설악산,51
-                    가야산,48;47
-                    속리산,43;47
+                    obsPlace,areaCodes,excludeKeywords
+                    설악산,51,
+                    가야산,48;47,
+                    속리산,43;47,
+                    지리산,12;48,사량도
                 """.trimIndent().toByteArray(),
             ),
         ),
@@ -34,6 +35,12 @@ class MapleMountainMatcherTest {
     @Test
     fun `다른 꽃 이름이 들어간 명소는 그 꽃의 명소로 보고 연결하지 않는다`() {
         assertThat(matcher.mountainOf(attraction("속리산연꽃단지", areaCode = "43"))).isNull()
+    }
+
+    @Test
+    fun `같은 시도 안의 동명이산은 제외어로 거른다`() {
+        assertThat(matcher.mountainOf(attraction("지리산 천왕봉", areaCode = "48"))).isEqualTo("지리산")
+        assertThat(matcher.mountainOf(attraction("사량도 지리산", areaCode = "48"))).isNull()
     }
 
     @Test
