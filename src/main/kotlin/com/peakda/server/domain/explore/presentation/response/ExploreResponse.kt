@@ -47,7 +47,7 @@ data class ExploreResponse(
         @field:Schema(description = "명소 주소의 지역 표시값. 없으면 null", example = "서울 영등포구")
         val address: String?,
 
-        @field:Schema(description = "대표 이미지 URL. 없으면 null", example = "https://img.peakda.kr/yeouido.jpg")
+        @field:Schema(description = "카드 이미지 URL. 관광공사 썸네일 우선, 없으면 원본. 둘 다 없으면 null", example = "https://img.peakda.kr/yeouido.jpg")
         val thumbnailUrl: String?,
 
         @field:Schema(description = "꽃 카테고리", example = "CHERRY")

@@ -184,6 +184,20 @@ class SpotPreviewServiceTest {
     }
 
     @Test
+    fun `명소 썸네일은 관광공사 썸네일을 원본보다 먼저 쓴다`() {
+        val spot = attractionSpot(SPOT_ID, ATTRACTION_ID)
+        `when`(spotRepository.findAllById(listOf(SPOT_ID))).thenReturn(listOf(spot))
+        `when`(bloomBaseDateResolver.currentBaseDate()).thenReturn(null)
+        `when`(attractionRepository.findAllById(listOf(ATTRACTION_ID))).thenReturn(
+            listOf(attraction(ATTRACTION_ID, "https://img/primary.jpg", thumbnailImageUrl = "https://img/thumb.jpg")),
+        )
+
+        val response = service.preview(listOf(SPOT_ID), category = null, lat = null, lng = null)
+
+        assertThat(response.items.single().thumbnailUrl).isEqualTo("https://img/thumb.jpg")
+    }
+
+    @Test
     fun `동네형 스팟은 카테고리 매칭되는 최근 게시 기록을 뱃지로, 최신 기록 사진을 썸네일로 채운다`() {
         val spot = localSpot(SPOT_ID)
         `when`(spotRepository.findAllById(listOf(SPOT_ID))).thenReturn(listOf(spot))
@@ -298,13 +312,14 @@ class SpotPreviewServiceTest {
         return spot
     }
 
-    private fun attraction(id: Long, primaryImageUrl: String?): Attraction {
+    private fun attraction(id: Long, primaryImageUrl: String?, thumbnailImageUrl: String? = null): Attraction {
         val attraction = Attraction(
             tourApiContentId = "c-$id",
             title = "남산",
             latitude = 37.55,
             longitude = 126.98,
             primaryImageUrl = primaryImageUrl,
+            thumbnailImageUrl = thumbnailImageUrl,
         )
         ReflectionTestUtils.setField(attraction, "id", id)
         return attraction

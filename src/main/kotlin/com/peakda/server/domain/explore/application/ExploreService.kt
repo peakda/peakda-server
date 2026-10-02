@@ -185,7 +185,7 @@ class ExploreService(
         attractionId = attractionId,
         name = attraction.title,
         address = attraction.addressMain,
-        thumbnailUrl = attraction.primaryImageUrl ?: attraction.thumbnailImageUrl,
+        thumbnailUrl = attraction.thumbnailImageUrl ?: attraction.primaryImageUrl,
         category = bloomCategory,
         displayName = bloomCategory.displayName,
         status = status,

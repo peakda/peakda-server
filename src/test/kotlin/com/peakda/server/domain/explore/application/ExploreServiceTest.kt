@@ -122,6 +122,38 @@ class ExploreServiceTest {
     }
 
     @Test
+    fun `스팟 카드 이미지는 관광공사 썸네일을 원본보다 먼저 쓰고 없으면 원본을 쓴다`() {
+        `when`(bloomBaseDateResolver.currentBaseDate()).thenReturn(BASE_DATE)
+        `when`(
+            seasonalBloomEstimateRepository.findAttractionIdsByBaseDateAndStatus(BASE_DATE, BloomStatus.PEAK, peakPageable),
+        ).thenReturn(PageImpl(listOf(1L, 2L), peakPageable, 2))
+        `when`(
+            seasonalBloomEstimateRepository.findAttractionIdsByBaseDateAndStatus(BASE_DATE, BloomStatus.STARTED, nextWeekPageable),
+        ).thenReturn(PageImpl(emptyList(), nextWeekPageable, 0))
+        `when`(seasonalBloomEstimateRepository.findByBaseDateAndAttractionIdIn(BASE_DATE, listOf(1L, 2L)))
+            .thenReturn(
+                listOf(
+                    estimate(1L, BloomCategory.CHERRY, BloomStatus.PEAK),
+                    estimate(2L, BloomCategory.CHERRY, BloomStatus.PEAK),
+                ),
+            )
+        `when`(attractionRepository.findAllById(listOf(1L, 2L))).thenReturn(
+            listOf(
+                attraction(1L, "남산", thumbnailImageUrl = "https://img/1_thumb.jpg"),
+                attraction(2L, "북악산"),
+            ),
+        )
+        `when`(spotRepository.findByTypeAndAttractionIdIn(SpotType.ATTRACTION, listOf(1L, 2L)))
+            .thenReturn(emptyList())
+        stubFestivalAndCuration()
+
+        val response = service.explore(null, category = null, today = TODAY)
+
+        assertThat(response.peakNow.map { it.thumbnailUrl })
+            .containsExactly("https://img/1_thumb.jpg", "https://img/2.jpg")
+    }
+
+    @Test
     fun `절정과 다음 주 섹션은 각각 PEAK와 STARTED 상태로 정해진 크기만큼 조회한다`() {
         stubEmptyExplore()
 
@@ -436,7 +468,12 @@ class ExploreServiceTest {
         peakEndDate = TODAY.plusDays(6),
     )
 
-    private fun attraction(id: Long, title: String, visible: Boolean = true): Attraction {
+    private fun attraction(
+        id: Long,
+        title: String,
+        visible: Boolean = true,
+        thumbnailImageUrl: String? = null,
+    ): Attraction {
         val attraction = Attraction(
             tourApiContentId = "content-$id",
             title = title,
@@ -444,6 +481,7 @@ class ExploreServiceTest {
             longitude = 126.98,
             latitude = 37.55,
             primaryImageUrl = "https://img/$id.jpg",
+            thumbnailImageUrl = thumbnailImageUrl,
             visible = visible,
         )
         ReflectionTestUtils.setField(attraction, "id", id)
