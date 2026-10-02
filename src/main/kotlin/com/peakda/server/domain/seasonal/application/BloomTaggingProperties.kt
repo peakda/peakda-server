@@ -24,4 +24,6 @@ data class BloomTaggingProperties(
     val categoryTags: Map<BloomCategory, Set<String>> = emptyMap(),
     /** 신호 D 기상청 유명산 단풍 관측 산 매칭 신뢰도. 직접 관측 대상이라 가장 높게 둔다. */
     val observationConfidence: Double = 0.9,
+    /** 신호 E 관광사진 갤러리 근거 신뢰도. 실제 촬영 기록이라 키워드보다 높고, 축제·관측보다 낮게 둔다. */
+    val galleryConfidence: Double = 0.8,
 )

@@ -27,7 +27,7 @@ class PhotoGallerySyncJobTest {
     @Test
     fun `run 시 galleryList를 호출해 sync service에 페이지를 전달한다`() {
         fixture.server.expect(
-            requestTo(startsWith("https://example.test/photo/galleryList1?numOfRows=100&pageNo=1")),
+            requestTo(startsWith("https://example.test/photo/galleryList1?numOfRows=1000&pageNo=1")),
         ).andRespond(withSuccess(SUCCESS_JSON, MediaType.APPLICATION_JSON))
 
         val job = PhotoGallerySyncJob(fixture.client, syncService, enabled(true), testJobLogger())

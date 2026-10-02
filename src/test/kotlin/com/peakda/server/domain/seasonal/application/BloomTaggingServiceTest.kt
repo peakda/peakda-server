@@ -208,6 +208,36 @@ class BloomTaggingServiceTest {
     }
 
     @Test
+    fun `갤러리 사진이 근거가 되는 명소에 꽃별 갤러리 태그를 만든다`() {
+        val index = GalleryFlowerIndex(
+            listOfNotNull(GalleryFlowerPhoto.of("g7", "마곡사", "마곡사, 사찰, 단풍", "충청남도 공주시 사곡면")),
+        )
+
+        val count = service.tagGallery(
+            listOf(
+                attraction(1L, "마곡사", addressMain = "충청남도 공주시 사곡면 마곡사로 966"),
+                attraction(2L, "마곡사", addressMain = "충청남도 다른군 어딘가"),
+            ),
+            index,
+        )
+
+        assertThat(count).isEqualTo(1)
+        val upsert = upserts().single()
+        assertThat(upsert.attractionId).isEqualTo(1L)
+        assertThat(upsert.bloomCategory).isEqualTo("MAPLE")
+        assertThat(upsert.source).isEqualTo("GALLERY")
+        assertThat(upsert.evidence).isEqualTo("gallery:g7")
+    }
+
+    @Test
+    fun `갤러리 꽃 사진이 없으면 갤러리 태그를 만들지 않는다`() {
+        val count = service.tagGallery(listOf(attraction(1L, "마곡사")), GalleryFlowerIndex(emptyList()))
+
+        assertThat(count).isZero()
+        assertThat(upserts()).isEmpty()
+    }
+
+    @Test
     fun `분류 설정이 비어 있으면 분류 태그를 만들지 않는다`() {
         val count = service.tagCategories(listOf(attraction(1L, "주왕산국립공원", categoryMinor = "A01010100")))
 
