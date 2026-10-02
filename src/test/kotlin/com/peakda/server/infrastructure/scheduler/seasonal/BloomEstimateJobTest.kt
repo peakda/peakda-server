@@ -1,11 +1,13 @@
 package com.peakda.server.infrastructure.scheduler.seasonal
 
+import com.peakda.server.domain.attraction.entity.Attraction
 import com.peakda.server.domain.seasonal.application.DailyTemperature
 import com.peakda.server.domain.seasonal.application.GddSnapshot
 import com.peakda.server.domain.seasonal.application.ObservationSnapshot
 import com.peakda.server.domain.seasonal.entity.BloomCategory
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Test
+import org.springframework.test.util.ReflectionTestUtils
 import java.time.LocalDate
 
 class BloomEstimateJobTest {
@@ -115,6 +117,20 @@ class BloomEstimateJobTest {
     }
 
     @Test
+    fun `단풍 관측은 산에 속한 명소에만 그 산의 스냅샷을 준다`() {
+        val seorak = ObservationSnapshot("설악산", LocalDate.of(2026, 9, 28), null)
+        val attractions = listOf(attraction(1L, "설악산 국립공원(외설악)"), attraction(2L, "속초 해수욕장"), attraction(3L, "오대산 월정사"))
+
+        val result = BloomEstimateJob.resolveMountainObservationByAttraction(
+            attractions = attractions,
+            mountainOf = { a -> listOf("설악산", "오대산").firstOrNull { a.title.contains(it) } },
+            snapshotsByMountain = mapOf("설악산" to seorak),
+        )
+
+        assertThat(result).containsExactlyEntriesOf(mapOf(1L to seorak))
+    }
+
+    @Test
     fun `매핑이 없는 명소에는 기본 지점 관측을 주지 않는다`() {
         val defaultSnapshot = ObservationSnapshot(
             obsPlace = "여의도 윤중로",
@@ -138,4 +154,8 @@ class BloomEstimateJobTest {
         minTemperature = null,
         maxTemperature = null,
     )
+
+    private fun attraction(id: Long, title: String) =
+        Attraction(tourApiContentId = "content-$id", contentTypeCode = "12", title = title)
+            .also { ReflectionTestUtils.setField(it, "id", id) }
 }

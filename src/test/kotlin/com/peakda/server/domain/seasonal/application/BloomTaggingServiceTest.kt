@@ -9,11 +9,13 @@ import com.peakda.server.domain.seasonal.entity.BloomCategory
 import com.peakda.server.domain.seasonal.entity.TagSource
 import com.peakda.server.domain.seasonal.repository.AttractionBloomRepository
 import com.peakda.server.domain.seasonal.repository.AttractionBloomUpsertCommand
+import com.peakda.server.infrastructure.external.kma.flower.MapleObservationMountainCatalog
 import org.assertj.core.api.Assertions.assertThat
 import org.assertj.core.api.Assertions.assertThatThrownBy
 import org.junit.jupiter.api.Test
 import org.mockito.Mockito.mock
 import org.mockito.Mockito.mockingDetails
+import org.springframework.core.io.ByteArrayResource
 import org.springframework.test.util.ReflectionTestUtils
 import java.time.Instant
 import java.time.LocalDate
@@ -29,12 +31,16 @@ class BloomTaggingServiceTest {
         if (invocation.method.name == "findByLatitudeIsNotNullAndLongitudeIsNotNull") festivals else null
     }
     private val attractionBloomRepository = mock(AttractionBloomRepository::class.java)
+    private val mapleMountainMatcher = MapleMountainMatcher(
+        MapleObservationMountainCatalog(ByteArrayResource("obsPlace,areaCodes\n설악산,51".toByteArray())),
+    )
     private val service = BloomTaggingService(
         attractionRepository,
         festivalRepository,
         attractionBloomRepository,
         BloomTaggingProperties(),
         AttractionEligibilityProperties(setOf("12")),
+        mapleMountainMatcher,
     )
 
     @Test
@@ -166,6 +172,7 @@ class BloomTaggingServiceTest {
             attractionBloomRepository,
             BloomTaggingProperties(categoryTags = mapOf(BloomCategory.MAPLE to setOf("A01010100"))),
             AttractionEligibilityProperties(setOf("12")),
+            mapleMountainMatcher,
         )
 
         val count = categoryService.tagCategories(
@@ -181,6 +188,23 @@ class BloomTaggingServiceTest {
         assertThat(upsert.attractionId).isEqualTo(1L)
         assertThat(upsert.source).isEqualTo("CATEGORY")
         assertThat(upsert.evidence).isEqualTo("category:A01010100")
+    }
+
+    @Test
+    fun `기상청 단풍 관측 산에 속한 명소에 단풍 관측 태그를 만든다`() {
+        val count = service.tagObservationMountains(
+            listOf(
+                attraction(1L, "설악산 국립공원(외설악)", legalDongAreaCode = "51"),
+                attraction(2L, "설악산 순두부", legalDongAreaCode = "11"),
+            ),
+        )
+
+        assertThat(count).isEqualTo(1)
+        val upsert = upserts().single()
+        assertThat(upsert.attractionId).isEqualTo(1L)
+        assertThat(upsert.bloomCategory).isEqualTo("MAPLE")
+        assertThat(upsert.source).isEqualTo("OBSERVATION")
+        assertThat(upsert.evidence).isEqualTo("kma-maple:설악산")
     }
 
     @Test
@@ -234,6 +258,7 @@ class BloomTaggingServiceTest {
         longitude: Double? = null,
         addressMain: String? = null,
         categoryMinor: String? = null,
+        legalDongAreaCode: String? = null,
     ): Attraction =
         Attraction(
             tourApiContentId = "content-$id",
@@ -243,6 +268,7 @@ class BloomTaggingServiceTest {
             latitude = latitude,
             longitude = longitude,
             categoryMinor = categoryMinor,
+            legalDongAreaCode = legalDongAreaCode,
         ).also { ReflectionTestUtils.setField(it, "id", id) }
 
     private fun festival(

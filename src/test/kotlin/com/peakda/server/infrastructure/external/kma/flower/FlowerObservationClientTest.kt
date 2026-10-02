@@ -41,6 +41,23 @@ class FlowerObservationClientTest {
     }
 
     @Test
+    fun `단풍 수종은 유명산 단풍 엔드포인트에서 받고 첫 단풍·절정일을 파싱한다`() {
+        server.expect(requestTo("https://example.test/flower/maple_photojs.jsp?treeType=4&obsPlace="))
+            .andRespond(withSuccess(maplePlacesJsonp(), JAVASCRIPT))
+        server.expect(requestTo("https://example.test/flower/maple_photojs.jsp?treeType=4&obsPlace=%EC%84%A4%EC%95%85%EC%82%B0"))
+            .andRespond(withSuccess(mapleDetailJsonp(), JAVASCRIPT))
+
+        val places = client.getPlaces(FlowerObservationClient.MAPLE_TREE_TYPE)
+        val detail = client.getObservation(FlowerObservationClient.MAPLE_TREE_TYPE, "설악산")
+
+        assertThat(places.map { it.obsPlace }).containsExactly("설악산", "오대산")
+        assertThat(detail?.treeType).isEqualTo("단풍")
+        assertThat(detail?.bfShotDate).isEqualTo("2026-09-11")
+        assertThat(detail?.cfShotDate).isEqualTo("2026-09-28")
+        assertThat(detail?.ffShotDate).isEmpty()
+    }
+
+    @Test
     fun `JSONP 껍데기가 없으면 null을 반환한다`() {
         server.expect(requestTo("https://example.test/flower/flower_photojs.jsp?treeType=1&obsPlace=%EC%97%AC%EC%9D%98%EB%8F%84"))
             .andRespond(withSuccess("{\"flower\": {}}", MediaType.APPLICATION_JSON))
@@ -98,6 +115,34 @@ class FlowerObservationClientTest {
             ],
             "flower": { "obsPlace": "임의 장소", "unused": "ignored" },
             "unused": true
+          })
+        """.trimIndent()
+
+    private fun maplePlacesJsonp(): String =
+        """
+          applyMapleData({
+            "places": [
+              { "obsPlace": "설악산", "status": "첫단풍", "sts": "2" },
+              { "obsPlace": "오대산", "status": "단풍전", "sts": "1" }
+            ],
+            "flower": { "obsPlace": "설악산" }
+          })
+        """.trimIndent()
+
+    private fun mapleDetailJsonp(): String =
+        """
+          applyMapleData({
+            "places": [],
+            "treeType": "4",
+            "flower": {
+              "treeType": "단풍",
+              "obsPlace": "설악산",
+              "flowerStatus": "2",
+              "bfShotDate": "2026-09-11",
+              "cfShotDate": "2026-09-28",
+              "ffShotDate": "",
+              "modDate": "2026-09-28 10:55:57"
+            }
           })
         """.trimIndent()
 
