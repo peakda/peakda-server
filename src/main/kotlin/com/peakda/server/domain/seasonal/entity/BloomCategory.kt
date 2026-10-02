@@ -72,7 +72,7 @@ enum class BloomCategory(
         typicalPeakRange = MonthDayRange(MonthDay.of(6, 10), MonthDay.of(7, 15)),
         keywordHints = listOf("수국"),
         festivalHints = listOf("수국"),
-        keywordExclusions = listOf("수국사"),
+        keywordExclusions = listOf("수국사", "여수국가"),
     ),
     LOTUS(
         displayName = "연꽃",
@@ -130,7 +130,7 @@ enum class BloomCategory(
         typicalPeakRange = MonthDayRange(MonthDay.of(12, 1), MonthDay.of(3, 15)),
         keywordHints = listOf("동백"),
         festivalHints = listOf("동백"),
-        keywordExclusions = listOf("동백대교"),
+        keywordExclusions = listOf("동백대교", "동백꽃 필 무렵"),
     ),
     ;
 

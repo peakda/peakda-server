@@ -33,6 +33,13 @@ private const val GALLERY_PHOTO_UPSERT_SQL = """
 interface GalleryPhotoRepository : JpaRepository<GalleryPhoto, Long> {
     fun findByTourApiContentId(tourApiContentId: String): GalleryPhoto?
 
+    /** 제목·검색 키워드가 정규식 [pattern] 과 일치하는 사진. 꽃 근거 색인의 후보를 좁힐 때 쓴다. */
+    @Query(
+        value = "SELECT * FROM gallery_photos WHERE (coalesce(title, '') || ',' || coalesce(search_keyword, '')) ~ :pattern",
+        nativeQuery = true,
+    )
+    fun findByTextMatching(@Param("pattern") pattern: String): List<GalleryPhoto>
+
     @Modifying
     @Query(value = GALLERY_PHOTO_UPSERT_SQL, nativeQuery = true)
     fun upsert(@Param("command") command: GalleryPhotoUpsertCommand): Int
