@@ -22,4 +22,6 @@ data class BloomTaggingProperties(
     val categoryConfidence: Double = 0.4,
     /** 신호 C 카테고리별 TourAPI 소분류(cat3) 코드. 예: 단풍 ← 국립공원 `A01010100`. */
     val categoryTags: Map<BloomCategory, Set<String>> = emptyMap(),
+    /** 신호 D 기상청 유명산 단풍 관측 산 매칭 신뢰도. 직접 관측 대상이라 가장 높게 둔다. */
+    val observationConfidence: Double = 0.9,
 )

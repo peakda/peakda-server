@@ -49,6 +49,7 @@ class AttractionBloomTaggingJob(
         var processedAttractions = 0
         var keywordTags = 0
         var categoryTags = 0
+        var observationTags = 0
         while (true) {
             val slice = attractionRepository.findByVisibleTrueAndContentTypeCodeIn(
                 eligibilityProperties.eligibleContentTypes,
@@ -57,6 +58,7 @@ class AttractionBloomTaggingJob(
             if (slice.isEmpty) break
             keywordTags += taggingService.tagKeywords(slice.content)
             categoryTags += taggingService.tagCategories(slice.content)
+            observationTags += taggingService.tagObservationMountains(slice.content)
             processedAttractions += slice.numberOfElements
             if (!slice.hasNext()) break
             page++
@@ -66,14 +68,16 @@ class AttractionBloomTaggingJob(
             if (keywordTags > 0) add(TagSource.KEYWORD)
             if (festivalTags > 0) add(TagSource.FESTIVAL)
             if (categoryTags > 0) add(TagSource.CATEGORY)
+            if (observationTags > 0) add(TagSource.OBSERVATION)
         }
         val staleDeleted = taggingService.deleteStaleAutoTags(runStartedAt, cleanupSources)
         return mapOf(
-            JobLogger.KEY_PROCESSED to keywordTags + festivalTags + categoryTags,
+            JobLogger.KEY_PROCESSED to keywordTags + festivalTags + categoryTags + observationTags,
             "attractions" to processedAttractions,
             "keywordTags" to keywordTags,
             "festivalTags" to festivalTags,
             "categoryTags" to categoryTags,
+            "observationTags" to observationTags,
             "staleDeleted" to staleDeleted,
             "staleCleanedSources" to cleanupSources.map(TagSource::name),
         )

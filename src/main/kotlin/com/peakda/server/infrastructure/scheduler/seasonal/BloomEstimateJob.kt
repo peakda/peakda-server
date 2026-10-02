@@ -1,5 +1,7 @@
 package com.peakda.server.infrastructure.scheduler.seasonal
 
+import com.peakda.server.domain.attraction.entity.Attraction
+import com.peakda.server.domain.attraction.repository.AttractionRepository
 import com.peakda.server.domain.festival.repository.FestivalRepository
 import com.peakda.server.domain.seasonal.application.BloomEstimateService
 import com.peakda.server.domain.seasonal.application.AttractionStationMappingService
@@ -9,6 +11,7 @@ import com.peakda.server.domain.seasonal.application.GddAccumulationService
 import com.peakda.server.domain.seasonal.application.GddAccumulator
 import com.peakda.server.domain.seasonal.application.GddProjector
 import com.peakda.server.domain.seasonal.application.GddSnapshot
+import com.peakda.server.domain.seasonal.application.MapleMountainMatcher
 import com.peakda.server.domain.seasonal.application.ObservationSnapshot
 import com.peakda.server.domain.seasonal.application.ObservationSnapshotService
 import com.peakda.server.domain.seasonal.application.resolveAccumulationStart as resolveBloomAccumulationStart
@@ -29,16 +32,21 @@ import java.time.ZoneId
  * 명소×카테고리 개화 상태 추정 잡. 태깅된 [AttractionBloom] 을 입력으로 추정기·융합을 돌려 산출일(today) 기준 상태를 적재한다.
  *
  * 좌표 보유 축제를 한 번만 로드해 모든 추정에 공유하고, 카테고리별로 명소 id 를 페이지 단위로 순회하며 페이지마다 커밋한다.
+ *
+ * 기상청 관측은 꽃마다 연결 단위가 다르다. 벚꽃은 관측 장소의 지점 권역 명소에, 단풍은 관측 산에 속한 명소
+ * ([MapleMountainMatcher])에만 연결한다.
  */
 @Component
 class BloomEstimateJob(
     private val attractionBloomRepository: AttractionBloomRepository,
+    private val attractionRepository: AttractionRepository,
     private val festivalRepository: FestivalRepository,
     private val estimateService: BloomEstimateService,
     private val mappingService: AttractionStationMappingService,
     private val gddAccumulationService: GddAccumulationService,
     private val forecastTemperatureService: ForecastTemperatureService,
     private val observationSnapshotService: ObservationSnapshotService,
+    private val mapleMountainMatcher: MapleMountainMatcher,
     private val gddProperties: GddEstimatorProperties,
     private val props: SchedulerProperties,
     private val jobLogger: JobLogger,
@@ -61,6 +69,7 @@ class BloomEstimateJob(
         val stationByAttraction = mappingService.findStationByAttraction()
         // 관측은 13개 안팎이지만 배치 전역에서 한 번만 읽어 페이지별 조회를 막는다.
         val observationsByStation = observationSnapshotService.findByStationAndCategory(today.year)
+        val mapleByMountain = observationSnapshotService.findMapleByMountain(today.year)
         val defaultStationId = gddProperties.defaultStationId
         val stationIds = (stationByAttraction.values + defaultStationId).filter { it.isNotBlank() }.toSet()
         // 필요한 모든 지점의 올해 관측을 한 번만 읽어 명소 수에 비례한 조회를 막는다.
@@ -131,12 +140,23 @@ class BloomEstimateJob(
                     defaultStationId = defaultStationId,
                     snapshotByStation = snapshotByStation,
                 )
-                val observations = resolveObservationByAttraction(
+                val stationObservations = resolveObservationByAttraction(
                     attractionIds = slice.content,
                     stationByAttraction = stationByAttraction,
                     category = category,
                     observationsByStation = observationsByStation,
                 )
+                val mountainObservations =
+                    if (category == BloomCategory.MAPLE && mapleByMountain.isNotEmpty()) {
+                        resolveMountainObservationByAttraction(
+                            attractions = attractionRepository.findAllById(slice.content),
+                            mountainOf = mapleMountainMatcher::mountainOf,
+                            snapshotsByMountain = mapleByMountain,
+                        )
+                    } else {
+                        emptyMap()
+                    }
+                val observations = stationObservations + mountainObservations
                 estimates += estimateService.estimatePage(
                     attractionIds = slice.content,
                     category = category,
@@ -156,6 +176,7 @@ class BloomEstimateJob(
             "mappedAttractions" to stationByAttraction.size,
             "forecastDays" to forecasts.size,
             "observationStations" to observationsByStation.size,
+            "observationMountains" to mapleByMountain.size,
         )
     }
 
@@ -186,6 +207,16 @@ class BloomEstimateJob(
         ): Map<Long, GddSnapshot> = attractionIds.mapNotNull { attractionId ->
             val stationId = stationByAttraction[attractionId] ?: defaultStationId
             snapshotByStation[stationId]?.let { snapshot -> attractionId to snapshot }
+        }.toMap()
+
+        internal fun resolveMountainObservationByAttraction(
+            attractions: List<Attraction>,
+            mountainOf: (Attraction) -> String?,
+            snapshotsByMountain: Map<String, ObservationSnapshot>,
+        ): Map<Long, ObservationSnapshot> = attractions.mapNotNull { attraction ->
+            val attractionId = attraction.id ?: return@mapNotNull null
+            val snapshot = mountainOf(attraction)?.let(snapshotsByMountain::get) ?: return@mapNotNull null
+            attractionId to snapshot
         }.toMap()
 
         internal fun resolveObservationByAttraction(

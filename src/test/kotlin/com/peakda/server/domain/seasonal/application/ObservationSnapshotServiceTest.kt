@@ -42,6 +42,25 @@ class ObservationSnapshotServiceTest {
     }
 
     @Test
+    fun `단풍 관측은 지점 권역으로 전파하지 않고 산 이름별 스냅샷으로만 낸다`() {
+        val peak = LocalDate.of(2026, 10, 17)
+        `when`(repository.findByObsYear(2026)).thenReturn(
+            listOf(
+                observation(treeType = "단풍", obsPlace = "설악산", floweringOn = LocalDate.of(2026, 9, 28), fullBloomOn = peak),
+                observation(treeType = "단풍", obsPlace = "여의도 윤중로"),
+                observation(treeType = "벚나무", obsPlace = "여의도 윤중로"),
+            ),
+        )
+
+        val byMountain = service.findMapleByMountain(2026)
+        val byStation = service.findByStationAndCategory(2026)
+
+        assertThat(byMountain).containsOnlyKeys("설악산", "여의도 윤중로")
+        assertThat(byMountain["설악산"]!!.fullBloomOn).isEqualTo(peak)
+        assertThat(byStation["108"]).containsOnlyKeys(BloomCategory.CHERRY)
+    }
+
+    @Test
     fun `같은 지점 카테고리에 관측이 여럿이면 만발일 있는 관측을 고른다`() {
         val fullBloom = LocalDate.of(2026, 4, 1)
         `when`(repository.findByObsYear(2026)).thenReturn(
