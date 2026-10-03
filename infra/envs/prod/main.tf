@@ -444,11 +444,14 @@ locals {
     STORAGE_REGION                                         = var.region
     STORAGE_PATH_STYLE_ACCESS                              = "false"
     STORAGE_PRESIGNED_URL_TTL_SECONDS                      = "3600"
-    STORAGE_PUBLIC_BASE_URL                                = module.media_cdn.public_base_url
     JAVA_OPTS                                              = "-Xms512m -Xmx1024m -XX:MaxRAMPercentage=70.0"
     FCM_ENABLED                                            = "true"
     FCM_PROJECT_ID                                         = var.fcm_project_id
-  }, var.app_parameters)
+    },
+    # 프런트가 CDN 도메인을 이미지 허용 목록에 올리기 전까지는 내리지 않는다.
+    # 파라미터가 없으면 앱은 presigned URL 로 폴백한다. SSM 은 빈 값을 받지 않으므로 키 자체를 뺀다.
+    var.media_cdn_enabled ? { STORAGE_PUBLIC_BASE_URL = module.media_cdn.public_base_url } : {},
+  var.app_parameters)
 }
 
 module "config" {
