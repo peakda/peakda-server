@@ -1,6 +1,6 @@
 package com.peakda.server.domain.admin.repository
 
-import com.peakda.server.domain.auth.application.RefreshTokenService
+import com.peakda.server.common.test.IntegrationTestSupport
 import com.peakda.server.domain.user.entity.UserRole
 import com.peakda.server.domain.user.entity.UserStatus
 import com.peakda.server.domain.user.repository.UserRepository
@@ -8,16 +8,8 @@ import com.peakda.server.infrastructure.scheduler.history.SchedulerJobRunReposit
 import com.peakda.server.infrastructure.scheduler.history.SchedulerJobStatus
 import org.assertj.core.api.Assertions.assertThatCode
 import org.junit.jupiter.api.Test
-import org.redisson.api.RedissonClient
 import org.springframework.beans.factory.annotation.Autowired
-import org.springframework.boot.test.context.SpringBootTest
-import org.springframework.boot.testcontainers.service.connection.ServiceConnection
 import org.springframework.data.domain.PageRequest
-import org.springframework.test.context.ActiveProfiles
-import org.springframework.test.context.bean.override.mockito.MockitoBean
-import org.testcontainers.containers.PostgreSQLContainer
-import org.testcontainers.junit.jupiter.Container
-import org.testcontainers.junit.jupiter.Testcontainers
 import java.time.Instant
 
 /**
@@ -31,16 +23,7 @@ import java.time.Instant
  * 두 실패 모두 컴파일과 mock 기반 단위 테스트로는 잡히지 않고 런타임 500 으로만 드러나므로,
  * 실제 컨테이너에 붙여 **모든 필터가 비어 있는** 최악의 조합을 실행해 둔다.
  */
-@Testcontainers
-@SpringBootTest
-@ActiveProfiles("test")
-class AdminOptionalFilterQueryTest {
-
-    @MockitoBean
-    lateinit var refreshTokenService: RefreshTokenService
-
-    @MockitoBean
-    lateinit var redissonClient: RedissonClient
+class AdminOptionalFilterQueryTest : IntegrationTestSupport() {
 
     @Autowired
     lateinit var adminAuditLogRepository: AdminAuditLogRepository
@@ -113,13 +96,5 @@ class AdminOptionalFilterQueryTest {
 
     companion object {
         private val PAGEABLE = PageRequest.of(0, 20)
-
-        @Container
-        @ServiceConnection
-        @JvmStatic
-        val postgres = PostgreSQLContainer("postgres:16")
-            .withDatabaseName("peakda")
-            .withUsername("peakda")
-            .withPassword("peakda")
     }
 }

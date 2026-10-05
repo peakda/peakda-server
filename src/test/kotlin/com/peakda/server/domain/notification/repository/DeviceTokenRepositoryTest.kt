@@ -1,6 +1,6 @@
 package com.peakda.server.domain.notification.repository
 
-import com.peakda.server.domain.auth.application.RefreshTokenService
+import com.peakda.server.common.test.IntegrationTestSupport
 import com.peakda.server.domain.auth.oauth.model.OAuth2LoginType
 import com.peakda.server.domain.notification.application.DeviceTokenService
 import com.peakda.server.domain.notification.entity.DevicePlatform
@@ -10,33 +10,16 @@ import org.assertj.core.api.Assertions.assertThat
 import org.assertj.core.api.Assertions.assertThatThrownBy
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
-import org.redisson.api.RedissonClient
 import org.springframework.beans.factory.annotation.Autowired
-import org.springframework.boot.test.context.SpringBootTest
-import org.springframework.boot.testcontainers.service.connection.ServiceConnection
 import org.springframework.dao.DataIntegrityViolationException
-import org.springframework.test.context.ActiveProfiles
-import org.springframework.test.context.bean.override.mockito.MockitoBean
 import org.springframework.transaction.annotation.Transactional
-import org.testcontainers.containers.PostgreSQLContainer
-import org.testcontainers.junit.jupiter.Container
-import org.testcontainers.junit.jupiter.Testcontainers
 import java.time.Instant
 import java.time.temporal.ChronoUnit
 import java.util.concurrent.CountDownLatch
 import java.util.concurrent.Executors
 import java.util.concurrent.TimeUnit
 
-@Testcontainers
-@SpringBootTest
-@ActiveProfiles("test")
-class DeviceTokenRepositoryTest {
-
-    @MockitoBean
-    lateinit var refreshTokenService: RefreshTokenService
-
-    @MockitoBean
-    lateinit var redissonClient: RedissonClient
+class DeviceTokenRepositoryTest : IntegrationTestSupport() {
 
     @Autowired
     lateinit var repository: DeviceTokenRepository
@@ -145,15 +128,5 @@ class DeviceTokenRepositoryTest {
         }
 
         assertThat(repository.findByUserId(userId)).hasSize(10)
-    }
-
-    companion object {
-        @Container
-        @ServiceConnection
-        @JvmStatic
-        val postgres = PostgreSQLContainer("postgres:16")
-            .withDatabaseName("peakda")
-            .withUsername("peakda")
-            .withPassword("peakda")
     }
 }
