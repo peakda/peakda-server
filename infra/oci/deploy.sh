@@ -3,7 +3,7 @@
 #
 #   사용법: deploy.sh <커밋 SHA> <GitHub actor>    (GITHUB_TOKEN 은 stdin 으로 받는다)
 #
-# 하는 일: 그 커밋의 서버 자산(compose·Caddyfile·미디어 캐시 설정·backup.sh) 반영 → GHCR 이미지 pull → 기동 → 헬스 확인.
+# 하는 일: 그 커밋의 서버 자산(compose·Caddyfile·미디어 캐시 설정·Alloy 설정·backup.sh) 반영 → GHCR 이미지 pull → 기동 → 헬스 확인.
 # 헬스체크가 실패하면 직전 이미지로 되돌린다. 이 파일과 deploy-gate.sh 는 스스로 바꾸지 않는다
 # (실행 중인 스크립트를 덮어쓰지 않기 위해서다. 바뀌면 operations.md 의 "스크립트 갱신" 대로 올린다).
 set -euo pipefail
@@ -42,12 +42,26 @@ fi
 # 1. 서버 자산을 그 커밋 기준으로 맞춘다
 # ---------------------------------------------------------------------------
 log "자산 반영: $SHA"
-for file in docker-compose.yml Caddyfile media-cache.conf.template backup.sh; do
+ASSETS=(docker-compose.yml Caddyfile media-cache.conf.template backup.sh)
+# 나중에 생긴 파일. 그 전 커밋으로 되돌려 배포할 때도 멈추지 않도록, 받지 못하면 있던 파일을 그대로 둔다.
+OPTIONAL_ASSETS=(alloy-config.alloy)
+
+fetch_asset() {
   curl -fsSL "${AUTH_HEADER[@]}" \
-    "https://raw.githubusercontent.com/$REPO/$SHA/infra/oci/$file" -o "$file.new"
+    "https://raw.githubusercontent.com/$REPO/$SHA/infra/oci/$1" -o "$1.new"
+}
+for file in "${ASSETS[@]}"; do
+  fetch_asset "$file"
+done
+for file in "${OPTIONAL_ASSETS[@]}"; do
+  fetch_asset "$file" || { log "WARN: $file 을 받지 못해 있던 파일을 그대로 쓴다"; rm -f "$file.new"; }
 done
 chmod +x backup.sh.new
-for file in docker-compose.yml Caddyfile media-cache.conf.template backup.sh; do
+for file in "${ASSETS[@]}" "${OPTIONAL_ASSETS[@]}"; do
+  [[ -f "$file.new" ]] || continue
+  # compose 는 없는 파일을 바인드 마운트하면 그 자리에 빈 디렉터리를 만든다.
+  # 그대로 mv 하면 파일이 디렉터리 안으로 들어가 설정이 조용히 빠지므로 먼저 치운다.
+  if [[ -d "$file" ]]; then rmdir "$file"; fi
   mv "$file.new" "$file"
 done
 

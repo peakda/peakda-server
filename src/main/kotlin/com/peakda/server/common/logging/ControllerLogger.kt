@@ -20,6 +20,7 @@ import org.springframework.web.multipart.MultipartFile
  * 형식: `{호출클래스}.{호출메서드} - {요청파라미터}`
  *
  * 인증 주체·파일·서블릿 객체 등 노이즈 인자는 파라미터 로그에서 제외한다.
+ * 토큰·좌표·이메일은 [SensitiveLogMasker] 로 가린다(로그가 외부로 전송된다).
  */
 @Aspect
 @Component
@@ -35,7 +36,7 @@ class ControllerLogger {
 
         val signature = joinPoint.signature as MethodSignature
         val target = "${signature.declaringType.simpleName}.${signature.name}"
-        log.info("{} - {}", target, formatParameters(signature.parameterNames, joinPoint.args))
+        log.info("{} - {}", target, SensitiveLogMasker.mask(formatParameters(signature.parameterNames, joinPoint.args)))
     }
 
     private fun formatParameters(names: Array<String>?, args: Array<Any?>): String {
