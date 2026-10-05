@@ -718,6 +718,16 @@ tbody tr.is-selected {
     background: var(--violet-soft);
 }
 
+.badge-web {
+    color: var(--primary);
+    background: var(--primary-soft);
+}
+
+.badge-app {
+    color: var(--violet);
+    background: var(--violet-soft);
+}
+
 .badge-success {
     color: var(--success);
     background: var(--success-soft);
