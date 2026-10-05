@@ -69,8 +69,8 @@ class MyPageServiceTest {
         `when`(userFavoriteCategoryRepository.findByIdUserId(USER_ID))
             .thenReturn(listOf(favoriteCategory(USER_ID, BloomCategory.CHERRY)))
 
-        `when`(followRepository.countByFollowingId(USER_ID)).thenReturn(1280L)
-        `when`(followRepository.countByFollowerId(USER_ID)).thenReturn(312L)
+        `when`(followRepository.countFollowers(USER_ID)).thenReturn(1280L)
+        `when`(followRepository.countFollowings(USER_ID)).thenReturn(312L)
         `when`(spotFavoriteRepository.countByUserId(USER_ID)).thenReturn(8L)
 
         val response = service.getMyPage(USER_ID)
