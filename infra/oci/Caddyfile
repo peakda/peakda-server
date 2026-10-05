@@ -1,0 +1,32 @@
+# Caddy 가 Let's Encrypt 인증서를 자동 발급·갱신한다. ALB·ACM 을 대신한다.
+{
+	email {$ACME_EMAIL}
+}
+
+{$APP_DOMAIN} {
+	encode gzip
+
+	# Actuator 는 헬스체크만 외부에 연다. 나머지는 감춘다.
+	@actuator_internal {
+		path /actuator/*
+		not path /actuator/health /actuator/health/*
+	}
+	respond @actuator_internal 404
+
+	reverse_proxy app:8080 {
+		health_uri /actuator/health/readiness
+		health_interval 10s
+		health_timeout 3s
+	}
+
+	log {
+		output stdout
+		format json
+	}
+}
+
+# 미디어 공개 주소. DB 에는 오브젝트 키만 있고 앱이 {STORAGE_PUBLIC_BASE_URL}/{key} 로 주소를 만든다.
+# OCI Object Storage 공개 버킷을 원본으로 하는 media-cache(nginx 디스크 캐시)로 넘긴다.
+{$CDN_DOMAIN} {
+	reverse_proxy media-cache:8080
+}
