@@ -6,8 +6,8 @@ AWS 무료 플랜 크레딧이 2026-10-14 전후로 소진되어 prod 를 OCI Al
 |---|---|
 | 서버 | OCI 오사카 `VM.Standard.A1.Flex` 2 OCPU / 12GB (ARM64), Ubuntu 24.04, 부트 200GB |
 | 같은 서버의 다른 서비스 | 마인크래프트(최대 5GB). peakda prod 는 compose 메모리 상한 합계 2,560MB |
-| 구성 | Caddy(HTTPS) · 앱 · PostgreSQL 16 · Redis · Alloy(로그 수집), `/opt/peakda` (ubuntu 소유, 750) |
-| 로그 | Alloy → Grafana Cloud Loki(dev 와 같은 스택, `env="prod"`). 아래 "로그 보기" |
+| 구성 | Caddy(HTTPS) · 앱 · PostgreSQL 16 · Redis · Alloy(앱 지표·로그 수집), `/opt/peakda` (ubuntu 소유, 750) |
+| 관측 | Alloy → Grafana Cloud(<https://tealbalcony3113.grafana.net>, `env="prod"`). 대시보드·알림은 `infra/grafana/apply.py`. 아래 "대시보드·알림" |
 | 이미지 | `ghcr.io/peakda/peakda-server:<커밋 SHA>` (ARM64) |
 | 배포 | `.github/workflows/deploy-prod-oci.yml` → SSH(배포 전용 키, `deploy-gate.sh` 로만 실행) → `deploy.sh` |
 | 미디어 | OCI Object Storage `peakda-prod-media`(공개 읽기). `cdn.peakda.com` → Caddy → `media-cache`(nginx 디스크 캐시 2GB) → Object Storage |
@@ -193,15 +193,18 @@ docker run --rm --network host -v /tmp/out:/work/out -e SOURCE_PGHOST -e SOURCE_
 | 할 일 | 명령 |
 |---|---|
 | 상태 | `ssh ubuntu@$HOST 'cd /opt/peakda && docker compose ps && free -m'` |
+| 대시보드 | Grafana `peakda / 운영 개요` (아래 "대시보드·알림") |
 | 로그 | Grafana Cloud Explore (아래 "로그 보기"). 급할 때는 `ssh ubuntu@$HOST 'cd /opt/peakda && docker compose logs --tail 200 app'` |
 | 수집기 상태 | `ssh ubuntu@$HOST 'cd /opt/peakda && docker compose logs --tail 50 alloy'` (warn 이상만 찍힌다) |
 | DB 접속 | `ssh -L 15432:127.0.0.1:5432 ubuntu@$HOST` 후 `psql -h 127.0.0.1 -p 15432 -U peakda peakda` |
 | 백업 확인 | `oci os object list -bn peakda-prod-backup --all --query 'data[-4:].name'` |
-| 스크립트 갱신 | `deploy.sh`·`deploy-gate.sh` 가 바뀌면 1-1 의 `scp` 를 다시 한다 |
+| 스크립트 갱신 | `deploy.sh`·`deploy-gate.sh` 가 바뀌면 **그 커밋을 배포하기 전에** 1-1 의 `scp` 를 다시 한다 |
+| 설정 반영 | 배포가 `Caddyfile`·`media-cache.conf.template`·`alloy-config.alloy` 를 받아 반영한다. Caddyfile 은 쓰기 전에 검증하고 틀리면 배포를 멈춘다. 반영에 성공한 설정만 `/opt/peakda/.applied/` 에 해시로 남겨, 반영 전에 실패한 배포를 다시 돌려도 빠지지 않는다. 이 기록이 없는 첫 배포에서는 Caddy reload 와 미디어 캐시·수집기 재시작이 한 번씩 일어난다(cdn 이 몇 초 끊길 수 있다) |
 
 ### 로그 보기 (Grafana Cloud)
 
-Grafana Cloud → Explore → Loki 데이터 소스에서 시간 범위를 고르고 아래 쿼리를 쓴다. 보존 기간은 무료 플랜 기준(14일)이다.
+Grafana Cloud → Explore → Loki 데이터 소스(`grafanacloud-tealbalcony3113-logs`)에서 시간 범위를 고르고 아래 쿼리를 쓴다.
+보존 기간은 스택 설정상 31일이다(무료 플랜 안내는 14일). 운영 개요 대시보드의 "요청 ID" 칸에 값을 넣어도 된다.
 컨테이너 json-file 로그는 배포로 컨테이너가 바뀌면 지워지지만 Loki 로 이미 보낸 로그는 남는다.
 
 | 보고 싶은 것 | 쿼리 |
@@ -222,36 +225,70 @@ Grafana Cloud → Explore → Loki 데이터 소스에서 시간 범위를 고�
   좌표를 소수 둘째 자리(약 1km), 이메일을 첫 글자+도메인으로 줄인다(`SensitiveLogMasker`). PostgreSQL 느린 쿼리의
   바인드 값 줄은 버린다(`alloy-config.alloy`). 새 API 에 위치·연락처 파라미터를 추가하면 이 세 곳을 같이 본다
 
-### Grafana Cloud 연결
+### 대시보드·알림
 
-dev 와 같은 스택을 쓴다. URL·사용자 ID 는 `infra/envs/dev/terraform.tfvars` 의 값이고 토큰은 dev SSM 의 값과 같다.
-**`deploy.sh` 를 먼저 올린 뒤에 이 커밋을 배포한다.** 옛 `deploy.sh` 는 `alloy-config.alloy` 를 받지 않는다.
-새 `deploy.sh` 는 이 파일이 없는 옛 커밋으로 되돌려 배포해도 멈추지 않는다.
+정의는 `infra/grafana/apply.py` 가 원본이다. Grafana UI 에서 고친 내용은 다음 반영 때 덮어쓴다(알림 규칙·경로는 UI 에서 읽기 전용).
+
+| 대시보드 | 보는 것 |
+|---|---|
+| `peakda / 운영 개요` | 상태 타일(앱 상태·5xx 비율·가장 느린 API p95·에러 로그·잡 실패·스케줄러 마지막 성공·쿼터 소진·힙·DB 대기·Grafana 한도). 타일을 누르면 관련 로그·대시보드로 간다. "요청 ID" 칸에 `X-Request-Id` 를 넣으면 그 요청의 앱·Caddy 로그 |
+| `peakda / 배치 잡` | 잡별 마지막 성공 후 경과·24시간 성공/실패/스킵·소요 p95. 잡 이름을 누르면 그 잡의 로그 |
+| `peakda / 외부 API` | 쿼터 소비·소진·레이트리밋 차단, 외부 API 로그 |
+
+알림은 이메일 하나로 받는다. 제목이 `[긴급]`·`[경고]`·`[정보]` 로 시작하고 해소되면 `[해소]` 가 붙는다.
+긴급은 30초 안에 보내고 1시간마다 다시 보낸다. 나머지는 30분 단위로 묶고 12시간마다 다시 보낸다.
+
+| 심각도 | 알림 |
+|---|---|
+| 긴급 | 앱 다운 또는 지표 수집 끊김 (서버·수집기가 멈춰도 울린다) |
+| 경고 | 5xx 비율 5% 초과, 앱 에러 로그 급증, 배치 잡 실패, 스케줄러 정지 의심(6시간 동안 성공한 잡 없음), DB 커넥션 대기, 힙 90% 초과 |
+| 정보 | 외부 API 쿼터 소진, Grafana 지표·로그 한도 70% 초과 |
+
+잡별 미실행 감시는 Spring Batch 이관(PEAK-111) 때 잡별 주기 기준으로 다시 만든다.
 
 ```sh
-# 1. 스크립트와 수집기 설정을 먼저 올린다. 순서를 어겨 compose 가 빈 디렉터리를 만들어 뒀다면 먼저 지운다
-ssh ubuntu@$HOST 'rmdir /opt/peakda/alloy-config.alloy 2>/dev/null || true'
-scp infra/oci/{deploy.sh,alloy-config.alloy} ubuntu@$HOST:/opt/peakda/ && ssh ubuntu@$HOST 'chmod 750 /opt/peakda/*.sh'
+# 반영. 토큰은 ~/.config/peakda/grafana-token (서비스 계정 peakda-provisioning, Admin)
+PEAKDA_ALERT_EMAILS=<받을 메일>[,<메일>] infra/grafana/apply.py
+infra/grafana/apply.py --dry-run     # 반영하지 않고 build/grafana 에 JSON 만 만든다
+```
+
+**무료 한도 (지표 활성 시계열 10,000 · 로그 월 50GB)**
+- 수집기는 대시보드·알림이 쓰는 지표만 허용 목록으로 보낸다(`alloy-config.alloy`). 앱은 600 개 넘게 내고 계속 늘지만
+  200 개 안팎만 나간다(2026-10-05 실측 155 개 + 기동 시 미리 만드는 잡 카운터). 패널·알림에 새 지표를 쓰려면 허용 목록에 먼저 넣는다
+- 스케줄러 지표의 잡 이름 라벨은 `job_name` 이다(`job` 은 스크레이프 대상 `peakda-server`)
+- 로그는 컨테이너마다 초당 100줄을 넘는 만큼 버린다. 에러가 루프를 돌아도 한도를 태우지 않게 하려는 것이다
+- 운영 개요의 "지표 한도 사용"·"로그 월 한도 사용" 타일과 한도 70% 알림으로 본다. 늘었다면 Grafana 의
+  Cardinality management 대시보드에서 어느 지표인지 찾는다
+
+### Grafana Cloud 연결
+
+Loki·Mimir 주소와 사용자 ID 는 스택 고유 값이고, 토큰(`metrics:write`·`logs:write`)은 dev 때 만든 것을 dev SSM 에서 읽는다.
+
+```sh
+# 1. deploy.sh 가 바뀐 커밋이면 배포 전에 올린다(위 "스크립트 갱신")
+scp infra/oci/deploy.sh ubuntu@$HOST:/opt/peakda/ && ssh ubuntu@$HOST 'chmod 750 /opt/peakda/*.sh'
 
 # 2. .env 의 GRAFANA_CLOUD_* 를 바꿔 넣는다(다시 돌려도 중복되지 않는다). 토큰은 명령행 인자가 아니라 stdin 으로 넘긴다
 KEY="$(aws ssm get-parameter --name /peakda/dev/GRAFANA_CLOUD_API_KEY --with-decryption \
   --query Parameter.Value --output text --region ap-northeast-2)"
 ssh ubuntu@$HOST 'cd /opt/peakda && umask 077 && t=$(mktemp .env.XXXXXX) && { grep -v "^GRAFANA_CLOUD_" .env; cat; } > "$t" && mv "$t" .env' << EOF
+GRAFANA_CLOUD_PROM_URL=https://prometheus-prod-49-prod-ap-northeast-0.grafana.net/api/prom/push
+GRAFANA_CLOUD_PROM_USER=3408100
 GRAFANA_CLOUD_LOKI_URL=https://logs-prod-030.grafana.net/loki/api/v1/push
 GRAFANA_CLOUD_LOKI_USER=1699725
 GRAFANA_CLOUD_API_KEY=$KEY
 EOF
 unset KEY
 
-# 3. 배포한다 (gh workflow run deploy-prod-oci.yml --ref main). 몇 분 뒤 Explore 에서 {env="prod"} 가 보이면 끝
-# 4. 하루쯤 뒤 수집기 메모리를 본다. 상한 128m 에 붙어 있으면 올리고 compose 머리 주석의 합계도 고친다
+# 3. 배포한다 (gh workflow run deploy-prod-oci.yml --ref main). 값만 바꿨다면 ssh 로 docker compose up -d alloy
+# 4. 수집기 메모리를 본다. 상한 128m 에 붙어 있으면 올리고 compose 머리 주석의 합계도 고친다
 ssh ubuntu@$HOST 'docker stats --no-stream peakda-alloy'
 ```
 
 - `render-env.sh`(1-4)로 `.env` 를 다시 만들면 GRAFANA_CLOUD_* 가 빠진다. 그 뒤에는 2 를 다시 한다
 - 토큰을 바꿀 때도 2 를 다시 하고 `docker compose up -d alloy` 를 한다. AWS 계정을 닫으면 SSM 의 토큰도 사라지므로
-  그 뒤로는 Grafana Cloud → Access Policies 에서 `logs:write` 토큰을 새로 만들어 `KEY` 에 넣는다
-- `.env` 에 값이 없거나 틀려도 수집기만 전송에 실패하고 서비스는 그대로 돈다. 로그가 안 보이면 위 "수집기 상태" 를 본다
+  그 뒤로는 Grafana Cloud → Access Policies 에서 `metrics:write`·`logs:write` 토큰을 새로 만들어 `KEY` 에 넣는다
+- `.env` 에 값이 없거나 틀려도 수집기만 전송에 실패하고 서비스는 그대로 돈다. 그때는 "앱 다운 또는 지표 수집 끊김" 알림이 울린다
 
 ### 백업 복원
 

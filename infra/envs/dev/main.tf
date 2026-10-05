@@ -36,7 +36,6 @@ locals {
   # 다음 배포에서 deploy.sh 가 s3 sync 로 가져간다.
   server_assets = {
     "docker-compose.yml" = "${path.module}/../../server/docker-compose.yml"
-    "alloy-config.alloy" = "${path.module}/../../server/alloy-config.alloy"
     "Caddyfile"          = "${path.module}/../../server/Caddyfile"
     "deploy.sh"          = "${path.module}/../../server/deploy.sh"
     "backup.sh"          = "${path.module}/../../server/backup.sh"
@@ -253,8 +252,8 @@ resource "aws_budgets_budget" "monthly" {
 # ---------------------------------------------------------------------------
 # CloudWatch 안전망
 #
-# 호스트가 죽으면 Alloy 도 함께 멈추므로 AWS 기본 지표로 독립적인 장애 경로를 둔다.
-# 디스크·메모리는 커스텀 메트릭 과금을 피하려고 Grafana 알림에서만 감시한다.
+# dev 는 Grafana Cloud 로 보내지 않는다(관측은 prod 만, infra/grafana). 인스턴스 상태·CPU 만
+# AWS 기본 지표로 본다.
 # ---------------------------------------------------------------------------
 
 resource "aws_sns_topic" "infrastructure_alerts" {
