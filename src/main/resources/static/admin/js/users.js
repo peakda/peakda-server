@@ -13,9 +13,17 @@ const ROLE_LABELS = {
   ADMIN: "관리자",
 };
 
+// UNKNOWN 은 가입 경로를 저장하기 전에 가입한 계정이다.
+const SIGNUP_CHANNEL_LABELS = {
+  WEB: "웹",
+  APP: "앱",
+  UNKNOWN: "미확인",
+};
+
 const state = {
   q: "",
   status: "",
+  signupChannel: "",
   page: 0,
   size: 20,
   session: null,
@@ -24,6 +32,7 @@ const state = {
 const form = document.querySelector("#users-filter-form");
 const qInput = document.querySelector("#users-q");
 const statusSelect = document.querySelector("#users-status");
+const signupChannelSelect = document.querySelector("#users-signup-channel");
 const sizeSelect = document.querySelector("#users-size");
 const tbody = document.querySelector("#users-tbody");
 const pagination = document.querySelector("#users-pagination");
@@ -38,6 +47,7 @@ form.addEventListener("submit", (event) => {
   event.preventDefault();
   state.q = qInput.value.trim();
   state.status = statusSelect.value;
+  state.signupChannel = signupChannelSelect.value;
   state.size = Number(sizeSelect.value);
   state.page = 0;
   loadUsers();
@@ -45,6 +55,12 @@ form.addEventListener("submit", (event) => {
 
 statusSelect.addEventListener("change", () => {
   state.status = statusSelect.value;
+  state.page = 0;
+  loadUsers();
+});
+
+signupChannelSelect.addEventListener("change", () => {
+  state.signupChannel = signupChannelSelect.value;
   state.page = 0;
   loadUsers();
 });
@@ -69,6 +85,7 @@ async function loadUsers() {
     const query = { page: state.page, size: state.size };
     if (state.q) query.q = state.q;
     if (state.status) query.status = state.status;
+    if (state.signupChannel) query.signupChannel = state.signupChannel;
     const response = await request("/api/admin/users", { query });
     const page = unwrap(response);
     renderRows(page.content || []);
@@ -85,7 +102,7 @@ async function loadUsers() {
 
 function renderRows(items) {
   if (!items.length) {
-    tbody.innerHTML = `<tr><td colspan="7" class="empty-cell">검색 결과가 없습니다.</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="8" class="empty-cell">검색 결과가 없습니다.</td></tr>`;
     return;
   }
   const currentUserId = String(state.session?.userId || "");
@@ -102,6 +119,7 @@ function renderRows(items) {
         </td>
         <td>${escapeHtml(user.email || "-")}</td>
         <td>${escapeHtml(user.provider)}</td>
+        <td>${signupChannelBadge(user.signupChannel)}</td>
         <td>${labelBadge(ROLE_LABELS[user.role] || user.role, user.role)}</td>
         <td>${labelBadge(STATUS_LABELS[user.status] || user.status, user.status)}</td>
         <td>${escapeHtml(formatDateTime(user.createdAt))}</td>
@@ -153,6 +171,11 @@ function setBusy(isBusy) {
 function labelBadge(label, value) {
   const normalized = String(value || "neutral").toLowerCase().replaceAll("_", "-");
   return `<span class="badge badge-${escapeHtml(normalized)}">${escapeHtml(label)}</span>`;
+}
+
+function signupChannelBadge(channel) {
+  const label = SIGNUP_CHANNEL_LABELS[channel] || channel || "미확인";
+  return labelBadge(label, channel === "WEB" || channel === "APP" ? channel : "neutral");
 }
 
 function unwrap(response) {
