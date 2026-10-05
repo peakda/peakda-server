@@ -57,13 +57,37 @@ for file in "${OPTIONAL_ASSETS[@]}"; do
   fetch_asset "$file" || { log "WARN: $file 을 받지 못해 있던 파일을 그대로 쓴다"; rm -f "$file.new"; }
 done
 chmod +x backup.sh.new
+
+# 잘못된 Caddyfile 이 디스크에 남으면 다음에 Caddy 가 재시작될 때(서버 재부팅 등) HTTPS 가 통째로 내려간다.
+# 아무것도 바꾸기 전에 떠 있는 Caddy 로 검증한다.
+if docker inspect -f '{{.State.Running}}' peakda-caddy 2> /dev/null | grep -q true; then
+  validation="$(docker exec -i peakda-caddy caddy validate --adapter caddyfile --config /dev/stdin < Caddyfile.new 2>&1)" \
+    || die "새 Caddyfile 이 유효하지 않아 배포를 멈춘다: $(tail -c 500 <<< "$validation")"
+fi
+
+# 컨테이너에 파일 하나로 바인드 마운트되는 설정. mv 로 바꾸면 컨테이너는 옛 파일(inode)을 계속 보므로
+# 내용을 제자리에 덮어쓴다. 그 밖의 파일은 mv 한다(cron 이 실행 중인 backup.sh 를 덮어쓰면 깨진다).
+MOUNTED_ASSETS=(Caddyfile media-cache.conf.template alloy-config.alloy)
 for file in "${ASSETS[@]}" "${OPTIONAL_ASSETS[@]}"; do
   [[ -f "$file.new" ]] || continue
-  # compose 는 없는 파일을 바인드 마운트하면 그 자리에 빈 디렉터리를 만든다.
-  # 그대로 mv 하면 파일이 디렉터리 안으로 들어가 설정이 조용히 빠지므로 먼저 치운다.
+  # compose 는 없는 파일을 바인드 마운트하면 그 자리에 빈 디렉터리를 만든다. 먼저 치운다.
   if [[ -d "$file" ]]; then rmdir "$file"; fi
-  mv "$file.new" "$file"
+  if [[ -f "$file" && " ${MOUNTED_ASSETS[*]} " == *" $file "* ]]; then
+    cat "$file.new" > "$file"
+    # 자르고 쓰는 방식이라 디스크가 가득 차면 빈 설정이 남을 수 있다.
+    cmp -s "$file.new" "$file" || die "$file 을 끝까지 쓰지 못했다"
+    rm -f "$file.new"
+  else
+    mv "$file.new" "$file"
+  fi
 done
+
+# 마운트된 설정을 컨테이너에 반영했는지는 반영에 성공했을 때만 쓰는 해시로 판단한다.
+# "새 파일과 디스크 파일이 다른가" 로 보면, 반영 전에 배포가 실패했을 때 다음 배포가 반영을 건너뛴다.
+APPLIED_DIR="$APP_DIR/.applied"
+mkdir -p "$APPLIED_DIR"
+needs_apply() { [[ -f "$1" && "$(sha256sum < "$1")" != "$(cat "$APPLIED_DIR/$1.sha256" 2> /dev/null)" ]]; }
+mark_applied() { sha256sum < "$1" > "$APPLIED_DIR/$1.sha256"; }
 
 # ---------------------------------------------------------------------------
 # 2. 이미지 pull. 로그인 정보는 임시 디렉터리에만 두고 지운다
@@ -116,11 +140,52 @@ if [[ "$healthy" != true ]]; then
   exit 1
 fi
 
-# Caddyfile 이 바뀌었을 수 있다. 설정만 다시 읽는다(인증서·연결 유지).
-docker exec peakda-caddy caddy reload --config /etc/caddy/Caddyfile > /dev/null 2>&1 || true
+# 마운트된 설정을 각 컨테이너에 반영한다. compose 는 파일 내용이 바뀐 것을 모른다.
+config_failed=false
 
-log "배포 성공: $IMAGE"
+# 재시작한 컨테이너가 몇 초 뒤에도 떠 있는지 본다. 설정이 틀리면 기동 직후 죽는다.
+restart_and_check() {
+  local service="$1" container="$2"
+  docker compose restart "$service" > /dev/null 2>&1 || return 1
+  sleep 5
+  [[ "$(docker inspect -f '{{.State.Running}} {{.State.Restarting}}' "$container" 2> /dev/null)" == "true false" ]]
+}
+
+if needs_apply Caddyfile; then
+  # 설정만 다시 읽는다(인증서·연결 유지).
+  if out="$(docker exec peakda-caddy caddy reload --config /etc/caddy/Caddyfile 2>&1)"; then
+    # 예전 deploy.sh 는 mv 로 바꿨으므로 컨테이너가 지워진 옛 inode 를 보고 있을 수 있다. 그러면 reload 는
+    # 옛 내용을 다시 읽고 성공한다. 컨테이너 안 파일이 다르면 재시작해 마운트를 다시 잡는다(검증은 위에서 했다).
+    if [[ "$(docker exec peakda-caddy sha256sum /etc/caddy/Caddyfile | cut -d' ' -f1)" != "$(sha256sum < Caddyfile | cut -d' ' -f1)" ]]; then
+      log "Caddy 가 옛 설정 파일을 보고 있어 재시작한다"
+      restart_and_check caddy peakda-caddy && mark_applied Caddyfile \
+        || { log "ERROR: Caddy 재시작 실패"; config_failed=true; }
+    else
+      mark_applied Caddyfile
+    fi
+  else
+    log "ERROR: Caddy 설정 반영 실패. 옛 설정으로 돌고 있다: $(tail -c 500 <<< "$out")"
+    config_failed=true
+  fi
+fi
+# nginx 템플릿은 기동할 때만 렌더링되고, Alloy 는 재시작해야 설정을 다시 읽는다.
+if needs_apply media-cache.conf.template; then
+  restart_and_check media-cache peakda-media-cache && mark_applied media-cache.conf.template \
+    || { log "ERROR: 미디어 캐시가 새 설정으로 뜨지 않았다(cdn 확인 필요)"; config_failed=true; }
+fi
+if needs_apply alloy-config.alloy; then
+  restart_and_check alloy peakda-alloy && mark_applied alloy-config.alloy \
+    || { log "ERROR: 수집기가 새 설정으로 뜨지 않았다"; config_failed=true; }
+fi
+
+if [[ "$config_failed" == true ]]; then
+  log "앱은 배포했지만 설정 반영에 실패했다: $IMAGE"
+else
+  log "배포 성공: $IMAGE"
+fi
 
 # 배포마다 이미지가 쌓인다. 일주일 넘은 이미지만 지운다(직전 이미지는 롤백용으로 남는다).
 docker image prune -af --filter "until=168h" > /dev/null 2>&1 || true
 log "디스크 사용률: $(df -h / | awk 'NR == 2 { print $5 }')"
+
+if [[ "$config_failed" == true ]]; then exit 1; fi
