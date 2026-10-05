@@ -19,6 +19,7 @@ import com.peakda.server.domain.auth.signup.repository.SignupSessionRepository
 import com.peakda.server.domain.user.application.ProfileImagePolicy
 import com.peakda.server.domain.user.application.ProfileImageUrlResolver
 import com.peakda.server.domain.user.application.UserFavoriteCategoryService
+import com.peakda.server.domain.user.entity.SignupChannel
 import com.peakda.server.domain.user.entity.User
 import com.peakda.server.domain.user.presentation.response.ProfileImageResponse
 import com.peakda.server.domain.user.repository.UserRepository
@@ -100,6 +101,7 @@ class AuthService(
     /**
      * 회원가입을 마치고 토큰을 발급한다.
      * 웹은 쿠키로 내려 주고 null 을 돌려주며, 앱은 쿠키를 쓸 수 없으므로 토큰을 그대로 돌려준다.
+     * 같은 기준으로 가입 경로를 남긴다 (Bearer 면 앱, 쿠키면 웹).
      */
     @Transactional
     fun completeSignup(
@@ -124,6 +126,7 @@ class AuthService(
                 nickname = request.nickname,
                 email = signupSession.email,
                 profileImageUrl = initialImageValue,
+                signupChannel = if (bearerAuthenticated) SignupChannel.APP else SignupChannel.WEB,
             )
         )
         val userId = requireNotNull(user.id)
