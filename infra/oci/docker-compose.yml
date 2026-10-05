@@ -126,7 +126,7 @@ services:
     restart: unless-stopped
     logging: *default-logging
 
-  # 로그 수집기. 설정은 alloy-config.alloy, 전송처는 Grafana Cloud(dev 와 같은 스택, env=prod).
+  # 관측 수집기(앱 지표 + 로그). 설정은 alloy-config.alloy, 전송처는 Grafana Cloud(env=prod).
   # GRAFANA_CLOUD_* 가 .env 에 없으면 수집기만 전송에 실패하고 서비스에는 영향이 없다.
   alloy:
     image: grafana/alloy:v1.18.0@sha256:491b0578c04983fd54fe99b587b6fab4404dc46d0dc16677bd6b00cc1140b308
@@ -136,6 +136,8 @@ services:
       - --storage.path=/var/lib/alloy/data
       - /etc/alloy/config.alloy
     environment:
+      GRAFANA_CLOUD_PROM_URL: ${GRAFANA_CLOUD_PROM_URL:-}
+      GRAFANA_CLOUD_PROM_USER: ${GRAFANA_CLOUD_PROM_USER:-}
       GRAFANA_CLOUD_LOKI_URL: ${GRAFANA_CLOUD_LOKI_URL:-}
       GRAFANA_CLOUD_LOKI_USER: ${GRAFANA_CLOUD_LOKI_USER:-}
       GRAFANA_CLOUD_API_KEY: ${GRAFANA_CLOUD_API_KEY:-}
