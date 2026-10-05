@@ -110,6 +110,31 @@ class FestivalRepositoryTest {
         assertThat(updated?.endsOn).isEqualTo(LocalDate.of(2026, 5, 7))
     }
 
+    @Test
+    fun `upsert는 원천 값이 그대로인 재적재에서 행을 쓰지 않는다`() {
+        val first = command(startsOn = LocalDate.of(2026, 5, 1), endsOn = LocalDate.of(2026, 5, 5))
+
+        assertThat(repository.upsert(first)).isEqualTo(1)
+        assertThat(repository.upsert(first)).isZero()
+        assertThat(repository.upsert(first.copy(endDate = null, endsOn = null))).isZero()
+        assertThat(repository.upsert(first.copy(homepageUrl = "https://festival.example"))).isEqualTo(1)
+    }
+
+    @Test
+    fun `sitemap 용 조회는 전체 축제의 id와 수정 시각을 id 오름차순으로 돌려준다`() {
+        val saved = repository.saveAllAndFlush(
+            listOf(
+                festival("첫째", LocalDate.of(2026, 3, 1), LocalDate.of(2026, 3, 2)),
+                festival("정규화 실패", null, null),
+            ),
+        )
+
+        val rows = repository.findAllByOrderByIdAsc()
+
+        assertThat(rows.map { it.id }).containsExactlyElementsOf(saved.map { requireNotNull(it.id) }.sorted())
+        assertThat(rows.map { it.updatedAt }).doesNotContainNull()
+    }
+
     private fun festival(name: String, startsOn: LocalDate?, endsOn: LocalDate?): Festival = Festival(
         name = name,
         venue = "$name 장소",

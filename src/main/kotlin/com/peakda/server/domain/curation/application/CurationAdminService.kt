@@ -209,6 +209,8 @@ class CurationAdminService(
             else -> Instant.now()
         }
         status = command.status
+        // 하위 목록만 바뀐 저장도 공개 화면 수정일(sitemap lastmod)에 반영한다.
+        markModified()
         return this
     }
 

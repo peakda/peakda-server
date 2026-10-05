@@ -1,5 +1,6 @@
 package com.peakda.server.domain.festival.repository
 
+import com.peakda.server.common.persistence.LastModifiedRow
 import com.peakda.server.domain.festival.entity.Festival
 import org.springframework.data.domain.Page
 import org.springframework.data.domain.Pageable
@@ -41,12 +42,48 @@ private const val FESTIVAL_UPSERT_SQL = """
         provider_institution_code = COALESCE(EXCLUDED.provider_institution_code, festivals.provider_institution_code),
         provider_institution_name = COALESCE(EXCLUDED.provider_institution_name, festivals.provider_institution_name),
         updated_at = now()
+    WHERE (
+        festivals.end_date,
+        festivals.starts_on,
+        festivals.ends_on,
+        festivals.host_organization,
+        festivals.organizing_institution,
+        festivals.supporting_institution,
+        festivals.phone_number,
+        festivals.homepage_url,
+        festivals.road_address,
+        festivals.land_lot_address,
+        festivals.latitude,
+        festivals.longitude,
+        festivals.reference_date,
+        festivals.provider_institution_code,
+        festivals.provider_institution_name
+    ) IS DISTINCT FROM (
+        COALESCE(EXCLUDED.end_date, festivals.end_date),
+        COALESCE(EXCLUDED.starts_on, festivals.starts_on),
+        COALESCE(EXCLUDED.ends_on, festivals.ends_on),
+        COALESCE(EXCLUDED.host_organization, festivals.host_organization),
+        COALESCE(EXCLUDED.organizing_institution, festivals.organizing_institution),
+        COALESCE(EXCLUDED.supporting_institution, festivals.supporting_institution),
+        COALESCE(EXCLUDED.phone_number, festivals.phone_number),
+        COALESCE(EXCLUDED.homepage_url, festivals.homepage_url),
+        COALESCE(EXCLUDED.road_address, festivals.road_address),
+        COALESCE(EXCLUDED.land_lot_address, festivals.land_lot_address),
+        COALESCE(EXCLUDED.latitude, festivals.latitude),
+        COALESCE(EXCLUDED.longitude, festivals.longitude),
+        COALESCE(EXCLUDED.reference_date, festivals.reference_date),
+        COALESCE(EXCLUDED.provider_institution_code, festivals.provider_institution_code),
+        COALESCE(EXCLUDED.provider_institution_name, festivals.provider_institution_name)
+    )
 """
 
 interface FestivalRepository : JpaRepository<Festival, Long> {
     fun findByNameAndVenueAndStartDate(name: String, venue: String, startDate: String): Festival?
 
     fun findAllByOrderByIdDesc(pageable: Pageable): Page<Festival>
+
+    /** 전체 축제의 id·수정 시각을 id 오름차순으로 (sitemap). */
+    fun findAllByOrderByIdAsc(): List<LastModifiedRow>
 
     fun findByNameContainingIgnoreCaseOrderByIdDesc(name: String, pageable: Pageable): Page<Festival>
 
@@ -90,6 +127,10 @@ interface FestivalRepository : JpaRepository<Festival, Long> {
         @Param("to") to: LocalDate,
     ): List<Festival>
 
+    /**
+     * 원천 축제를 등록하거나 갱신한다. 원천 값이 그대로인 행은 건드리지 않아 `updated_at` 이 실제 변경 시각으로 남는다
+     * (sitemap lastmod 로 쓰인다). 반환값은 실제로 쓰인 행 수라 변경이 없으면 0 이다.
+     */
     @Modifying
     @Query(value = FESTIVAL_UPSERT_SQL, nativeQuery = true)
     fun upsert(@Param("command") command: FestivalUpsertCommand): Int

@@ -21,4 +21,12 @@ abstract class BaseTimeEntity {
     @Column(name = "updated_at", nullable = false)
     lateinit var updatedAt: Instant
         protected set
+
+    /**
+     * 자기 컬럼은 그대로이고 자식 행만 바뀐 수정도 수정 시각에 남긴다.
+     * 값을 바꿔 dirty 로 만들면 flush 시 auditing 이 현재 시각으로 다시 채운다.
+     */
+    fun markModified() {
+        updatedAt = Instant.now()
+    }
 }
