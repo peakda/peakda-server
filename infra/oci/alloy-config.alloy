@@ -5,7 +5,7 @@
 // 컨테이너 json-file 로그는 배포로 컨테이너가 바뀌면 지워지지만, 여기서 실시간으로
 // 가져가므로 이미 보낸 로그는 Grafana 에 남는다.
 //
-// 호스트·컨테이너 지표는 수집하지 않는다(시계열 한도와 메모리 상한 때문).
+// 서버 지표는 메모리·루트 디스크만 본다. 그 밖의 호스트·컨테이너 지표는 시계열 한도와 메모리 상한 때문에 수집하지 않는다.
 // 자격증명은 /opt/peakda/.env 의 GRAFANA_CLOUD_* 값이다.
 
 logging {
@@ -46,6 +46,48 @@ prometheus.scrape "app" {
 	forward_to      = [prometheus.relabel.app.receiver]
 }
 
+// ---------------------------------------------------------------------------
+// 서버 메모리·디스크
+//
+// 같은 서버에 마인크래프트(최대 5GB)가 돌아 메모리가 모자라도 앱 지표로는 드러나지 않는다.
+// 메모리·파일시스템 수집기만 켜고 루트 파일시스템만 본다(up 을 포함해 시계열 5개).
+// ---------------------------------------------------------------------------
+
+prometheus.exporter.unix "host" {
+	rootfs_path    = "/rootfs"
+	procfs_path    = "/host/proc"
+	set_collectors = ["meminfo", "filesystem"]
+
+	filesystem {
+		// 루트(/)만 남긴다. 부트 파티션·컨테이너 오버레이 등은 뺀다.
+		mount_points_exclude = "^/.+"
+	}
+}
+
+// 수집기가 붙이는 job="integrations/unix"·instance=<컨테이너 ID> 를 고정값으로 바꾼다.
+// instance 가 컨테이너 ID 면 수집기를 다시 만들 때마다 새 시계열이 생긴다.
+discovery.relabel "host" {
+	targets = prometheus.exporter.unix.host.targets
+
+	rule {
+		target_label = "job"
+		replacement  = "host"
+	}
+
+	rule {
+		target_label = "instance"
+		replacement  = "peakda-prod"
+	}
+}
+
+prometheus.scrape "host" {
+	targets         = discovery.relabel.host.output
+	job_name        = "host"
+	scrape_interval = "60s"
+	forward_to      = [prometheus.relabel.app.receiver]
+}
+
+// 앱·서버 지표가 함께 거친다.
 prometheus.relabel "app" {
 	forward_to = [prometheus.remote_write.grafana_cloud.receiver]
 
@@ -56,7 +98,7 @@ prometheus.relabel "app" {
 	rule {
 		source_labels = ["__name__"]
 		action        = "keep"
-		regex         = "up|scheduler_job_.+|external_api_.+|resilience4j_circuitbreaker_state|http_server_requests_seconds(_count|_sum)?|jvm_memory_(used|max)_bytes|jvm_gc_pause_seconds_(count|sum)|jvm_threads_live_threads|process_cpu_usage|process_uptime_seconds|hikaricp_connections_(active|idle|pending|max|timeout_total)|logback_events_total"
+		regex         = "up|scheduler_job_.+|external_api_.+|resilience4j_circuitbreaker_state|http_server_requests_seconds(_count|_sum)?|jvm_memory_(used|max)_bytes|jvm_gc_pause_seconds_(count|sum)|jvm_threads_live_threads|process_cpu_usage|process_uptime_seconds|hikaricp_connections_(active|idle|pending|max|timeout_total)|logback_events_total|node_memory_Mem(Available|Total)_bytes|node_filesystem_(avail|size)_bytes"
 	}
 
 	// HTTP 분위수는 0.95 만 쓴다. 0.99 는 엔드포인트 조합마다 시계열을 하나씩 더 만든다.

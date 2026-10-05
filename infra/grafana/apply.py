@@ -9,7 +9,7 @@ Grafana UI 에서 고친 내용은 다음 반영 때 덮어쓴다. 알림 규칙
 
 무료 한도를 지킨다
 - 지표: 여기서 쓰는 지표는 infra/oci/alloy-config.alloy 의 허용 목록에 있어야 수집된다
-- 알림 규칙은 10개 안팎으로 둔다. 로그 쿼리 알림은 5분 범위의 집계 1개만 쓴다
+- 알림 규칙은 10여 개로 둔다. 로그 쿼리 알림은 5분 범위의 집계 1개만 쓴다
 """
 
 import argparse
@@ -38,7 +38,7 @@ CADDY_LOGS = f'{{{E}, container="peakda-caddy"}}'
 SERIES_LIMIT = 10_000
 LOGS_GB_LIMIT = 50
 
-# 이전 대시보드 중 더 이상 쓰지 않는 것. prod 는 호스트 지표를 수집하지 않는다.
+# 이전 대시보드 중 더 이상 쓰지 않는 것. prod 서버 지표는 메모리·루트 디스크만 운영 개요에서 본다.
 REMOVED_DASHBOARDS = ["peakda-host"]
 
 
@@ -197,6 +197,12 @@ HTTP_5XX = f'sum(rate(http_server_requests_seconds_count{{{APP}, uri!~"/actuator
 HEAP = (f'sum(jvm_memory_used_bytes{{{APP}, area="heap"}}) / '
         f'sum(jvm_memory_max_bytes{{{APP}, area="heap"}})')
 
+# 서버(호스트) 지표. 같은 서버에 마인크래프트가 돌아 앱 지표만으로는 메모리 부족이 드러나지 않는다.
+HOST = f'{E}, job="host"'
+HOST_MEM_AVAILABLE = f'max(node_memory_MemAvailable_bytes{{{HOST}}}) / max(node_memory_MemTotal_bytes{{{HOST}}})'
+HOST_DISK_USED = (f'1 - max(node_filesystem_avail_bytes{{{HOST}, mountpoint="/"}}) / '
+                  f'max(node_filesystem_size_bytes{{{HOST}, mountpoint="/"}})')
+
 # 마지막 성공 기준에서 뺀다. 할 일이 있을 때만 30초마다 돌아 "스케줄러가 살아 있다" 의 근거가 못 된다.
 POLLING_JOB = 'job_name!="noticeDispatch"'
 
@@ -266,6 +272,16 @@ def overview():
     )
     heap = stat("힙 사용률", prom(HEAP, instant=True), unit="percentunit",
                 thresholds=steps((0.8, "yellow"), (0.9, "red")), decimals=0)
+    host_mem = stat(
+        "서버 메모리 여유", prom(HOST_MEM_AVAILABLE, instant=True), unit="percentunit", decimals=0,
+        thresholds=steps((0.1, "yellow"), (0.2, "green"), base="red"), no_value="수집 끊김",
+        description="서버 전체(마인크래프트 포함)의 사용 가능 메모리 비율.",
+    )
+    host_disk = stat(
+        "루트 디스크 사용률", prom(HOST_DISK_USED, instant=True), unit="percentunit", decimals=0,
+        thresholds=steps((0.7, "yellow"), (0.85, "red")), no_value="수집 끊김",
+        description="부트 볼륨(/). PostgreSQL 데이터·도커 이미지·백업 임시 파일이 여기에 쌓인다.",
+    )
     db_pending = stat(
         "DB 대기 커넥션", prom(f'max(hikaricp_connections_pending{{{APP}}})', instant=True),
         thresholds=steps((1, "yellow"), (3, "red")), no_value="0",
@@ -295,8 +311,8 @@ def overview():
         "prod 상태를 한 화면에서 본다. 타일을 누르면 관련 로그나 상세 대시보드로 간다.",
         [
             (4, [(4, up), (4, error_ratio), (4, p95), (4, errors), (4, job_failures), (4, scheduler)]),
-            (4, [(4, quota), (4, heap), (4, db_pending), (4, series), (4, logs_usage),
-                 (4, stat("앱 가동 시간", prom(f'max(process_uptime_seconds{{{APP}}})', instant=True), unit="s",
+            (4, [(3, quota), (3, heap), (3, db_pending), (3, host_mem), (3, host_disk), (3, series), (3, logs_usage),
+                 (3, stat("앱 가동 시간", prom(f'max(process_uptime_seconds{{{APP}}})', instant=True), unit="s",
                           description="마지막 배포·재시작 이후 시간."))]),
             (8, [(12, timeseries("요청량과 5xx", [prom(HTTP_RATE, "전체 req/s"), prom(HTTP_5XX, "5xx req/s")],
                                  unit="reqps", links=[link("5xx 접근 로그", explore_url(caddy_5xx))])),
@@ -477,6 +493,13 @@ def alert_rules():
         rule("peakda-heap", "JVM 힙 90% 초과", "경고", HEAP,
              "힙 사용률이 10분째 90% 를 넘었다. OOM 직전일 수 있다.",
              threshold=("gt", 0.9), for_="10m", link_url="/d/peakda-overview"),
+        rule("peakda-host-memory", "서버 메모리 여유 10% 미만", "경고", HOST_MEM_AVAILABLE,
+             "서버 사용 가능 메모리가 10분째 10% 미만이다. 마인크래프트와 peakda 컨테이너 메모리를 본다(docker stats).",
+             # 마운트가 빠지는 등으로 메모리 지표가 끊겨도 알 수 있게 데이터가 없으면 울린다.
+             threshold=("lt", 0.1), for_="10m", no_data="Alerting", link_url="/d/peakda-overview"),
+        rule("peakda-host-disk", "루트 디스크 85% 초과", "경고", HOST_DISK_USED,
+             "부트 볼륨 사용률이 30분째 85% 를 넘었다(ext4 예약 블록까지 사용으로 쳐서 df 보다 약 5%p 높다). 도커 이미지(docker image prune)·PostgreSQL 데이터를 본다.",
+             threshold=("gt", 0.85), for_="30m", link_url="/d/peakda-overview"),
         rule("peakda-usage-series", "Grafana 지표 한도 70% 초과", "정보", 'max(grafanacloud_instance_active_series)',
              f"활성 시계열이 무료 한도({SERIES_LIMIT:,})의 70% 를 넘었다. alloy-config.alloy 허용 목록과 Cardinality management 를 본다.",
              ds=USAGE, threshold=("gt", SERIES_LIMIT * 0.7), for_="30m", link_url="/d/cardinality-management"),

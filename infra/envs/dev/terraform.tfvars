@@ -76,9 +76,6 @@ app_secret_names = [
   "KTO_SERVICE_KEY",
   "KMA_SERVICE_KEY",
   "PUBDATA_FESTIVAL_SERVICE_KEY",
-  # dev 는 더 이상 쓰지 않는다. prod(OCI) 수집기 .env 의 토큰 원본이라 AWS 계정을 닫을 때까지 남긴다
-  # (infra/oci/operations.md "Grafana Cloud 연결").
-  "GRAFANA_CLOUD_API_KEY",
   "FCM_SERVICE_ACCOUNT_BASE64",
 
   # S3 IAM 사용자 액세스 키. apply 후 CLI 로 발급해 주입한다.
