@@ -4,6 +4,7 @@ import com.peakda.server.domain.admin.application.AdminAuditRecorder
 import com.peakda.server.domain.admin.application.RecordAdminAuditCommand
 import com.peakda.server.domain.admin.entity.AdminAuditAction
 import com.peakda.server.domain.admin.entity.AdminAuditTargetType
+import com.peakda.server.domain.user.entity.SignupChannel
 import com.peakda.server.domain.user.entity.UserRole
 import com.peakda.server.domain.user.entity.UserStatus
 import com.peakda.server.domain.user.exception.AdminUserNotFoundException
@@ -24,8 +25,14 @@ class UserAdminService(
 ) {
 
     @Transactional(readOnly = true)
-    fun list(q: String?, status: UserStatus?, role: UserRole?, pageable: Pageable): Page<UserAdminResponse> =
-        userRepository.findAdminUsers(nicknamePatternOf(q), status, role, pageable)
+    fun list(
+        q: String?,
+        status: UserStatus?,
+        role: UserRole?,
+        signupChannel: SignupChannel?,
+        pageable: Pageable,
+    ): Page<UserAdminResponse> =
+        userRepository.findAdminUsers(nicknamePatternOf(q), status, role, signupChannel, pageable)
             .map(UserAdminResponse::from)
 
     /**

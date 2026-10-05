@@ -1,6 +1,7 @@
 package com.peakda.server.domain.admin.repository
 
 import com.peakda.server.domain.auth.application.RefreshTokenService
+import com.peakda.server.domain.user.entity.SignupChannel
 import com.peakda.server.domain.user.entity.UserRole
 import com.peakda.server.domain.user.entity.UserStatus
 import com.peakda.server.domain.user.repository.UserRepository
@@ -94,6 +95,7 @@ class AdminOptionalFilterQueryTest {
                 nicknamePattern = "%",
                 status = null,
                 role = null,
+                signupChannel = null,
                 pageable = PAGEABLE,
             )
         }.doesNotThrowAnyException()
@@ -106,6 +108,7 @@ class AdminOptionalFilterQueryTest {
                 nicknamePattern = "%운영%",
                 status = UserStatus.ACTIVE,
                 role = UserRole.ADMIN,
+                signupChannel = SignupChannel.APP,
                 pageable = PAGEABLE,
             )
         }.doesNotThrowAnyException()

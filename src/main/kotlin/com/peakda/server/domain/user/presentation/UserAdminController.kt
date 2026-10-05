@@ -6,6 +6,7 @@ import com.peakda.server.common.page.toPageResponse
 import com.peakda.server.common.response.ApiResponse
 import com.peakda.server.common.security.principal.PrincipalDetails
 import com.peakda.server.domain.user.application.UserAdminService
+import com.peakda.server.domain.user.entity.SignupChannel
 import com.peakda.server.domain.user.entity.UserRole
 import com.peakda.server.domain.user.entity.UserStatus
 import com.peakda.server.domain.user.presentation.request.ChangeUserStatusRequest
@@ -25,10 +26,11 @@ class UserAdminController(
         q: String?,
         status: UserStatus?,
         role: UserRole?,
+        signupChannel: SignupChannel?,
         pageRequest: PageRequest,
     ): ResponseEntity<ApiResponse<PageResponse<UserAdminResponse>>> {
         val response = userAdminService
-            .list(q, status, role, pageRequest.toPageable())
+            .list(q, status, role, signupChannel, pageRequest.toPageable())
             .toPageResponse()
         return ResponseEntity.ok(ApiResponse.success(HttpStatus.OK, response))
     }

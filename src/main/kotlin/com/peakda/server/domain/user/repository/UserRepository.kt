@@ -1,6 +1,7 @@
 package com.peakda.server.domain.user.repository
 
 import com.peakda.server.domain.auth.oauth.model.OAuth2LoginType
+import com.peakda.server.domain.user.entity.SignupChannel
 import com.peakda.server.domain.user.entity.User
 import com.peakda.server.domain.user.entity.UserRole
 import com.peakda.server.domain.user.entity.UserStatus
@@ -34,7 +35,7 @@ interface UserRepository : JpaRepository<User, Long> {
      *
      * 그래서 [nicknamePattern] 은 절대 null 이 아니어야 하며(검색어가 없으면 `%`),
      * 나머지 선택 조건은 NOT NULL 컬럼과 함께 `COALESCE` 에 넣어 컬럼에서 타입을 가져오게 한다.
-     * `status`·`role` 은 모두 NOT NULL 이므로 값이 없으면 조건이 항상 참이 된다.
+     * `status`·`role`·`signupChannel` 은 모두 NOT NULL 이므로 값이 없으면 조건이 항상 참이 된다.
      */
     @Query(
         """
@@ -43,6 +44,7 @@ interface UserRepository : JpaRepository<User, Long> {
             WHERE LOWER(u.nickname) LIKE LOWER(:nicknamePattern) ESCAPE '\'
               AND u.status = COALESCE(:status, u.status)
               AND u.role = COALESCE(:role, u.role)
+              AND u.signupChannel = COALESCE(:signupChannel, u.signupChannel)
             ORDER BY u.id DESC
         """,
     )
@@ -50,6 +52,7 @@ interface UserRepository : JpaRepository<User, Long> {
         @Param("nicknamePattern") nicknamePattern: String,
         @Param("status") status: UserStatus?,
         @Param("role") role: UserRole?,
+        @Param("signupChannel") signupChannel: SignupChannel?,
         pageable: Pageable,
     ): Page<User>
 
