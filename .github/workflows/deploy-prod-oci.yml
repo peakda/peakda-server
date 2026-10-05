@@ -1,0 +1,87 @@
+name: Deploy Production (OCI)
+
+# prod 를 OCI 서버(infra/oci)로 배포한다. AWS(ECS) 배포는 deploy-prod.yml 이 컷오버 전까지 맡는다.
+#
+# 필요한 production 환경 설정
+#   secrets.OCI_DEPLOY_SSH_KEY    배포 전용 SSH 개인키. 서버에서는 deploy-gate.sh 로만 실행된다
+#   secrets.OCI_SSH_KNOWN_HOSTS   서버 호스트 키 (ssh-keyscan 결과를 검증해 넣는다)
+#   vars.OCI_HOST                 서버 주소
+#   vars.APP_DOMAIN               헬스체크 도메인 (기본 api.peakda.com)
+
+on:
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-production
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+  packages: write
+
+jobs:
+  deploy:
+    name: Test, build and deploy
+    # 서버가 ARM64(A1)이므로 arm64 러너에서 네이티브 빌드한다. public 저장소라 무료다.
+    runs-on: ubuntu-24.04-arm
+    timeout-minutes: 45
+    environment: production
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v4
+
+      # build 는 test 와 bootJar 를 한 번에 끝낸다. 테스트가 깨지면 jar 가 나오지 않는다.
+      - name: Test and build jar
+        run: ./gradlew build
+
+      - name: Login to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and push ARM64 image
+        env:
+          IMAGE: ghcr.io/peakda/peakda-server:${{ github.sha }}
+        run: |
+          docker buildx build --platform linux/arm64 --tag "$IMAGE" --push .
+
+      # 서버는 deploy-gate.sh 가 "deploy <sha> <actor>" 만 받는다.
+      # GITHUB_TOKEN 은 stdin 으로 넘겨 서버가 이 잡이 끝나기 전에 이미지를 pull 하게 한다.
+      - name: Deploy over SSH
+        env:
+          SSH_KEY: ${{ secrets.OCI_DEPLOY_SSH_KEY }}
+          KNOWN_HOSTS: ${{ secrets.OCI_SSH_KNOWN_HOSTS }}
+          HOST: ${{ vars.OCI_HOST }}
+          TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          if [ -z "$SSH_KEY" ] || [ -z "$KNOWN_HOSTS" ] || [ -z "$HOST" ]; then
+            echo "production 환경의 OCI_DEPLOY_SSH_KEY·OCI_SSH_KNOWN_HOSTS·OCI_HOST 를 설정한다"
+            exit 1
+          fi
+          install -d -m 700 ~/.ssh
+          printf '%s\n' "$SSH_KEY" > ~/.ssh/deploy_key
+          printf '%s\n' "$KNOWN_HOSTS" > ~/.ssh/known_hosts
+          chmod 600 ~/.ssh/deploy_key ~/.ssh/known_hosts
+          printf '%s\n' "$TOKEN" | ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=yes \
+            -o ServerAliveInterval=30 "ubuntu@$HOST" "deploy ${{ github.sha }} ${{ github.actor }}"
+
+      # DNS 를 거치면 전환 직후 캐시 때문에 옛 서버(AWS)가 대신 응답할 수 있다.
+      # 도메인을 OCI 서버 주소로 고정해 Caddy 인증서와 앱을 함께 확인한다.
+      - name: Verify public health endpoint
+        env:
+          APP_DOMAIN: ${{ vars.APP_DOMAIN || 'api.peakda.com' }}
+          HOST: ${{ vars.OCI_HOST }}
+        run: |
+          curl --fail --silent --show-error --retry 12 --retry-delay 5 --retry-all-errors \
+            --resolve "$APP_DOMAIN:443:$HOST" "https://$APP_DOMAIN/actuator/health"
