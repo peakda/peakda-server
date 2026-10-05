@@ -13,7 +13,12 @@
 	}
 	respond @actuator_internal 404
 
+	# 요청마다 ID 를 만들어 앱에 넘기고 접근 로그에도 남긴다. 앱은 같은 값을 로그(MDC requestId)와
+	# 응답 헤더에 싣는다. 클라이언트가 보낸 X-Request-Id 는 덮어써서 위조된 값이 로그에 섞이지 않게 한다.
+	log_append request_id {http.request.uuid}
+
 	reverse_proxy app:8080 {
+		header_up X-Request-Id {http.request.uuid}
 		health_uri /actuator/health/readiness
 		health_interval 10s
 		health_timeout 3s
