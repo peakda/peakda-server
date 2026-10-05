@@ -95,6 +95,19 @@ class FestivalEditorialAdminServiceTest {
     }
 
     @Test
+    fun `기존 에디토리얼을 다시 저장하면 본문이 같아도 수정 시각을 갱신한다`() {
+        val previous = Instant.parse("2026-01-01T00:00:00Z")
+        val persisted = editorial(EDITORIAL_ID, FestivalEditorialStatus.DRAFT)
+        ReflectionTestUtils.setField(persisted, "updatedAt", previous)
+        `when`(festivalRepository.existsById(FESTIVAL_ID)).thenReturn(true)
+        `when`(festivalEditorialRepository.findByFestivalId(FESTIVAL_ID)).thenReturn(persisted)
+
+        service.upsert(ADMIN_ID, FESTIVAL_ID, command(hook = "훅"))
+
+        assertThat(persisted.updatedAt).isAfter(previous)
+    }
+
+    @Test
     fun `볼거리 순서는 요청 배열 기준으로 1부터 서버가 부여한다`() {
         val persisted = editorial(EDITORIAL_ID, FestivalEditorialStatus.DRAFT)
         `when`(festivalRepository.existsById(FESTIVAL_ID)).thenReturn(true)
