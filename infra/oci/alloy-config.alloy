@@ -115,8 +115,20 @@ loki.process "peakda" {
 		}
 	}
 
+	// PostgreSQL 느린 쿼리 로그(1초 이상)는 바인드 값을 DETAIL 줄로 따로 찍는다.
+	// 이메일·좌표 같은 값이 그대로 들어가므로 그 줄만 버린다. 쿼리 본문과 소요 시간은 남는다.
+	stage.match {
+		selector = "{container=\"peakda-postgres\"}"
+
+		stage.drop {
+			expression          = "DETAIL:\\s+Parameters:"
+			drop_counter_reason = "postgres_bind_parameters"
+		}
+	}
+
 	// Caddy 접근 로그. 본문은 JSON 그대로 두고(| json 으로 펼쳐 본다)
 	// 자주 거르는 값만 metadata 로 올린다. request_id 는 앱 로그와 같은 값이다.
+	// IP 대역 축소와 쿼리의 위치·이메일·OAuth 코드 삭제는 Caddyfile 의 log filter 가 맡는다.
 	stage.match {
 		selector = "{container=\"peakda-caddy\"}"
 

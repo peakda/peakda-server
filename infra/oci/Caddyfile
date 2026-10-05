@@ -24,9 +24,35 @@
 		health_timeout 3s
 	}
 
+	# 접근 로그는 Grafana Cloud(외부)로 전송된다. IP 는 대역까지만 남기고,
+	# 쿼리의 위치·이메일·OAuth 코드는 지운다(앱 로그는 좌표를 약 1km 단위로 남긴다).
+	# Cookie·Authorization 헤더는 Caddy 가 기본으로 가린다.
 	log {
 		output stdout
-		format json
+		format filter {
+			wrap json
+			fields {
+				request>remote_ip ip_mask {
+					ipv4 24
+					ipv6 48
+				}
+				request>client_ip ip_mask {
+					ipv4 24
+					ipv6 48
+				}
+				request>uri query {
+					delete lat
+					delete lng
+					delete minLat
+					delete maxLat
+					delete minLng
+					delete maxLng
+					delete email
+					delete code
+					delete state
+				}
+			}
+		}
 	}
 }
 

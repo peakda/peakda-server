@@ -217,7 +217,10 @@ Grafana Cloud → Explore → Loki 데이터 소스에서 시간 범위를 고�
   클라이언트가 오류 화면에 이 값을 보여 주면 제보 하나로 바로 찾을 수 있다. `@Async` 작업(알림 발송·수동 잡)도 같은 ID 를 잇는다
 - 라벨은 `env`·`container`·`level` 만 있다. `request_id`·`logger`·`thread`·`status` 는 structured metadata 라 `|` 뒤에서 거른다
 - 같은 서버의 마인크래프트 로그는 보내지 않는다(compose 프로젝트 `peakda` 컨테이너만 수집)
-- Caddy 접근 로그에는 클라이언트 IP 가 들어 있다
+- 외부로 나가는 로그에서 개인정보를 가린다. Caddy 접근 로그는 IP 를 /24(IPv6 /48) 대역까지만 남기고 쿼리의
+  `lat`·`lng`·`min/maxLat`·`min/maxLng`·`email`·`code`·`state` 를 지운다(`Caddyfile`). 앱 로그는 토큰·OAuth 코드를 가리고
+  좌표를 소수 둘째 자리(약 1km), 이메일을 첫 글자+도메인으로 줄인다(`SensitiveLogMasker`). PostgreSQL 느린 쿼리의
+  바인드 값 줄은 버린다(`alloy-config.alloy`). 새 API 에 위치·연락처 파라미터를 추가하면 이 세 곳을 같이 본다
 
 ### Grafana Cloud 연결
 
