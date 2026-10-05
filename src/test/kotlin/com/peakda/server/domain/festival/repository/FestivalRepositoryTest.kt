@@ -120,6 +120,21 @@ class FestivalRepositoryTest {
         assertThat(repository.upsert(first.copy(homepageUrl = "https://festival.example"))).isEqualTo(1)
     }
 
+    @Test
+    fun `sitemap 용 조회는 전체 축제의 id와 수정 시각을 id 오름차순으로 돌려준다`() {
+        val saved = repository.saveAllAndFlush(
+            listOf(
+                festival("첫째", LocalDate.of(2026, 3, 1), LocalDate.of(2026, 3, 2)),
+                festival("정규화 실패", null, null),
+            ),
+        )
+
+        val rows = repository.findAllByOrderByIdAsc()
+
+        assertThat(rows.map { it.id }).containsExactlyElementsOf(saved.map { requireNotNull(it.id) }.sorted())
+        assertThat(rows.map { it.updatedAt }).doesNotContainNull()
+    }
+
     private fun festival(name: String, startsOn: LocalDate?, endsOn: LocalDate?): Festival = Festival(
         name = name,
         venue = "$name 장소",

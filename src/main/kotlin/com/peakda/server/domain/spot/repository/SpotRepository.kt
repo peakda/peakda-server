@@ -1,5 +1,6 @@
 package com.peakda.server.domain.spot.repository
 
+import com.peakda.server.common.persistence.LastModifiedRow
 import com.peakda.server.domain.spot.entity.Spot
 import com.peakda.server.domain.spot.entity.SpotType
 import org.springframework.data.domain.Page
@@ -22,6 +23,9 @@ interface SpotRepository : JpaRepository<Spot, Long> {
     @Modifying
     @Query(value = "UPDATE spots SET visible = :visible, updated_at = now() WHERE id IN (:ids)", nativeQuery = true)
     fun updateVisibleByIdIn(@Param("ids") ids: Collection<Long>, @Param("visible") visible: Boolean): Int
+
+    /** [type] 공개 Spot 의 id·수정 시각을 id 오름차순으로 (sitemap). */
+    fun findByTypeAndVisibleTrueOrderByIdAsc(type: SpotType): List<LastModifiedRow>
 
     /** 이름 부분일치(대소문자 무시) 스팟 검색. 비공개(visible=false) 는 제외. */
     fun findByVisibleTrueAndNameContainingIgnoreCase(name: String, pageable: Pageable): Page<Spot>

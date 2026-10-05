@@ -1,5 +1,6 @@
 package com.peakda.server.domain.festival.repository
 
+import com.peakda.server.common.persistence.LastModifiedRow
 import com.peakda.server.domain.festival.entity.Festival
 import org.springframework.data.domain.Page
 import org.springframework.data.domain.Pageable
@@ -80,6 +81,9 @@ interface FestivalRepository : JpaRepository<Festival, Long> {
     fun findByNameAndVenueAndStartDate(name: String, venue: String, startDate: String): Festival?
 
     fun findAllByOrderByIdDesc(pageable: Pageable): Page<Festival>
+
+    /** 전체 축제의 id·수정 시각을 id 오름차순으로 (sitemap). */
+    fun findAllByOrderByIdAsc(): List<LastModifiedRow>
 
     fun findByNameContainingIgnoreCaseOrderByIdDesc(name: String, pageable: Pageable): Page<Festival>
 
