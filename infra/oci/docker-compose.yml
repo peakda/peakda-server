@@ -1,11 +1,11 @@
 # peakda prod — OCI 오사카 A1(ARM64, 2 OCPU / 12GB) 서버 한 대 구성.
 #
 # 앱·PostgreSQL·Redis·Caddy 를 함께 올린다. 같은 서버에 마인크래프트(최대 5GB)가 돌므로
-# 모든 컨테이너에 메모리 상한을 둔다. 합계 2,368MB 로 prod 예산 2.5GB 안쪽이다.
-#   app 1536m + postgres 512m + redis 192m + caddy 128m
+# 모든 컨테이너에 메모리 상한을 둔다. 합계 2,432MB 로 prod 예산 2.5GB 안쪽이다.
+#   app 1536m + postgres 512m + redis 192m + caddy 128m + media-cache 64m
 #
 # 외부로 열리는 것은 Caddy 의 80/443 뿐이다. PostgreSQL 은 루프백에만 묶어 SSH 터널로만 닿는다.
-# 데이터는 ./data 아래에 둔다. 값은 같은 디렉터리의 .env(600)에서 읽는다. 항목은 env.example 참고.
+# 데이터는 ./data 아래에 둔다. 값은 같은 디렉터리의 .env(600)에서 읽는다. .env 는 render-env.sh 로 만든다.
 name: peakda
 
 # 로그를 회전하지 않으면 json-file 이 디스크를 끝없이 채운다.
@@ -30,11 +30,9 @@ services:
       APP_DOMAIN: ${APP_DOMAIN}
       CDN_DOMAIN: ${CDN_DOMAIN}
       ACME_EMAIL: ${ACME_EMAIL}
-      OCI_REGION: ${OCI_REGION}
-      OCI_NAMESPACE: ${OCI_NAMESPACE}
-      MEDIA_BUCKET: ${STORAGE_BUCKET}
     depends_on:
       - app
+      - media-cache
     mem_limit: 128m
     restart: unless-stopped
     logging: *default-logging
@@ -56,6 +54,20 @@ services:
       start_period: 120s
     # JAVA_OPTS(.env)의 -Xmx 와 함께 조정한다. 힙 1GB + 메타스페이스·스레드 여유.
     mem_limit: 1536m
+    restart: unless-stopped
+    logging: *default-logging
+
+  # 미디어 캐시. 설정은 media-cache.conf.template, 캐시는 ./data/media-cache(최대 2GB).
+  media-cache:
+    image: nginx:1.29-alpine
+    container_name: peakda-media-cache
+    environment:
+      MEDIA_ORIGIN_HOST: ${MEDIA_ORIGIN_HOST}
+      MEDIA_ORIGIN_PATH: ${MEDIA_ORIGIN_PATH}
+    volumes:
+      - ./media-cache.conf.template:/etc/nginx/templates/default.conf.template:ro
+      - ./data/media-cache:/var/cache/nginx/media
+    mem_limit: 64m
     restart: unless-stopped
     logging: *default-logging
 

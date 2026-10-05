@@ -26,17 +26,7 @@
 }
 
 # 미디어 공개 주소. DB 에는 오브젝트 키만 있고 앱이 {STORAGE_PUBLIC_BASE_URL}/{key} 로 주소를 만든다.
-# OCI Object Storage 공개 버킷을 그대로 비추고, 앞단 Cloudflare 프록시가 캐시한다.
-# 캐시가 없으면 이미지 조회마다 Object Storage 요청이 생겨 무료 한도(월 5만 건)를 넘기 쉽다.
-# 키에 UUID 가 들어가 같은 키를 덮어쓰지 않으므로 오래 캐시해도 된다.
+# OCI Object Storage 공개 버킷을 원본으로 하는 media-cache(nginx 디스크 캐시)로 넘긴다.
 {$CDN_DOMAIN} {
-	@read method GET HEAD
-	handle @read {
-		rewrite * /n/{$OCI_NAMESPACE}/b/{$MEDIA_BUCKET}/o{path}
-		reverse_proxy https://objectstorage.{$OCI_REGION}.oraclecloud.com {
-			header_up Host {upstream_hostport}
-			header_down Cache-Control "public, max-age=31536000, immutable"
-		}
-	}
-	respond 405
+	reverse_proxy media-cache:8080
 }

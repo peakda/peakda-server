@@ -3,7 +3,7 @@
 #
 #   사용법: deploy.sh <커밋 SHA> <GitHub actor>    (GITHUB_TOKEN 은 stdin 으로 받는다)
 #
-# 하는 일: 그 커밋의 서버 자산(compose·Caddyfile·backup.sh) 반영 → GHCR 이미지 pull → 기동 → 헬스 확인.
+# 하는 일: 그 커밋의 서버 자산(compose·Caddyfile·미디어 캐시 설정·backup.sh) 반영 → GHCR 이미지 pull → 기동 → 헬스 확인.
 # 헬스체크가 실패하면 직전 이미지로 되돌린다. 이 파일과 deploy-gate.sh 는 스스로 바꾸지 않는다
 # (실행 중인 스크립트를 덮어쓰지 않기 위해서다. 바뀌면 operations.md 의 "스크립트 갱신" 대로 올린다).
 set -euo pipefail
@@ -42,12 +42,12 @@ fi
 # 1. 서버 자산을 그 커밋 기준으로 맞춘다
 # ---------------------------------------------------------------------------
 log "자산 반영: $SHA"
-for file in docker-compose.yml Caddyfile backup.sh; do
+for file in docker-compose.yml Caddyfile media-cache.conf.template backup.sh; do
   curl -fsSL "${AUTH_HEADER[@]}" \
     "https://raw.githubusercontent.com/$REPO/$SHA/infra/oci/$file" -o "$file.new"
 done
 chmod +x backup.sh.new
-for file in docker-compose.yml Caddyfile backup.sh; do
+for file in docker-compose.yml Caddyfile media-cache.conf.template backup.sh; do
   mv "$file.new" "$file"
 done
 

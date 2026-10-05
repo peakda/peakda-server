@@ -1,0 +1,56 @@
+# 미디어 캐시. Caddy(cdn 도메인) 뒤에서 OCI Object Storage 공개 버킷을 원본으로 디스크에 캐시한다.
+# nginx 공식 이미지가 기동할 때 ${...} 를 환경변수로 바꿔 conf.d 에 넣는다(nginx 변수 $... 는 그대로 남는다).
+#
+# 캐시가 없으면 이미지 조회마다 Object Storage 요청이 생겨 Always Free 한도(월 5만 건)를 넘기 쉽다.
+# 키에 UUID 가 들어가 같은 키를 덮어쓰지 않으므로 오래 캐시해도 된다.
+proxy_cache_path /var/cache/nginx/media levels=1:2 keys_zone=media:10m max_size=2g inactive=30d use_temp_path=off;
+
+# 성공한 이미지에만 1년 캐시 헤더를 붙인다. 오류 응답이 브라우저에 오래 남지 않게 한다.
+map $status $media_cache_control {
+    200     "public, max-age=31536000, immutable";
+    default "";
+}
+
+server {
+    listen 8080;
+    server_tokens off;
+
+    # 원본 주소를 기동 시점에 고정하지 않고 Docker 내장 DNS 로 다시 푼다.
+    # 서버·컨테이너에 IPv6 가 없으므로 AAAA 를 쓰지 않는다(쓰면 연결이 실패해 502 가 난다).
+    resolver 127.0.0.11 ipv6=off valid=300s;
+    set $origin_host ${MEDIA_ORIGIN_HOST};
+
+    location / {
+        limit_except GET {
+            deny all;
+        }
+
+        # MEDIA_ORIGIN_HOST = objectstorage.<region>.oraclecloud.com
+        # MEDIA_ORIGIN_PATH = /n/<namespace>/b/<bucket>/o
+        proxy_pass https://$origin_host${MEDIA_ORIGIN_PATH}$uri;
+        proxy_set_header Host $origin_host;
+        proxy_ssl_server_name on;
+        proxy_ssl_name $origin_host;
+        proxy_ssl_verify on;
+        proxy_ssl_trusted_certificate /etc/ssl/certs/ca-certificates.crt;
+        # 기본 검증 깊이(1)로는 중간 인증서가 있는 체인을 검증하지 못한다.
+        proxy_ssl_verify_depth 3;
+
+        proxy_cache media;
+        proxy_cache_key $uri;
+        proxy_cache_valid 200 30d;
+        proxy_cache_valid 404 1m;
+        proxy_cache_lock on;
+        # 원본이 잠시 안 될 때는 캐시된 이미지를 그대로 내보낸다.
+        proxy_cache_use_stale error timeout updating http_500 http_502 http_503 http_504;
+        proxy_ignore_headers Cache-Control Expires Set-Cookie;
+        proxy_hide_header Set-Cookie;
+        proxy_hide_header Cache-Control;
+        proxy_hide_header Expires;
+        proxy_hide_header opc-request-id;
+        proxy_hide_header opc-client-request-id;
+
+        add_header Cache-Control $media_cache_control always;
+        add_header X-Cache-Status $upstream_cache_status;
+    }
+}
