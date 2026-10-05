@@ -160,6 +160,14 @@ class OpenApiConfig(
             .build()
 
     @Bean
+    fun sitemapGroupedOpenApi(): GroupedOpenApi =
+        GroupedOpenApi.builder()
+            .group("14-sitemap")
+            .displayName("사이트맵")
+            .pathsToMatch("/api/sitemap")
+            .build()
+
+    @Bean
     fun allGroupedOpenApi(): GroupedOpenApi =
         GroupedOpenApi.builder()
             .group("99-all")

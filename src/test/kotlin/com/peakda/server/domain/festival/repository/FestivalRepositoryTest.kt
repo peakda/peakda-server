@@ -1,35 +1,18 @@
 package com.peakda.server.domain.festival.repository
 
-import com.peakda.server.domain.auth.application.RefreshTokenService
+import com.peakda.server.common.test.IntegrationTestSupport
 import com.peakda.server.domain.festival.entity.Festival
 import jakarta.persistence.EntityManager
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
-import org.redisson.api.RedissonClient
 import org.springframework.beans.factory.annotation.Autowired
-import org.springframework.boot.test.context.SpringBootTest
-import org.springframework.boot.testcontainers.service.connection.ServiceConnection
 import org.springframework.data.domain.PageRequest
-import org.springframework.test.context.ActiveProfiles
-import org.springframework.test.context.bean.override.mockito.MockitoBean
 import org.springframework.transaction.annotation.Transactional
-import org.testcontainers.containers.PostgreSQLContainer
-import org.testcontainers.junit.jupiter.Container
-import org.testcontainers.junit.jupiter.Testcontainers
 import java.time.LocalDate
 
-@Testcontainers
-@SpringBootTest
-@ActiveProfiles("test")
 @Transactional
-class FestivalRepositoryTest {
-
-    @MockitoBean
-    lateinit var refreshTokenService: RefreshTokenService
-
-    @MockitoBean
-    lateinit var redissonClient: RedissonClient
+class FestivalRepositoryTest : IntegrationTestSupport() {
 
     @Autowired
     lateinit var repository: FestivalRepository
@@ -110,6 +93,31 @@ class FestivalRepositoryTest {
         assertThat(updated?.endsOn).isEqualTo(LocalDate.of(2026, 5, 7))
     }
 
+    @Test
+    fun `upsert는 원천 값이 그대로인 재적재에서 행을 쓰지 않는다`() {
+        val first = command(startsOn = LocalDate.of(2026, 5, 1), endsOn = LocalDate.of(2026, 5, 5))
+
+        assertThat(repository.upsert(first)).isEqualTo(1)
+        assertThat(repository.upsert(first)).isZero()
+        assertThat(repository.upsert(first.copy(endDate = null, endsOn = null))).isZero()
+        assertThat(repository.upsert(first.copy(homepageUrl = "https://festival.example"))).isEqualTo(1)
+    }
+
+    @Test
+    fun `sitemap 용 조회는 전체 축제의 id와 수정 시각을 id 오름차순으로 돌려준다`() {
+        val saved = repository.saveAllAndFlush(
+            listOf(
+                festival("첫째", LocalDate.of(2026, 3, 1), LocalDate.of(2026, 3, 2)),
+                festival("정규화 실패", null, null),
+            ),
+        )
+
+        val rows = repository.findAllByOrderByIdAsc()
+
+        assertThat(rows.map { it.id }).containsExactlyElementsOf(saved.map { requireNotNull(it.id) }.sorted())
+        assertThat(rows.map { it.updatedAt }).doesNotContainNull()
+    }
+
     private fun festival(name: String, startsOn: LocalDate?, endsOn: LocalDate?): Festival = Festival(
         name = name,
         venue = "$name 장소",
@@ -144,13 +152,5 @@ class FestivalRepositoryTest {
         private const val NAME = "봄꽃 축제"
         private const val VENUE = "중앙광장"
         private const val START_DATE = "2026-05-01"
-
-        @Container
-        @ServiceConnection
-        @JvmStatic
-        val postgres = PostgreSQLContainer("postgres:16")
-            .withDatabaseName("peakda")
-            .withUsername("peakda")
-            .withPassword("peakda")
     }
 }

@@ -6,6 +6,7 @@ import com.peakda.server.common.page.PageRequest
 import com.peakda.server.common.page.PageResponse
 import com.peakda.server.common.response.ApiResponse
 import com.peakda.server.common.security.principal.PrincipalDetails
+import com.peakda.server.domain.user.entity.SignupChannel
 import com.peakda.server.domain.user.entity.UserRole
 import com.peakda.server.domain.user.entity.UserStatus
 import com.peakda.server.domain.user.presentation.request.ChangeUserStatusRequest
@@ -29,7 +30,7 @@ interface UserAdminControllerDocs {
 
     @Operation(
         summary = "관리자 사용자 목록 조회",
-        description = "닉네임 부분일치와 상태·역할 선택 조건을 조합해 최신 가입순으로 조회한다.",
+        description = "닉네임 부분일치와 상태·역할·가입 경로 선택 조건을 조합해 최신 가입순으로 조회한다.",
         security = [SecurityRequirement(name = "accessTokenCookie")],
     )
     @ApiErrorResponses(
@@ -45,6 +46,8 @@ interface UserAdminControllerDocs {
         @RequestParam(name = "status", required = false) status: UserStatus?,
         @Parameter(description = "사용자 역할. 조회 필터 전용", example = "USER")
         @RequestParam(name = "role", required = false) role: UserRole?,
+        @Parameter(description = "가입 경로. WEB=웹, APP=앱, UNKNOWN=구분 저장 이전 가입", example = "APP")
+        @RequestParam(name = "signupChannel", required = false) signupChannel: SignupChannel?,
         @Valid @ModelAttribute pageRequest: PageRequest,
     ): ResponseEntity<ApiResponse<PageResponse<UserAdminResponse>>>
 

@@ -1,5 +1,6 @@
 package com.peakda.server.domain.curation.repository
 
+import com.peakda.server.common.persistence.LastModifiedRow
 import com.peakda.server.domain.curation.entity.Curation
 import com.peakda.server.domain.curation.entity.CurationStatus
 import org.springframework.data.domain.Page
@@ -17,6 +18,9 @@ interface CurationRepository : JpaRepository<Curation, Long> {
     fun findAllByOrderByWeekStartDateDesc(pageable: Pageable): Page<Curation>
 
     fun findByIdAndStatus(id: Long, status: CurationStatus): Curation?
+
+    /** [status] 큐레이션의 id·수정 시각을 id 오름차순으로 (sitemap). */
+    fun findByStatusOrderByIdAsc(status: CurationStatus): List<LastModifiedRow>
 
     fun findCurationById(id: Long): Curation?
 

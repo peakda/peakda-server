@@ -91,7 +91,7 @@ class SecurityConfigMockMvcTest {
         "/api/home/suggestion", "/api/explore", "/api/explore/spots", "/api/explore/festivals",
         "/api/search/spots", "/api/search/trending", "/api/seasonal/blooms",
         "/api/seasonal/blooms/peak", "/api/seasonal/blooms/calendar", "/api/plants",
-        "/api/plants/search", "/api/spots/preview", "/api/spots/records",
+        "/api/plants/search", "/api/spots/preview", "/api/spots/records", "/api/sitemap",
     ])
     fun `public browsing GET routes are permitted`(path: String) {
         mockMvc.get(path).andExpect { status { isOk() } }
@@ -164,7 +164,7 @@ class SecurityConfigMockMvcTest {
             "/api/home/suggestion", "/api/explore", "/api/explore/spots", "/api/explore/festivals",
             "/api/search/spots", "/api/search/trending", "/api/seasonal/blooms",
             "/api/seasonal/blooms/peak", "/api/seasonal/blooms/calendar", "/api/plants",
-            "/api/plants/search", "/api/spots/preview", "/api/spots/records",
+            "/api/plants/search", "/api/spots/preview", "/api/spots/records", "/api/sitemap",
         )
         fun browse(): ResponseEntity<Unit> = ResponseEntity.ok().build()
 

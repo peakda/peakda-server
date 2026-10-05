@@ -7,6 +7,7 @@ import org.springframework.data.domain.Pageable
 import org.springframework.data.jpa.repository.JpaRepository
 import org.springframework.data.jpa.repository.Query
 import org.springframework.data.repository.query.Param
+import java.time.Instant
 
 interface SpotRecordRepository : JpaRepository<SpotRecord, Long> {
     fun findByUserId(userId: Long): List<SpotRecord>
@@ -68,6 +69,17 @@ interface SpotRecordRepository : JpaRepository<SpotRecord, Long> {
         @Param("userIds") userIds: Collection<Long>,
         @Param("status") status: SpotRecordStatus,
     ): List<UserRecordCount>
+
+    /** [status] 기록이 있는 스팟별 마지막 기록 수정 시각 (sitemap). */
+    @Query(
+        """
+            SELECT r.spotId AS spotId, MAX(r.updatedAt) AS lastModifiedAt
+            FROM SpotRecord r
+            WHERE r.status = :status
+            GROUP BY r.spotId
+        """,
+    )
+    fun findLastModifiedAtPerSpotByStatus(@Param("status") status: SpotRecordStatus): List<SpotRecordLastModifiedAt>
 }
 
 /** [SpotRecordRepository.countBySpotIdInAndStatus] 프로젝션. */
@@ -80,4 +92,10 @@ interface SpotRecordCount {
 interface UserRecordCount {
     val userId: Long
     val recordCount: Long
+}
+
+/** [SpotRecordRepository.findLastModifiedAtPerSpotByStatus] 프로젝션. */
+interface SpotRecordLastModifiedAt {
+    val spotId: Long
+    val lastModifiedAt: Instant
 }

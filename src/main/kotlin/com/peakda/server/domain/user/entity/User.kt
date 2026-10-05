@@ -44,6 +44,10 @@ class User(
     @Enumerated(EnumType.STRING)
     @Column(name = "role", nullable = false, columnDefinition = "TEXT")
     var role: UserRole = UserRole.USER,
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "signup_channel", nullable = false, columnDefinition = "TEXT")
+    val signupChannel: SignupChannel = SignupChannel.UNKNOWN,
 ) : BaseTimeEntity() {
 
     @Id
@@ -80,6 +84,7 @@ class User(
             nickname: String,
             email: String?,
             profileImageUrl: String?,
+            signupChannel: SignupChannel,
         ): User = User(
             provider = provider,
             providerId = providerId,
@@ -87,6 +92,7 @@ class User(
             email = email,
             profileImageUrl = profileImageUrl,
             status = UserStatus.ACTIVE,
+            signupChannel = signupChannel,
         )
     }
 }
