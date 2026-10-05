@@ -15,6 +15,7 @@ import org.springframework.data.repository.query.Param
 interface UserRepository : JpaRepository<User, Long> {
     fun findByProviderAndProviderId(provider: OAuth2LoginType, providerId: String): User?
     fun existsByNickname(nickname: String): Boolean
+    fun existsByIdAndStatusNot(id: Long, status: UserStatus): Boolean
     fun findTop500ByStatusAndIdGreaterThanOrderByIdAsc(status: UserStatus, id: Long): List<User>
 
     @Lock(LockModeType.PESSIMISTIC_WRITE)

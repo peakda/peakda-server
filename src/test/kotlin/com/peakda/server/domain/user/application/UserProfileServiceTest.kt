@@ -70,8 +70,8 @@ class UserProfileServiceTest {
         `when`(userFavoriteCategoryRepository.findByIdUserId(TARGET_ID))
             .thenReturn(listOf(favoriteCategory(TARGET_ID, BloomCategory.CHERRY)))
 
-        `when`(followRepository.countByFollowingId(TARGET_ID)).thenReturn(1280L)
-        `when`(followRepository.countByFollowerId(TARGET_ID)).thenReturn(312L)
+        `when`(followRepository.countFollowers(TARGET_ID)).thenReturn(1280L)
+        `when`(followRepository.countFollowings(TARGET_ID)).thenReturn(312L)
         `when`(followRepository.existsByFollowerIdAndFollowingId(VIEWER_ID, TARGET_ID)).thenReturn(true)
         `when`(blockRepository.existsByBlockerIdAndBlockedId(VIEWER_ID, TARGET_ID)).thenReturn(true)
 
@@ -100,8 +100,8 @@ class UserProfileServiceTest {
             .thenReturn(PageImpl(emptyList(), pageable, 0))
         `when`(spotRecordResponseAssembler.assembleSummaries(emptyList(), TARGET_ID)).thenReturn(emptyList())
         `when`(userFavoriteCategoryRepository.findByIdUserId(TARGET_ID)).thenReturn(emptyList())
-        `when`(followRepository.countByFollowingId(TARGET_ID)).thenReturn(0L)
-        `when`(followRepository.countByFollowerId(TARGET_ID)).thenReturn(0L)
+        `when`(followRepository.countFollowers(TARGET_ID)).thenReturn(0L)
+        `when`(followRepository.countFollowings(TARGET_ID)).thenReturn(0L)
 
         val response = service.getProfile(TARGET_ID, TARGET_ID)
 

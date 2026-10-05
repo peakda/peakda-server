@@ -3,6 +3,7 @@ package com.peakda.server.domain.user.application
 import com.peakda.server.common.page.PageRequest
 import com.peakda.server.common.page.PageResponse
 import com.peakda.server.domain.user.entity.Follow
+import com.peakda.server.domain.user.entity.UserStatus
 import com.peakda.server.domain.user.exception.SelfFollowNotAllowedException
 import com.peakda.server.domain.user.exception.UserNotFoundException
 import com.peakda.server.domain.user.presentation.response.FollowSummaryResponse
@@ -25,7 +26,8 @@ class FollowService(
 
     fun follow(followerId: Long, targetUserId: Long) {
         if (followerId == targetUserId) throw SelfFollowNotAllowedException()
-        requireUserExists(targetUserId)
+        // 탈퇴한 사용자는 팔로우할 수 없다. 받아 주면 수·목록 어디에도 보이지 않는 행만 쌓인다.
+        if (!userRepository.existsByIdAndStatusNot(targetUserId, UserStatus.DEACTIVATED)) throw UserNotFoundException()
         // ON CONFLICT DO NOTHING — 이미 팔로우 중이면 무시되어 동시 요청에서도 단일 행이 보장된다.
         followRepository.insertIfAbsent(followerId, targetUserId)
         // 커밋 후 알림 도메인이 수신해 팔로우 알림을 생성한다 (AFTER_COMMIT).
@@ -48,7 +50,7 @@ class FollowService(
         pageRequest: PageRequest,
     ): PageResponse<FollowUserResponse> {
         requireUserExists(targetUserId)
-        val page = followRepository.findByFollowingIdOrderByCreatedAtDesc(targetUserId, pageRequest.toPageable())
+        val page = followRepository.findFollowers(targetUserId, pageRequest.toPageable())
         return page.toUserResponses(currentUserId) { it.followerId }
     }
 
@@ -59,7 +61,7 @@ class FollowService(
         pageRequest: PageRequest,
     ): PageResponse<FollowUserResponse> {
         requireUserExists(targetUserId)
-        val page = followRepository.findByFollowerIdOrderByCreatedAtDesc(targetUserId, pageRequest.toPageable())
+        val page = followRepository.findFollowings(targetUserId, pageRequest.toPageable())
         return page.toUserResponses(currentUserId) { it.followingId }
     }
 
@@ -68,8 +70,8 @@ class FollowService(
         requireUserExists(targetUserId)
         return FollowSummaryResponse(
             userId = targetUserId,
-            followerCount = followRepository.countByFollowingId(targetUserId),
-            followingCount = followRepository.countByFollowerId(targetUserId),
+            followerCount = followRepository.countFollowers(targetUserId),
+            followingCount = followRepository.countFollowings(targetUserId),
             following = currentUserId != targetUserId &&
                 followRepository.existsByFollowerIdAndFollowingId(currentUserId, targetUserId),
         )
