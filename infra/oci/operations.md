@@ -231,7 +231,7 @@ Grafana Cloud → Explore → Loki 데이터 소스(`grafanacloud-tealbalcony311
 
 | 대시보드 | 보는 것 |
 |---|---|
-| `peakda / 운영 개요` | 상태 타일(앱 상태·5xx 비율·가장 느린 API p95·에러 로그·잡 실패·스케줄러 마지막 성공·쿼터 소진·힙·DB 대기·Grafana 한도). 타일을 누르면 관련 로그·대시보드로 간다. "요청 ID" 칸에 `X-Request-Id` 를 넣으면 그 요청의 앱·Caddy 로그 |
+| `peakda / 운영 개요` | 상태 타일(앱 상태·5xx 비율·가장 느린 API p95·에러 로그·잡 실패·스케줄러 마지막 성공·쿼터 소진·힙·DB 대기·서버 메모리 여유·루트 디스크·Grafana 한도). 타일을 누르면 관련 로그·대시보드로 간다. "요청 ID" 칸에 `X-Request-Id` 를 넣으면 그 요청의 앱·Caddy 로그 |
 | `peakda / 배치 잡` | 잡별 마지막 성공 후 경과·24시간 성공/실패/스킵·소요 p95. 잡 이름을 누르면 그 잡의 로그 |
 | `peakda / 외부 API` | 쿼터 소비·소진·레이트리밋 차단, 외부 API 로그 |
 
@@ -241,7 +241,7 @@ Grafana Cloud → Explore → Loki 데이터 소스(`grafanacloud-tealbalcony311
 | 심각도 | 알림 |
 |---|---|
 | 긴급 | 앱 다운 또는 지표 수집 끊김 (서버·수집기가 멈춰도 울린다) |
-| 경고 | 5xx 비율 5% 초과, 앱 에러 로그 급증, 배치 잡 실패, 스케줄러 정지 의심(6시간 동안 성공한 잡 없음), DB 커넥션 대기, 힙 90% 초과 |
+| 경고 | 5xx 비율 5% 초과, 앱 에러 로그 급증, 배치 잡 실패, 스케줄러 정지 의심(6시간 동안 성공한 잡 없음), DB 커넥션 대기, 힙 90% 초과, 서버 메모리 여유 10% 미만, 루트 디스크 85% 초과 |
 | 정보 | 외부 API 쿼터 소진, Grafana 지표·로그 한도 70% 초과 |
 
 잡별 미실행 감시는 Spring Batch 이관(PEAK-111) 때 잡별 주기 기준으로 다시 만든다.
@@ -262,15 +262,18 @@ infra/grafana/apply.py --dry-run     # 반영하지 않고 build/grafana 에 JSO
 
 ### Grafana Cloud 연결
 
-Loki·Mimir 주소와 사용자 ID 는 스택 고유 값이고, 토큰(`metrics:write`·`logs:write`)은 dev 때 만든 것을 dev SSM 에서 읽는다.
+Loki·Mimir 주소와 사용자 ID 는 스택 고유 값이다. 토큰은 grafana.com 의 Access Policy `peakda-prod-collector`
+(realm: `tealbalcony3113` 스택, scope: `metrics:write`·`logs:write`)에서 발급한다. 토큰 원본은 서버 `.env` 와 발급한 사람의
+`~/.config/peakda/grafana-collector-token`(600) 뿐이고 저장소·AWS 에는 두지 않는다. 잃어버리면 같은 정책에서 새로 발급한다.
 
 ```sh
 # 1. deploy.sh 가 바뀐 커밋이면 배포 전에 올린다(위 "스크립트 갱신")
 scp infra/oci/deploy.sh ubuntu@$HOST:/opt/peakda/ && ssh ubuntu@$HOST 'chmod 750 /opt/peakda/*.sh'
 
 # 2. .env 의 GRAFANA_CLOUD_* 를 바꿔 넣는다(다시 돌려도 중복되지 않는다). 토큰은 명령행 인자가 아니라 stdin 으로 넘긴다
-KEY="$(aws ssm get-parameter --name /peakda/dev/GRAFANA_CLOUD_API_KEY --with-decryption \
-  --query Parameter.Value --output text --region ap-northeast-2)"
+#    토큰 파일: grafana.com → Access Policies → peakda-prod-collector → Add token 을 복사한 뒤
+#    pbpaste > ~/.config/peakda/grafana-collector-token && chmod 600 ~/.config/peakda/grafana-collector-token
+KEY="$(cat ~/.config/peakda/grafana-collector-token)"
 ssh ubuntu@$HOST 'cd /opt/peakda && umask 077 && t=$(mktemp .env.XXXXXX) && { grep -v "^GRAFANA_CLOUD_" .env; cat; } > "$t" && mv "$t" .env' << EOF
 GRAFANA_CLOUD_PROM_URL=https://prometheus-prod-49-prod-ap-northeast-0.grafana.net/api/prom/push
 GRAFANA_CLOUD_PROM_USER=3408100
@@ -286,8 +289,13 @@ ssh ubuntu@$HOST 'docker stats --no-stream peakda-alloy'
 ```
 
 - `render-env.sh`(1-4)로 `.env` 를 다시 만들면 GRAFANA_CLOUD_* 가 빠진다. 그 뒤에는 2 를 다시 한다
-- 토큰을 바꿀 때도 2 를 다시 하고 `docker compose up -d alloy` 를 한다. AWS 계정을 닫으면 SSM 의 토큰도 사라지므로
-  그 뒤로는 Grafana Cloud → Access Policies 에서 `metrics:write`·`logs:write` 토큰을 새로 만들어 `KEY` 에 넣는다
+- 토큰을 바꿀 때도 2 를 다시 하고 `docker compose up -d alloy` 를 한다. 수집기 지표에서 전송 성공을 확인한 뒤 옛 토큰을 폐기한다.
+  Loki 응답 코드가 204, 지표 전송 실패가 0 이면 된다(Alloy 이미지에는 curl 이 없어 bash 로 읽는다)
+
+  ```sh
+  ssh ubuntu@$HOST "docker exec peakda-alloy bash -c 'exec 3<>/dev/tcp/127.0.0.1/12345; printf \"GET /metrics HTTP/1.0\r\n\r\n\" >&3; cat <&3' \
+    | grep -E '^(loki_write_request_duration_seconds_count|prometheus_remote_storage_samples_failed_total)'"
+  ```
 - `.env` 에 값이 없거나 틀려도 수집기만 전송에 실패하고 서비스는 그대로 돈다. 그때는 "앱 다운 또는 지표 수집 끊김" 알림이 울린다
 
 ### 백업 복원
