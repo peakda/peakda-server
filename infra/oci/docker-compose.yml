@@ -1,0 +1,119 @@
+# peakda prod — OCI 오사카 A1(ARM64, 2 OCPU / 12GB) 서버 한 대 구성.
+#
+# 앱·PostgreSQL·Redis·Caddy 를 함께 올린다. 같은 서버에 마인크래프트(최대 5GB)가 돌므로
+# 모든 컨테이너에 메모리 상한을 둔다. 합계 2,368MB 로 prod 예산 2.5GB 안쪽이다.
+#   app 1536m + postgres 512m + redis 192m + caddy 128m
+#
+# 외부로 열리는 것은 Caddy 의 80/443 뿐이다. PostgreSQL 은 루프백에만 묶어 SSH 터널로만 닿는다.
+# 데이터는 ./data 아래에 둔다. 값은 같은 디렉터리의 .env(600)에서 읽는다. 항목은 env.example 참고.
+name: peakda
+
+# 로그를 회전하지 않으면 json-file 이 디스크를 끝없이 채운다.
+x-logging: &default-logging
+  driver: json-file
+  options:
+    max-size: "20m"
+    max-file: "5"
+
+services:
+  caddy:
+    image: caddy:2-alpine
+    container_name: peakda-caddy
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy-data:/data # 발급받은 인증서. 재시작마다 재발급하면 Let's Encrypt 한도에 걸린다
+      - caddy-config:/config
+    environment:
+      APP_DOMAIN: ${APP_DOMAIN}
+      CDN_DOMAIN: ${CDN_DOMAIN}
+      ACME_EMAIL: ${ACME_EMAIL}
+      OCI_REGION: ${OCI_REGION}
+      OCI_NAMESPACE: ${OCI_NAMESPACE}
+      MEDIA_BUCKET: ${STORAGE_BUCKET}
+    depends_on:
+      - app
+    mem_limit: 128m
+    restart: unless-stopped
+    logging: *default-logging
+
+  app:
+    image: ${APP_IMAGE}
+    container_name: peakda-app
+    env_file: .env
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://localhost:8080/actuator/health/readiness"]
+      interval: 10s
+      timeout: 3s
+      retries: 12
+      start_period: 120s
+    # JAVA_OPTS(.env)의 -Xmx 와 함께 조정한다. 힙 1GB + 메타스페이스·스레드 여유.
+    mem_limit: 1536m
+    restart: unless-stopped
+    logging: *default-logging
+
+  postgres:
+    # 원본 RDS 와 같은 메이저 버전. 이관 도구의 버전 규칙(원본 ≤ 대상)도 그대로 만족한다.
+    image: postgres:16-alpine
+    container_name: peakda-postgres
+    ports:
+      - "127.0.0.1:5432:5432"
+    environment:
+      POSTGRES_DB: peakda
+      POSTGRES_USER: peakda
+      POSTGRES_PASSWORD: ${SPRING_DATASOURCE_PASSWORD}
+      PGDATA: /var/lib/postgresql/data/pgdata
+    command:
+      - postgres
+      - -c
+      - shared_buffers=128MB
+      - -c
+      - max_connections=30
+      - -c
+      - log_min_duration_statement=1000
+    volumes:
+      - ./data/postgres:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U peakda -d peakda"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    mem_limit: 512m
+    restart: unless-stopped
+    logging: *default-logging
+
+  redis:
+    image: redis:8.2.1-alpine
+    container_name: peakda-redis
+    # 리프레시 토큰이 여기 있다. 메모리가 차도 키를 조용히 버리지 않도록 noeviction 으로 둔다
+    # (가득 차면 쓰기가 오류로 드러난다). AOF 로 재시작에도 남긴다.
+    command:
+      - redis-server
+      - --appendonly
+      - "yes"
+      - --maxmemory
+      - 128mb
+      - --maxmemory-policy
+      - noeviction
+    volumes:
+      - ./data/redis:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+    mem_limit: 192m
+    restart: unless-stopped
+    logging: *default-logging
+
+volumes:
+  caddy-data:
+  caddy-config:

@@ -1,0 +1,42 @@
+# Caddy 가 Let's Encrypt 인증서를 자동 발급·갱신한다. ALB·ACM 을 대신한다.
+{
+	email {$ACME_EMAIL}
+}
+
+{$APP_DOMAIN} {
+	encode gzip
+
+	# Actuator 는 헬스체크만 외부에 연다. 나머지는 감춘다.
+	@actuator_internal {
+		path /actuator/*
+		not path /actuator/health /actuator/health/*
+	}
+	respond @actuator_internal 404
+
+	reverse_proxy app:8080 {
+		health_uri /actuator/health/readiness
+		health_interval 10s
+		health_timeout 3s
+	}
+
+	log {
+		output stdout
+		format json
+	}
+}
+
+# 미디어 공개 주소. DB 에는 오브젝트 키만 있고 앱이 {STORAGE_PUBLIC_BASE_URL}/{key} 로 주소를 만든다.
+# OCI Object Storage 공개 버킷을 그대로 비추고, 앞단 Cloudflare 프록시가 캐시한다.
+# 캐시가 없으면 이미지 조회마다 Object Storage 요청이 생겨 무료 한도(월 5만 건)를 넘기 쉽다.
+# 키에 UUID 가 들어가 같은 키를 덮어쓰지 않으므로 오래 캐시해도 된다.
+{$CDN_DOMAIN} {
+	@read method GET HEAD
+	handle @read {
+		rewrite * /n/{$OCI_NAMESPACE}/b/{$MEDIA_BUCKET}/o{path}
+		reverse_proxy https://objectstorage.{$OCI_REGION}.oraclecloud.com {
+			header_up Host {upstream_hostport}
+			header_down Cache-Control "public, max-age=31536000, immutable"
+		}
+	}
+	respond 405
+}
