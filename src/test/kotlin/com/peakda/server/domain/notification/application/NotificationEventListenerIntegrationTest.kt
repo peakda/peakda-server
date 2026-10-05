@@ -1,6 +1,6 @@
 package com.peakda.server.domain.notification.application
 
-import com.peakda.server.domain.auth.application.RefreshTokenService
+import com.peakda.server.common.test.IntegrationTestSupport
 import com.peakda.server.domain.auth.oauth.model.OAuth2LoginType
 import com.peakda.server.domain.notification.entity.DevicePlatform
 import com.peakda.server.domain.notification.entity.DeviceToken
@@ -14,6 +14,7 @@ import com.peakda.server.domain.user.repository.UserRepository
 import com.peakda.server.infrastructure.push.PushPayload
 import com.peakda.server.infrastructure.push.PushSender
 import org.assertj.core.api.Assertions.assertThat
+import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.mockito.ArgumentMatchers.anyList
@@ -22,31 +23,15 @@ import org.mockito.Mockito.doAnswer
 import org.mockito.Mockito.reset
 import org.mockito.Mockito.timeout
 import org.mockito.Mockito.verify
-import org.redisson.api.RedissonClient
 import org.springframework.beans.factory.annotation.Autowired
-import org.springframework.boot.test.context.SpringBootTest
-import org.springframework.boot.testcontainers.service.connection.ServiceConnection
 import org.springframework.context.ApplicationEventPublisher
-import org.springframework.test.context.ActiveProfiles
 import org.springframework.test.context.bean.override.mockito.MockitoBean
 import org.springframework.transaction.support.TransactionTemplate
-import org.testcontainers.containers.PostgreSQLContainer
-import org.testcontainers.junit.jupiter.Container
-import org.testcontainers.junit.jupiter.Testcontainers
 import java.util.concurrent.CountDownLatch
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicBoolean
 
-@Testcontainers
-@SpringBootTest
-@ActiveProfiles("test")
-class NotificationEventListenerIntegrationTest {
-
-    @MockitoBean
-    lateinit var refreshTokenService: RefreshTokenService
-
-    @MockitoBean
-    lateinit var redissonClient: RedissonClient
+class NotificationEventListenerIntegrationTest : IntegrationTestSupport() {
 
     @MockitoBean
     lateinit var pushSender: PushSender
@@ -70,6 +55,7 @@ class NotificationEventListenerIntegrationTest {
     lateinit var userRepository: UserRepository
 
     @BeforeEach
+    @AfterEach
     fun cleanUp() {
         notificationRepository.deleteAll()
         deviceTokenRepository.deleteAll()
@@ -122,13 +108,5 @@ class NotificationEventListenerIntegrationTest {
 
     companion object {
         private val DUMMY_PAYLOAD = PushPayload("", "", NotificationLinkType.INTERNAL, null, null, 0L, NotificationType.TIMING)
-
-        @Container
-        @ServiceConnection
-        @JvmStatic
-        val postgres = PostgreSQLContainer("postgres:16")
-            .withDatabaseName("peakda")
-            .withUsername("peakda")
-            .withPassword("peakda")
     }
 }

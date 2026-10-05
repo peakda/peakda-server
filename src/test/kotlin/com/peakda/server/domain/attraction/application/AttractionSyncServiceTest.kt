@@ -1,7 +1,7 @@
 package com.peakda.server.domain.attraction.application
 
+import com.peakda.server.common.test.IntegrationTestSupport
 import com.peakda.server.domain.attraction.repository.AttractionRepository
-import com.peakda.server.domain.auth.application.RefreshTokenService
 import com.peakda.server.domain.congestion.application.CongestionSyncService
 import com.peakda.server.domain.festival.application.FestivalSyncService
 import com.peakda.server.domain.gallery.application.GalleryPhotoSyncService
@@ -22,26 +22,11 @@ import com.peakda.server.infrastructure.external.kto.tatscnctr.response.CnctrRat
 import com.peakda.server.infrastructure.external.pubdata.festival.response.FestivalItem
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Test
-import org.redisson.api.RedissonClient
 import org.springframework.beans.factory.annotation.Autowired
-import org.springframework.boot.test.context.SpringBootTest
-import org.springframework.boot.testcontainers.service.connection.ServiceConnection
-import org.springframework.test.context.ActiveProfiles
-import org.springframework.test.context.bean.override.mockito.MockitoBean
-import org.testcontainers.containers.PostgreSQLContainer
-import org.testcontainers.junit.jupiter.Container
-import org.testcontainers.junit.jupiter.Testcontainers
+import org.springframework.transaction.annotation.Transactional
 
-@Testcontainers
-@SpringBootTest
-@ActiveProfiles("test")
-class AttractionSyncServiceTest {
-
-    @MockitoBean
-    lateinit var refreshTokenService: RefreshTokenService
-
-    @MockitoBean
-    lateinit var redissonClient: RedissonClient
+@Transactional
+class AttractionSyncServiceTest : IntegrationTestSupport() {
 
     @Autowired
     lateinit var syncService: AttractionSyncService
@@ -187,13 +172,5 @@ class AttractionSyncServiceTest {
 
     companion object {
         private const val CONTENT_ID = "test-content-1"
-
-        @Container
-        @ServiceConnection
-        @JvmStatic
-        val postgres = PostgreSQLContainer("postgres:16")
-            .withDatabaseName("peakda")
-            .withUsername("peakda")
-            .withPassword("peakda")
     }
 }
