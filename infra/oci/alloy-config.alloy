@@ -1,0 +1,149 @@
+// peakda prod (OCI) 로그 수집기.
+//
+// peakda compose 프로젝트의 컨테이너 stdout 로그를 Grafana Cloud Loki 로 보낸다.
+// dev(infra/server/alloy-config.alloy)와 같은 스택을 쓰고 env 라벨로 갈라 본다.
+// 컨테이너 json-file 로그는 배포로 컨테이너가 바뀌면 지워지지만, 여기서 실시간으로
+// 가져가므로 이미 보낸 로그는 Grafana 에 남는다.
+//
+// 지표는 아직 수집하지 않는다. 자격증명은 /opt/peakda/.env 의 GRAFANA_CLOUD_* 값이다.
+
+logging {
+	// info 로 두면 자기 로그로 Loki 한도를 갉아먹는다.
+	level  = "warn"
+	format = "logfmt"
+}
+
+loki.write "grafana_cloud" {
+	endpoint {
+		url = sys.env("GRAFANA_CLOUD_LOKI_URL")
+
+		basic_auth {
+			username = sys.env("GRAFANA_CLOUD_LOKI_USER")
+			password = sys.env("GRAFANA_CLOUD_API_KEY")
+		}
+	}
+
+	external_labels = {
+		env = sys.env("PEAKDA_ENV"),
+	}
+}
+
+// ---------------------------------------------------------------------------
+// 컨테이너 로그
+//
+// 같은 서버에 마인크래프트가 돈다. peakda compose 프로젝트 컨테이너만 골라
+// 다른 서비스 로그(플레이어 IP·채팅)가 섞여 나가지 않게 한다.
+//
+// 라벨은 container 와 앱의 level 만 둔다. requestId 처럼 값이 매번 다른 것은
+// structured metadata 로 두고 쿼리 시점에 거른다(라벨로 올리면 Loki 인덱스가 폭증한다).
+// ---------------------------------------------------------------------------
+
+discovery.docker "peakda" {
+	host             = "unix:///var/run/docker.sock"
+	refresh_interval = "30s"
+
+	filter {
+		name   = "label"
+		values = ["com.docker.compose.project=peakda"]
+	}
+}
+
+discovery.relabel "peakda" {
+	targets = discovery.docker.peakda.targets
+
+	// 도커가 주는 이름은 "/peakda-app" 처럼 슬래시가 붙어 있다.
+	rule {
+		source_labels = ["__meta_docker_container_name"]
+		regex         = "/(.*)"
+		target_label  = "container"
+	}
+}
+
+loki.source.docker "peakda" {
+	host       = "unix:///var/run/docker.sock"
+	targets    = discovery.relabel.peakda.output
+	forward_to = [loki.process.peakda.receiver]
+}
+
+loki.process "peakda" {
+	forward_to = [loki.write.grafana_cloud.receiver]
+
+	// 앱은 logstash 포맷 JSON 한 줄로 찍는다. MDC 의 requestId 도 최상위 필드로 들어간다.
+	stage.match {
+		selector = "{container=\"peakda-app\"}"
+
+		stage.json {
+			expressions = {
+				level      = "level",
+				logger     = "logger_name",
+				thread     = "thread_name",
+				request_id = "requestId",
+				msg        = "message",
+				stack      = "stack_trace",
+			}
+		}
+
+		stage.labels {
+			values = {
+				level = "",
+			}
+		}
+
+		stage.structured_metadata {
+			values = {
+				logger     = "",
+				thread     = "",
+				request_id = "",
+			}
+		}
+
+	}
+
+	// 본문을 message(+스택트레이스)로 바꿔 Explore 에서 파서 없이 읽히게 한다.
+	// level 라벨은 JSON 으로 읽힌 줄에만 붙으므로, 기동 배너처럼 JSON 이 아닌 줄은
+	// 여기에 걸리지 않고 원문 그대로 남는다.
+	stage.match {
+		selector = "{container=\"peakda-app\", level=~\".+\"}"
+
+		stage.template {
+			source   = "body"
+			template = "{{ .msg }}{{ if .stack }}\n{{ .stack }}{{ end }}"
+		}
+
+		stage.output {
+			source = "body"
+		}
+	}
+
+	// PostgreSQL 느린 쿼리 로그(1초 이상)는 바인드 값을 DETAIL 줄로 따로 찍는다.
+	// 이메일·좌표 같은 값이 그대로 들어가므로 그 줄만 버린다. 쿼리 본문과 소요 시간은 남는다.
+	stage.match {
+		selector = "{container=\"peakda-postgres\"}"
+
+		stage.drop {
+			expression          = "DETAIL:\\s+Parameters:"
+			drop_counter_reason = "postgres_bind_parameters"
+		}
+	}
+
+	// Caddy 접근 로그. 본문은 JSON 그대로 두고(| json 으로 펼쳐 본다)
+	// 자주 거르는 값만 metadata 로 올린다. request_id 는 앱 로그와 같은 값이다.
+	// IP 대역 축소와 쿼리의 위치·이메일·OAuth 코드 삭제는 Caddyfile 의 log filter 가 맡는다.
+	stage.match {
+		selector = "{container=\"peakda-caddy\"}"
+
+		stage.json {
+			expressions = {
+				status     = "status",
+				request_id = "request_id",
+			}
+		}
+
+		stage.structured_metadata {
+			values = {
+				status     = "",
+				request_id = "",
+			}
+		}
+	}
+}
