@@ -1,32 +1,15 @@
 package com.peakda.server.domain.attraction.repository
 
+import com.peakda.server.common.test.IntegrationTestSupport
 import com.peakda.server.domain.attraction.entity.Attraction
-import com.peakda.server.domain.auth.application.RefreshTokenService
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Test
-import org.redisson.api.RedissonClient
 import org.springframework.beans.factory.annotation.Autowired
-import org.springframework.boot.test.context.SpringBootTest
-import org.springframework.boot.testcontainers.service.connection.ServiceConnection
 import org.springframework.data.domain.PageRequest
-import org.springframework.test.context.ActiveProfiles
-import org.springframework.test.context.bean.override.mockito.MockitoBean
 import org.springframework.transaction.annotation.Transactional
-import org.testcontainers.containers.PostgreSQLContainer
-import org.testcontainers.junit.jupiter.Container
-import org.testcontainers.junit.jupiter.Testcontainers
 
-@Testcontainers
-@SpringBootTest
-@ActiveProfiles("test")
 @Transactional
-class AttractionOperatingInfoRepositoryTest {
-
-    @MockitoBean
-    lateinit var refreshTokenService: RefreshTokenService
-
-    @MockitoBean
-    lateinit var redissonClient: RedissonClient
+class AttractionOperatingInfoRepositoryTest : IntegrationTestSupport() {
 
     @Autowired
     lateinit var repository: AttractionOperatingInfoRepository
@@ -107,14 +90,4 @@ class AttractionOperatingInfoRepositoryTest {
         parking = parking,
         sourceModifiedAt = modifiedAt,
     )
-
-    companion object {
-        @Container
-        @ServiceConnection
-        @JvmStatic
-        val postgres = PostgreSQLContainer("postgres:16")
-            .withDatabaseName("peakda")
-            .withUsername("peakda")
-            .withPassword("peakda")
-    }
 }

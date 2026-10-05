@@ -1,32 +1,15 @@
 package com.peakda.server.domain.notification.repository
 
-import com.peakda.server.domain.auth.application.RefreshTokenService
+import com.peakda.server.common.test.IntegrationTestSupport
 import com.peakda.server.domain.seasonal.entity.BloomCategory
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
-import org.redisson.api.RedissonClient
 import org.springframework.beans.factory.annotation.Autowired
-import org.springframework.boot.test.context.SpringBootTest
-import org.springframework.boot.testcontainers.service.connection.ServiceConnection
-import org.springframework.test.context.ActiveProfiles
-import org.springframework.test.context.bean.override.mockito.MockitoBean
 import org.springframework.transaction.annotation.Transactional
-import org.testcontainers.containers.PostgreSQLContainer
-import org.testcontainers.junit.jupiter.Container
-import org.testcontainers.junit.jupiter.Testcontainers
 import java.time.LocalDate
 
-@Testcontainers
-@SpringBootTest
-@ActiveProfiles("test")
-class BloomTimingAlertRepositoryTest {
-
-    @MockitoBean
-    lateinit var refreshTokenService: RefreshTokenService
-
-    @MockitoBean
-    lateinit var redissonClient: RedissonClient
+class BloomTimingAlertRepositoryTest : IntegrationTestSupport() {
 
     @Autowired
     lateinit var repository: BloomTimingAlertRepository
@@ -83,14 +66,4 @@ class BloomTimingAlertRepositoryTest {
         peakYear = peakYear,
         peakStartDate = peakStartDate,
     )
-
-    companion object {
-        @Container
-        @ServiceConnection
-        @JvmStatic
-        val postgres = PostgreSQLContainer("postgres:16")
-            .withDatabaseName("peakda")
-            .withUsername("peakda")
-            .withPassword("peakda")
-    }
 }

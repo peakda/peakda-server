@@ -1,34 +1,17 @@
 package com.peakda.server.domain.congestion.repository
 
+import com.peakda.server.common.test.IntegrationTestSupport
 import com.peakda.server.domain.attraction.repository.AttractionRepository
 import com.peakda.server.domain.attraction.repository.AttractionUpsertCommand
-import com.peakda.server.domain.auth.application.RefreshTokenService
 import com.peakda.server.domain.congestion.entity.CongestionAttractionLink
 import com.peakda.server.domain.congestion.entity.CongestionLinkStatus
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Test
-import org.redisson.api.RedissonClient
 import org.springframework.beans.factory.annotation.Autowired
-import org.springframework.boot.test.context.SpringBootTest
-import org.springframework.boot.testcontainers.service.connection.ServiceConnection
-import org.springframework.test.context.ActiveProfiles
-import org.springframework.test.context.bean.override.mockito.MockitoBean
 import org.springframework.transaction.annotation.Transactional
-import org.testcontainers.containers.PostgreSQLContainer
-import org.testcontainers.junit.jupiter.Container
-import org.testcontainers.junit.jupiter.Testcontainers
 
-@Testcontainers
-@SpringBootTest
-@ActiveProfiles("test")
 @Transactional
-class CongestionAttractionLinkRepositoryTest {
-
-    @MockitoBean
-    lateinit var refreshTokenService: RefreshTokenService
-
-    @MockitoBean
-    lateinit var redissonClient: RedissonClient
+class CongestionAttractionLinkRepositoryTest : IntegrationTestSupport() {
 
     @Autowired
     lateinit var congestionRepository: CongestionRepository
@@ -124,14 +107,4 @@ class CongestionAttractionLinkRepositoryTest {
         attractionId = attractionId,
         status = status,
     )
-
-    companion object {
-        @Container
-        @ServiceConnection
-        @JvmStatic
-        val postgres = PostgreSQLContainer("postgres:16")
-            .withDatabaseName("peakda")
-            .withUsername("peakda")
-            .withPassword("peakda")
-    }
 }

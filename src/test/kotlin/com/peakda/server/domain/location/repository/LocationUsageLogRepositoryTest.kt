@@ -1,39 +1,22 @@
 package com.peakda.server.domain.location.repository
 
-import com.peakda.server.domain.auth.application.RefreshTokenService
+import com.peakda.server.common.test.IntegrationTestSupport
 import com.peakda.server.domain.location.entity.LocationAccessChannel
 import com.peakda.server.domain.location.entity.LocationServiceType
 import com.peakda.server.domain.location.entity.LocationUsageLog
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
-import org.redisson.api.RedissonClient
 import org.springframework.beans.factory.annotation.Autowired
-import org.springframework.boot.test.context.SpringBootTest
-import org.springframework.boot.testcontainers.service.connection.ServiceConnection
 import org.springframework.data.domain.PageRequest
-import org.springframework.test.context.ActiveProfiles
-import org.springframework.test.context.bean.override.mockito.MockitoBean
 import org.springframework.transaction.annotation.Transactional
-import org.testcontainers.containers.PostgreSQLContainer
-import org.testcontainers.junit.jupiter.Container
-import org.testcontainers.junit.jupiter.Testcontainers
 import java.time.Instant
 
 /**
  * 선택 조건을 `COALESCE` 로 편 쿼리가 PostgreSQL 에서 실제로 도는지까지 확인한다.
  * 파라미터 타입 추론 실패(SQLState 42P18)는 H2 나 목으로는 드러나지 않는다.
  */
-@Testcontainers
-@SpringBootTest
-@ActiveProfiles("test")
-class LocationUsageLogRepositoryTest {
-
-    @MockitoBean
-    lateinit var refreshTokenService: RefreshTokenService
-
-    @MockitoBean
-    lateinit var redissonClient: RedissonClient
+class LocationUsageLogRepositoryTest : IntegrationTestSupport() {
 
     @Autowired
     lateinit var repository: LocationUsageLogRepository
@@ -151,13 +134,5 @@ class LocationUsageLogRepositoryTest {
         private val FIRST: Instant = Instant.parse("2026-08-01T00:00:00Z")
         private val SECOND: Instant = Instant.parse("2026-08-10T00:00:00Z")
         private val THIRD: Instant = Instant.parse("2026-08-20T00:00:00Z")
-
-        @Container
-        @ServiceConnection
-        @JvmStatic
-        val postgres = PostgreSQLContainer("postgres:16")
-            .withDatabaseName("peakda")
-            .withUsername("peakda")
-            .withPassword("peakda")
     }
 }
