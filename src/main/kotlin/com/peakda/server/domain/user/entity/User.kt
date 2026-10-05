@@ -56,13 +56,15 @@ class User(
      * 계정 탈퇴 처리. 상태를 DEACTIVATED 로 전환하고 개인식별정보를 익명화한다.
      *
      * - 닉네임은 탈퇴 식별자로 치환해 기존 닉네임을 다른 사용자가 재사용할 수 있게 한다.
+     *   DB 제약(2~10자)에 맞도록 id 를 36진수로 줄이고, 가입 닉네임에 쓸 수 없는 `_` 를 넣어
+     *   일반 사용자 닉네임과 겹치지 않게 한다 (예: id 12345 → `탈퇴_9ix`).
      * - providerId 를 무효화해 (provider, provider_id) 유니크 제약을 비워, 동일 소셜 계정의
      *   재가입을 복구가 아닌 신규 가입으로 처리한다 (결정 G).
      */
     fun withdraw() {
         val currentId = requireNotNull(id) { "탈퇴하려는 사용자 id 가 없습니다." }
         status = UserStatus.DEACTIVATED
-        nickname = "$WITHDRAWN_PREFIX$currentId"
+        nickname = "$WITHDRAWN_NICKNAME_PREFIX${currentId.toString(36)}"
         email = null
         profileImageUrl = null
         providerId = "$WITHDRAWN_PREFIX$currentId:$providerId"
@@ -70,6 +72,7 @@ class User(
 
     companion object {
         private const val WITHDRAWN_PREFIX = "withdrawn-"
+        private const val WITHDRAWN_NICKNAME_PREFIX = "탈퇴_"
 
         fun create(
             provider: OAuth2LoginType,

@@ -17,27 +17,79 @@ interface FollowRepository : JpaRepository<Follow, Long> {
     @Query("delete from Follow f where f.followerId = :userId or f.followingId = :userId")
     fun deleteAllByUserId(userId: Long)
 
+    /*
+     * 팔로워·팔로잉의 수와 목록은 모두 "상대 사용자가 존재하고 탈퇴(DEACTIVATED)하지 않은" 행만 센다.
+     * follows 에는 users FK 가 없어 상대 행이 사라지거나 탈퇴한 팔로우가 남을 수 있는데,
+     * 수와 목록이 서로 다른 기준을 쓰면 "팔로잉 5 / 목록 3" 처럼 어긋난다.
+     */
+
     /** 팔로잉 수: 이 사용자가 팔로우하는 사람 수 */
-    fun countByFollowerId(followerId: Long): Long
+    @Query(
+        """
+            SELECT COUNT(f) FROM Follow f
+            WHERE f.followerId = :followerId
+              AND EXISTS (
+                SELECT 1 FROM User u
+                WHERE u.id = f.followingId AND u.status <> com.peakda.server.domain.user.entity.UserStatus.DEACTIVATED
+              )
+        """,
+    )
+    fun countFollowings(@Param("followerId") followerId: Long): Long
 
     /** 팔로워 수: 이 사용자를 팔로우하는 사람 수 */
-    fun countByFollowingId(followingId: Long): Long
+    @Query(
+        """
+            SELECT COUNT(f) FROM Follow f
+            WHERE f.followingId = :followingId
+              AND EXISTS (
+                SELECT 1 FROM User u
+                WHERE u.id = f.followerId AND u.status <> com.peakda.server.domain.user.entity.UserStatus.DEACTIVATED
+              )
+        """,
+    )
+    fun countFollowers(@Param("followingId") followingId: Long): Long
 
     @Query(
         """
             SELECT f.followingId AS userId, COUNT(f) AS followerCount
             FROM Follow f
             WHERE f.followingId IN :userIds
+              AND EXISTS (
+                SELECT 1 FROM User u
+                WHERE u.id = f.followerId AND u.status <> com.peakda.server.domain.user.entity.UserStatus.DEACTIVATED
+              )
             GROUP BY f.followingId
         """,
     )
     fun countByFollowingIdIn(@Param("userIds") userIds: Collection<Long>): List<FollowerCount>
 
     /** 팔로워 목록: 대상(followingId)을 팔로우하는 행들을 최근 팔로우 순으로 */
-    fun findByFollowingIdOrderByCreatedAtDesc(followingId: Long, pageable: Pageable): Page<Follow>
+    @Query(
+        """
+            SELECT f FROM Follow f
+            WHERE f.followingId = :followingId
+              AND EXISTS (
+                SELECT 1 FROM User u
+                WHERE u.id = f.followerId AND u.status <> com.peakda.server.domain.user.entity.UserStatus.DEACTIVATED
+              )
+            ORDER BY f.createdAt DESC
+        """,
+    )
+    fun findFollowers(@Param("followingId") followingId: Long, pageable: Pageable): Page<Follow>
 
     /** 팔로잉 목록: 대상(followerId)이 팔로우하는 행들을 최근 팔로우 순으로 */
-    fun findByFollowerIdOrderByCreatedAtDesc(followerId: Long, pageable: Pageable): Page<Follow>
+    @Query(
+        """
+            SELECT f FROM Follow f
+            WHERE f.followerId = :followerId
+              AND EXISTS (
+                SELECT 1 FROM User u
+                WHERE u.id = f.followingId AND u.status <> com.peakda.server.domain.user.entity.UserStatus.DEACTIVATED
+              )
+            ORDER BY f.createdAt DESC
+        """,
+    )
+    fun findFollowings(@Param("followerId") followerId: Long, pageable: Pageable): Page<Follow>
 
     /**
      * 목록의 각 사용자에 대해 현재 로그인 사용자(followerId)가 팔로우 중인 대상 id 만 추려서 반환한다.

@@ -47,8 +47,8 @@ class UserProfileService(
             profileImageVariants = profileImageUrlResolver.variantUrls(user.profileImageUrl),
             stats = UserProfileResponse.Stats(
                 recordCount = recordsPage.totalElements,
-                followerCount = followRepository.countByFollowingId(targetUserId),
-                followingCount = followRepository.countByFollowerId(targetUserId),
+                followerCount = followRepository.countFollowers(targetUserId),
+                followingCount = followRepository.countFollowings(targetUserId),
             ),
             favoriteCategories = FavoriteCategoryResponse.of(favoriteCategories),
             recordPreview = spotRecordResponseAssembler.assembleSummaries(recordsPage.content, currentUserId),

@@ -46,8 +46,8 @@ class MyPageService(
             profileImageVariants = profileImageUrlResolver.variantUrls(user.profileImageUrl),
             stats = MyPageResponse.Stats(
                 recordCount = recordsPage.totalElements,
-                followerCount = followRepository.countByFollowingId(userId),
-                followingCount = followRepository.countByFollowerId(userId),
+                followerCount = followRepository.countFollowers(userId),
+                followingCount = followRepository.countFollowings(userId),
                 favoriteSpotCount = spotFavoriteRepository.countByUserId(userId),
             ),
             favoriteCategories = FavoriteCategoryResponse.of(favoriteCategories),
