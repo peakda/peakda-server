@@ -4,6 +4,7 @@ import com.peakda.server.common.test.IntegrationTestSupport
 import com.peakda.server.domain.auth.oauth.model.OAuth2LoginType
 import com.peakda.server.domain.notification.application.DeviceTokenService
 import com.peakda.server.domain.notification.entity.DevicePlatform
+import com.peakda.server.domain.user.entity.SignupChannel
 import com.peakda.server.domain.user.entity.User
 import com.peakda.server.domain.user.repository.UserRepository
 import org.assertj.core.api.Assertions.assertThat
@@ -103,6 +104,7 @@ class DeviceTokenRepositoryTest : IntegrationTestSupport() {
                 nickname = "동시성토큰사용자",
                 email = null,
                 profileImageUrl = null,
+                signupChannel = SignupChannel.WEB,
             ),
         )
         val userId = requireNotNull(user.id)

@@ -98,6 +98,7 @@ class SecurityConfig(
                         "/api/curations",
                         "/api/curations/**",
                         "/api/festivals/**",
+                        "/api/sitemap",
                     ).permitAll()
                     .requestMatchers(HttpMethod.GET, "/api/auth/signup/nickname/check")
                     .hasAnyRole("SIGNUP", "USER")

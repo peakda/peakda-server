@@ -2,6 +2,7 @@ package com.peakda.server.domain.user.repository
 
 import com.peakda.server.common.test.IntegrationTestSupport
 import com.peakda.server.domain.auth.oauth.model.OAuth2LoginType
+import com.peakda.server.domain.user.entity.SignupChannel
 import com.peakda.server.domain.user.entity.User
 import com.peakda.server.domain.user.entity.UserStatus
 import org.assertj.core.api.Assertions.assertThat
@@ -82,6 +83,7 @@ class FollowRepositoryTest : IntegrationTestSupport() {
                 nickname = nickname,
                 email = null,
                 profileImageUrl = null,
+                signupChannel = SignupChannel.WEB,
             ),
         )
 

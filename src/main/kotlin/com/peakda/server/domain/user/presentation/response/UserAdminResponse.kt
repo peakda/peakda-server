@@ -1,6 +1,7 @@
 package com.peakda.server.domain.user.presentation.response
 
 import com.peakda.server.domain.auth.oauth.model.OAuth2LoginType
+import com.peakda.server.domain.user.entity.SignupChannel
 import com.peakda.server.domain.user.entity.User
 import com.peakda.server.domain.user.entity.UserRole
 import com.peakda.server.domain.user.entity.UserStatus
@@ -21,6 +22,8 @@ data class UserAdminResponse(
     val status: UserStatus,
     @field:Schema(description = "사용자 역할", example = "USER")
     val role: UserRole,
+    @field:Schema(description = "가입 경로. WEB=웹, APP=앱, UNKNOWN=구분 저장 이전 가입", example = "APP")
+    val signupChannel: SignupChannel,
     @field:Schema(description = "가입 시각", example = "2026-07-28T09:30:00Z")
     val createdAt: Instant,
 ) {
@@ -32,6 +35,7 @@ data class UserAdminResponse(
             provider = user.provider,
             status = user.status,
             role = user.role,
+            signupChannel = user.signupChannel,
             createdAt = user.createdAt,
         )
     }

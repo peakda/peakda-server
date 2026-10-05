@@ -9,6 +9,7 @@ import com.peakda.server.domain.notification.entity.NotificationType
 import com.peakda.server.domain.notification.repository.DeviceTokenRepository
 import com.peakda.server.domain.notification.repository.NotificationRepository
 import com.peakda.server.domain.user.application.FollowCreatedEvent
+import com.peakda.server.domain.user.entity.SignupChannel
 import com.peakda.server.domain.user.entity.User
 import com.peakda.server.domain.user.repository.UserRepository
 import com.peakda.server.infrastructure.push.PushPayload
@@ -99,6 +100,7 @@ class NotificationEventListenerIntegrationTest : IntegrationTestSupport() {
                 nickname = nickname,
                 email = null,
                 profileImageUrl = null,
+                signupChannel = SignupChannel.WEB,
             ),
         )
 
