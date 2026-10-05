@@ -9,15 +9,15 @@ AWS 무료 플랜 크레딧이 2026-10-14 전후로 소진되어 prod 를 OCI Al
 | 구성 | Caddy(HTTPS) · 앱 · PostgreSQL 16 · Redis, `/opt/peakda` (ubuntu 소유, 750) |
 | 이미지 | `ghcr.io/peakda/peakda-server:<커밋 SHA>` (ARM64) |
 | 배포 | `.github/workflows/deploy-prod-oci.yml` → SSH(배포 전용 키, `deploy-gate.sh` 로만 실행) → `deploy.sh` |
-| 미디어 | OCI Object Storage `peakda-prod-media`(공개 읽기). `cdn.peakda.com` 이 Caddy 를 거쳐 비추고 Cloudflare 가 캐시 |
+| 미디어 | OCI Object Storage `peakda-prod-media`(공개 읽기). `cdn.peakda.com` → Caddy → `media-cache`(nginx 디스크 캐시 2GB) → Object Storage |
 | 백업 | 6시간마다 PostgreSQL 덤프·Redis 스냅샷 → `peakda-prod-backup`(30일 보관) |
-| DNS | Cloudflare. `api` 는 DNS only, `cdn` 은 프록시(캐시) |
+| DNS | 가비아 DNS (등록처와 같은 곳) |
 
 `/opt/peakda` 파일
 
 | 파일 | 출처 | 비고 |
 |---|---|---|
-| `docker-compose.yml`, `Caddyfile`, `backup.sh` | 배포 때 그 커밋에서 자동 갱신 | |
+| `docker-compose.yml`, `Caddyfile`, `media-cache.conf.template`, `backup.sh` | 배포 때 그 커밋에서 자동 갱신 | |
 | `deploy.sh`, `deploy-gate.sh` | 수동 복사 | 실행 중 덮어쓰지 않기 위해 자동 갱신하지 않는다 |
 | `.env` | `render-env.sh` 로 생성 | 권한 600. `APP_IMAGE` 줄만 `deploy.sh` 가 관리한다 |
 | `data/`, `logs/` | 서버 | PostgreSQL·Redis 데이터, 백업 로그 |
@@ -32,7 +32,7 @@ Always Free 범위를 지킨다. 새 자원을 만들 때는 예산 알림과 �
 
 ```sh
 ssh ubuntu@$HOST 'mkdir -p /opt/peakda/data /opt/peakda/logs'
-scp infra/oci/{deploy.sh,deploy-gate.sh,backup.sh,docker-compose.yml,Caddyfile} ubuntu@$HOST:/opt/peakda/
+scp infra/oci/{deploy.sh,deploy-gate.sh,backup.sh,docker-compose.yml,Caddyfile,media-cache.conf.template} ubuntu@$HOST:/opt/peakda/
 ssh ubuntu@$HOST 'chmod 750 /opt/peakda/*.sh'
 ```
 
@@ -97,14 +97,13 @@ rm ~/peakda-oci.env
 ssh ubuntu@$HOST '(crontab -l 2>/dev/null; echo "0 */6 * * * /opt/peakda/backup.sh >> /opt/peakda/logs/backup.log 2>&1") | crontab -'
 ```
 
-### 1-6. DNS 를 Cloudflare 로 (전파에 최대 48시간)
+### 1-6. DNS 를 가비아로 (전파에 최대 48시간)
 
-1. Cloudflare 에 `peakda.com` 을 추가하고 Route53 레코드(`aws route53 list-resource-record-sets --hosted-zone-id Z0047731D5LTIA2YFLB8`)를
+1. 가비아 DNS 관리 툴에 Route53 레코드(`aws route53 list-resource-record-sets --hosted-zone-id Z0047731D5LTIA2YFLB8`)를
    **지금 대상 그대로** 옮긴다. `api` 는 ALB DNS 이름으로 CNAME, `cdn` 은 CloudFront 도메인으로 CNAME, apex·www 는 Vercel 값.
-   전부 DNS only(회색), TTL 60초. ACM 검증용 CNAME 은 옮기지 않는다
-2. SSL/TLS 모드는 **Full (strict)**, "Always Use HTTPS" 는 끈다(Caddy 가 리다이렉트하고, 켜 두면 인증서 HTTP-01 검증이 막힐 수 있다)
-3. 도메인 등록처에서 네임서버를 Cloudflare 로 바꾼다
-4. `dig NS peakda.com +short` 가 Cloudflare 를 가리키고 `dig api.peakda.com` 이 그대로 ALB 로 풀리면 끝
+   ACM 검증용 CNAME 은 옮기지 않는다. TTL 은 가비아가 허용하는 가장 짧은 값으로 둔다(컷오버·롤백 반영 속도를 정한다)
+2. 가비아에서 도메인 네임서버를 Route53 에서 가비아 DNS 로 바꾼다
+3. `dig NS peakda.com +short` 가 가비아를 가리키고 `dig api.peakda.com` 이 그대로 ALB 로 풀리면 끝
 
 ## 2. 컷오버 (다운타임 20~30분)
 
@@ -166,16 +165,15 @@ docker run --rm --network host -v /tmp/out:/work/out -e SOURCE_PGHOST -e SOURCE_
   -e SOURCE_PGSSLMODE -e SOURCE_REDIS_URL peakda-data-migration verify --dir /work/out --side source
 ```
 
-2-6. Cloudflare 에서 `api`·`cdn` 을 서버 IP(A 레코드, DNS only)로 바꾼다.
+2-6. 가비아 DNS 에서 `api`·`cdn` 을 서버 IP 로 가는 A 레코드로 바꾼다.
 2-7. GitHub Actions 에서 **Deploy Production (OCI)** 를 실행한다(`gh workflow run deploy-prod-oci.yml --ref main`).
      Caddy 가 이때 인증서를 받으므로 2-6 이 먼저다. 워크플로는 서버 IP 로 고정해 헬스체크한다.
 2-8. 앱에서 로그인 유지, 명소 목록, 이미지 표시·업로드를 확인한다. 여기까지가 다운타임이다.
-2-9. 인증서가 발급된 뒤 `cdn` 레코드만 프록시(주황)로 바꿔 캐시를 켠다.
-2-10. 옛 DNS TTL 이 지난 뒤 2-5 를 한 번 더 돌려 옛 주소로 들어간 쓰기가 없는지 확인한다.
+2-9. 옛 DNS TTL 이 지난 뒤 2-5 를 한 번 더 돌려 옛 주소로 들어간 쓰기가 없는지 확인한다.
 
 ## 3. 롤백
 
-- **2-7 전**: Cloudflare 레코드를 원래 대상(ALB·CloudFront)으로 되돌리고, 오토스케일링 2~8·desired 2 로 ECS 를 올린다.
+- **2-7 전**: 가비아 레코드를 원래 대상(ALB·CloudFront)으로 되돌리고, 오토스케일링 2~8·desired 2 로 ECS 를 올린다.
   원본은 읽기만 했으므로 무손실이다
 - **2-7 뒤(서버가 쓰기를 받은 뒤)**: 서버 앱을 멈추고(`docker compose stop app caddy`), 같은 도구로 방향을 바꿔
   서버 → RDS 로 옮긴 뒤 위와 같이 되돌린다(`data-migration.md` 의 롤백)
