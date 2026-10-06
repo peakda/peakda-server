@@ -2,6 +2,7 @@ package com.peakda.server.domain.curation.presentation
 
 import com.peakda.server.common.response.ApiResponse
 import com.peakda.server.domain.curation.application.CurationImageUploader
+import com.peakda.server.domain.curation.application.CurationImageUsage
 import com.peakda.server.domain.curation.presentation.response.UploadedImageResponse
 import org.springframework.http.HttpStatus
 import org.springframework.http.ResponseEntity
@@ -15,8 +16,11 @@ class CurationImageAdminController(
     private val curationImageUploader: CurationImageUploader,
 ) : CurationImageAdminControllerDocs {
 
-    override fun upload(file: MultipartFile): ResponseEntity<ApiResponse<UploadedImageResponse>> {
-        val uploaded = curationImageUploader.upload(file)
+    override fun upload(
+        file: MultipartFile,
+        usage: CurationImageUsage,
+    ): ResponseEntity<ApiResponse<UploadedImageResponse>> {
+        val uploaded = curationImageUploader.upload(file, usage)
         val response = UploadedImageResponse(
             objectKey = uploaded.objectKey,
             previewUrl = uploaded.previewUrl,

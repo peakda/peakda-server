@@ -270,7 +270,7 @@ async function uploadHeroImage() {
 
   try {
     safeSetLoading(heroImageFile, true);
-    const uploaded = await upload('/api/admin/curations/images', file);
+    const uploaded = await upload('/api/admin/curations/images', file, { usage: 'HERO' });
     heroImageKey.value = uploaded.objectKey || '';
     state.heroPreviewUrl = uploaded.previewUrl || '';
     renderHeroPreview();
