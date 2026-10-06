@@ -6,13 +6,13 @@ import io.swagger.v3.oas.annotations.media.Schema
 data class UploadedImageResponse(
     @field:Schema(
         description = "main 이미지 object key. 큐레이션 또는 축제 에디토리얼 저장 요청에 그대로 전달한다.",
-        example = "curations/2026-07/9b1deb4d-3b7d-4bad-9bdd-2b0d7b3dcb6d/main.jpg",
+        example = "curations/2026-07/9b1deb4d-3b7d-4bad-9bdd-2b0d7b3dcb6d/main.webp",
     )
     val objectKey: String,
 
     @field:Schema(
         description = "화면 미리보기용 URL. DB에는 objectKey 만 저장한다.",
-        example = "https://storage.example.com/curations/2026-07/.../main.jpg?X-Amz-Signature=...",
+        example = "https://cdn.peakda.com/curations/2026-07/9b1deb4d-3b7d-4bad-9bdd-2b0d7b3dcb6d/main.webp",
     )
     val previewUrl: String,
 )
