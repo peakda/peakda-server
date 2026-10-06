@@ -152,6 +152,7 @@ external:
     enabled: ${EXTERNAL_RATE_LIMIT_ENABLED:true}
     providers:
       KTO: { permits: 5, period: 1s, timeout: 1s }
+      KTO_IMAGE: { permits: 10, period: 1s, timeout: 1s }
       KMA: { permits: 5, period: 1s, timeout: 1s }
       PUBDATA: { permits: 5, period: 1s, timeout: 1s }
   resilience:
@@ -221,6 +222,12 @@ external:
         cron: "0 0 6 * * *"
         enabled: true
         max-attractions: ${KTO_OPERATING_INFO_MAX_ATTRACTIONS:4000}
+      # 썸네일 URL 이 실제로 열리는지 관광공사 이미지 서버에 명소당 1회 확인한다(초당 10회 제한, 3000건 약 5분). 국문 동기화로 바뀐 URL 을 같은 날 확인한다.
+      thumbnail-check:
+        cron: "0 30 6 * * *"
+        enabled: true
+        max-attractions: ${KTO_THUMBNAIL_CHECK_MAX_ATTRACTIONS:3000}
+        recheck-after: 30d
     kma:
       vilage-fcst:
         cron: "0 15 */3 * * *"
