@@ -1,6 +1,7 @@
 package com.peakda.server.common.storage
 
 import com.peakda.server.common.exception.ErrorCode
+import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Component
 import software.amazon.awssdk.core.sync.RequestBody
 import software.amazon.awssdk.services.s3.S3Client
@@ -20,6 +21,8 @@ class S3ObjectStorage(
     private val properties: StorageProperties,
 ) : ObjectStorage {
 
+    private val log = LoggerFactory.getLogger(javaClass)
+
     override fun upload(key: String, bytes: ByteArray, contentType: String): String {
         try {
             s3Client.putObject(
@@ -32,6 +35,7 @@ class S3ObjectStorage(
                 RequestBody.fromBytes(bytes),
             )
         } catch (e: S3Exception) {
+            logFailure("upload", key, e)
             throw StorageException(ErrorCode.STORAGE_UPLOAD_FAILED)
         }
         return key
@@ -48,6 +52,7 @@ class S3ObjectStorage(
                     .build(),
             )
         } catch (e: S3Exception) {
+            logFailure("copy", sourceKey, e)
             throw StorageException(ErrorCode.STORAGE_UPLOAD_FAILED)
         }
         return destinationKey
@@ -62,6 +67,7 @@ class S3ObjectStorage(
                     .build(),
             ).asByteArray()
         } catch (e: S3Exception) {
+            logFailure("download", key, e)
             throw StorageException(ErrorCode.STORAGE_DOWNLOAD_FAILED)
         }
     }
@@ -75,6 +81,7 @@ class S3ObjectStorage(
                     .build(),
             )
         } catch (e: S3Exception) {
+            logFailure("delete", key, e)
             throw StorageException(ErrorCode.STORAGE_DELETE_FAILED)
         }
     }
@@ -89,5 +96,20 @@ class S3ObjectStorage(
             .getObjectRequest(getRequest)
             .build()
         return s3Presigner.presignGetObject(presignRequest).url().toString()
+    }
+
+    // 응답에는 ErrorCode 만 남으므로 원인(상태 코드·S3 에러 코드·요청 ID)은 여기서 남긴다.
+    private fun logFailure(operation: String, key: String, e: S3Exception) {
+        log.error(
+            "스토리지 {} 실패 - bucket={}, key={}, status={}, errorCode={}, requestId={}, message={}",
+            operation,
+            properties.bucket,
+            key,
+            e.statusCode(),
+            e.awsErrorDetails()?.errorCode(),
+            e.requestId(),
+            e.awsErrorDetails()?.errorMessage() ?: e.message,
+            e,
+        )
     }
 }
