@@ -123,8 +123,8 @@ export async function request(path, { method = 'GET', body, query } = {}) {
     }
 }
 
-export function upload(path, file) {
+export function upload(path, file, query) {
     const formData = new FormData();
     formData.append('file', file);
-    return request(path, { method: 'POST', body: formData });
+    return request(path, { method: 'POST', body: formData, query });
 }
