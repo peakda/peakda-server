@@ -8,6 +8,7 @@ import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.multipart
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put
+import org.springframework.test.web.servlet.result.MockMvcResultMatchers.content
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers.header
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers.status
@@ -20,6 +21,7 @@ import org.springframework.web.bind.annotation.RequestHeader
 import org.springframework.web.bind.annotation.RequestParam
 import org.springframework.web.bind.annotation.RequestPart
 import org.springframework.web.bind.annotation.RestController
+import org.springframework.web.context.request.async.AsyncRequestNotUsableException
 import org.springframework.web.multipart.MaxUploadSizeExceededException
 import org.springframework.web.multipart.MultipartFile
 
@@ -49,6 +51,10 @@ class GlobalExceptionHandlerTest {
         // 실제로는 DispatcherServlet 이 multipart 를 해석하다 던진다(핸들러를 찾기 전).
         @PostMapping("/too-large")
         fun tooLarge(): String = throw MaxUploadSizeExceededException(-1)
+
+        // 실제로는 응답 본문을 쓰다가 클라이언트가 연결을 끊으면(Broken pipe) 서블릿 응답 래퍼가 던진다.
+        @GetMapping("/disconnected")
+        fun disconnected(): String = throw AsyncRequestNotUsableException("ServletOutputStream failed to flush: Broken pipe")
     }
 
     private val mockMvc: MockMvc = MockMvcBuilders.standaloneSetup(TestController())
@@ -120,6 +126,13 @@ class GlobalExceptionHandlerTest {
             .andExpect(status().isUnsupportedMediaType)
             .andExpect(jsonPath("$.code").value("UNSUPPORTED_MEDIA_TYPE"))
             .andExpect(header().exists("Accept"))
+    }
+
+    @Test
+    fun `클라이언트가 연결을 끊으면 500 응답을 쓰지 않는다`() {
+        mockMvc.perform(get("/disconnected"))
+            .andExpect(status().isOk)
+            .andExpect(content().string(""))
     }
 
     @Test

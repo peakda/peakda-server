@@ -18,6 +18,7 @@ import org.springframework.web.bind.MissingRequestHeaderException
 import org.springframework.web.bind.MissingServletRequestParameterException
 import org.springframework.web.bind.annotation.ExceptionHandler
 import org.springframework.web.bind.annotation.RestControllerAdvice
+import org.springframework.web.context.request.async.AsyncRequestNotUsableException
 import org.springframework.web.method.annotation.HandlerMethodValidationException
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException
 import org.springframework.web.multipart.MaxUploadSizeExceededException
@@ -106,6 +107,17 @@ class GlobalExceptionHandler {
     fun handleMaxUploadSize(e: MaxUploadSizeExceededException): ResponseEntity<ApiResponse<Unit>> {
         log.warn("업로드 크기 초과 - {}", e.cause?.javaClass?.simpleName ?: "-")
         return buildResponse(ErrorCode.IMAGE_SIZE_EXCEEDED)
+    }
+
+    /**
+     * 응답을 쓰는 중에 클라이언트가 연결을 끊은 경우다(Broken pipe). 지도를 옮기며 앞선 요청을 취소하면 흔히 난다.
+     * 서버 오류가 아니고 Caddy 접근 로그에 499 로 남으므로 에러 로그로 남기지 않는다.
+     * 끊긴 연결에는 아무것도 쓸 수 없으니 null 을 돌려 응답을 쓰지 않는다.
+     */
+    @ExceptionHandler(AsyncRequestNotUsableException::class)
+    fun handleClientDisconnected(e: AsyncRequestNotUsableException): ResponseEntity<Unit>? {
+        log.debug("클라이언트가 응답을 받기 전에 연결을 끊음 - {}", e.message)
+        return null
     }
 
     @ExceptionHandler(Exception::class)
