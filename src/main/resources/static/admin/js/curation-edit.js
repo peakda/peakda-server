@@ -3,6 +3,8 @@ import { initLayout } from './layout.js';
 import { escapeHtml, showToast, confirmAction } from './ui.js';
 
 const MAX_CHAPTERS = 3;
+const IMAGE_UPLOAD_PATH = '/api/admin/curations/images';
+const IMAGE_ACCEPT = 'image/jpeg,image/png,image/webp';
 const LAYOUTS = ['MAIN', 'RHYTHM_REVERSE', 'EDGE_BLEED'];
 
 const params = new URLSearchParams(window.location.search);
@@ -51,6 +53,10 @@ heroImageUrl.addEventListener('input', () => renderHeroPreview(heroImageUrl.valu
 
 chaptersRoot.addEventListener('click', (event) => handleCollectionAction(event, 'chapters'));
 recommendationsRoot.addEventListener('click', (event) => handleCollectionAction(event, 'recommendations'));
+chaptersRoot.addEventListener('change', uploadCardPhoto);
+recommendationsRoot.addEventListener('change', uploadCardPhoto);
+chaptersRoot.addEventListener('input', syncPhotoPreviewWithKey);
+recommendationsRoot.addEventListener('input', syncPhotoPreviewWithKey);
 
 bootstrap();
 
@@ -97,6 +103,7 @@ function populateForm(curation) {
     latitude: toInputNumber(chapter.latitude),
     longitude: toInputNumber(chapter.longitude),
     photoUrl: chapter.photoKey || '',
+    photoPreviewUrl: chapter.photoPreviewUrl || '',
     pullQuote: chapter.pullQuote || '',
     leadText: chapter.leadText || '',
     body: chapter.body || '',
@@ -109,6 +116,7 @@ function populateForm(curation) {
     latitude: toInputNumber(recommendation.latitude),
     longitude: toInputNumber(recommendation.longitude),
     photoUrl: recommendation.photoKey || '',
+    photoPreviewUrl: recommendation.photoPreviewUrl || '',
     body: recommendation.body || '',
   }));
 
@@ -185,7 +193,7 @@ async function uploadHeroImage() {
 
   try {
     safeSetLoading(heroImageFile, true);
-    const response = await upload('/api/admin/curations/images', file);
+    const response = await upload(IMAGE_UPLOAD_PATH, file, { usage: 'HERO' });
     const uploaded = unwrap(response);
     heroImageUrl.value = uploaded.objectKey || '';
     renderHeroPreview(uploaded.previewUrl || uploaded.objectKey || '');
@@ -196,6 +204,38 @@ async function uploadHeroImage() {
     safeSetLoading(heroImageFile, false);
     heroImageFile.value = '';
   }
+}
+
+async function uploadCardPhoto(event) {
+  const input = event.target.closest('[data-photo-file]');
+  if (!input) return;
+  const file = input.files?.[0];
+  if (!file) return;
+  const card = input.closest('.editor-card');
+
+  try {
+    safeSetLoading(input, true);
+    const uploaded = unwrap(await upload(IMAGE_UPLOAD_PATH, file, { usage: 'PHOTO' }));
+    if (!card.isConnected) {
+      toast('업로드 중에 카드 순서나 개수가 바뀌어 사진을 넣지 못했습니다. 다시 업로드해 주세요.', 'error');
+      return;
+    }
+    card.querySelector('[data-field="photoUrl"]').value = uploaded.objectKey || '';
+    renderPhotoPreview(card, uploaded.previewUrl || '');
+    toast('사진을 업로드했습니다.');
+  } catch (error) {
+    toast(error.message || '사진 업로드에 실패했습니다.', 'error');
+  } finally {
+    safeSetLoading(input, false);
+    input.value = '';
+  }
+}
+
+function syncPhotoPreviewWithKey(event) {
+  const input = event.target.closest('[data-field="photoUrl"]');
+  if (!input) return;
+  const value = input.value.trim();
+  renderPhotoPreview(input.closest('.editor-card'), /^https?:\/\//.test(value) ? value : '');
 }
 
 function addChapter(render = true) {
@@ -212,6 +252,7 @@ function addChapter(render = true) {
     latitude: '',
     longitude: '',
     photoUrl: '',
+    photoPreviewUrl: '',
     pullQuote: '',
     leadText: '',
     body: '',
@@ -229,6 +270,7 @@ function addRecommendation(render = true) {
     latitude: '',
     longitude: '',
     photoUrl: '',
+    photoPreviewUrl: '',
     body: '',
   });
   if (render) renderRecommendations();
@@ -271,7 +313,7 @@ function renderChapters() {
         ${inputField('longitude', '경도', chapter.longitude, false, null, 'number', 'any')}
       </div>
       <div class="editor-card-body form-grid">
-        ${inputField('photoUrl', '사진 URL 또는 objectKey', chapter.photoUrl, false, 2000)}
+        ${photoField(chapter)}
         ${textareaField('pullQuote', '풀쿼트', chapter.pullQuote, false, 500, 2)}
         ${textareaField('leadText', '리드 텍스트', chapter.leadText, false, 1000, 3)}
         ${textareaField('body', '본문', chapter.body, true, 5000, 5)}
@@ -297,7 +339,7 @@ function renderRecommendations() {
         ${inputField('longitude', '경도', recommendation.longitude, false, null, 'number', 'any')}
       </div>
       <div class="editor-card-body form-grid">
-        ${inputField('photoUrl', '사진 URL 또는 objectKey', recommendation.photoUrl, false, 2000)}
+        ${photoField(recommendation)}
         ${textareaField('body', '설명', recommendation.body, true, 3000, 4)}
       </div>
     </article>
@@ -322,6 +364,7 @@ function readChapter(card) {
     latitude: readField(card, 'latitude'),
     longitude: readField(card, 'longitude'),
     photoUrl: readField(card, 'photoUrl'),
+    photoPreviewUrl: readPhotoPreview(card),
     pullQuote: readField(card, 'pullQuote'),
     leadText: readField(card, 'leadText'),
     body: readField(card, 'body'),
@@ -337,8 +380,13 @@ function readRecommendation(card) {
     latitude: readField(card, 'latitude'),
     longitude: readField(card, 'longitude'),
     photoUrl: readField(card, 'photoUrl'),
+    photoPreviewUrl: readPhotoPreview(card),
     body: readField(card, 'body'),
   };
+}
+
+function readPhotoPreview(card) {
+  return card.querySelector('[data-photo-preview]')?.dataset.src || '';
 }
 
 function readField(card, field) {
@@ -381,6 +429,30 @@ function controlButtons(index, length) {
       <button class="button button-small button-danger" type="button" data-action="remove" data-index="${index}">삭제</button>
     </div>
   `;
+}
+
+function photoField(item) {
+  return `
+    <div class="image-editor field-wide">
+      ${inputField('photoUrl', '사진 URL 또는 objectKey', item.photoUrl, false, 2000)}
+      <label class="field">
+        <span class="field__label">사진 업로드 (WebP, 가로 860px로 저장)</span>
+        <input class="field__control" data-photo-file type="file" accept="${IMAGE_ACCEPT}">
+      </label>
+      ${photoPreviewMarkup(item.photoPreviewUrl)}
+    </div>
+  `;
+}
+
+function photoPreviewMarkup(src) {
+  const image = src
+    ? `<img class="image-preview__image" src="${escapeHtml(src)}" alt="사진 미리보기">`
+    : '<p class="muted">사진 미리보기가 없습니다.</p>';
+  return `<div class="image-preview" data-photo-preview data-src="${escapeHtml(src || '')}">${image}</div>`;
+}
+
+function renderPhotoPreview(card, src) {
+  card.querySelector('[data-photo-preview]').outerHTML = photoPreviewMarkup(src);
 }
 
 function inputField(name, label, value, required = false, maxlength = null, type = 'text', step = null) {

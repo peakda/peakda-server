@@ -1,7 +1,5 @@
 package com.peakda.server.domain.curation.application
 
-import com.peakda.server.common.exception.ErrorCode
-import com.peakda.server.common.image.ImageException
 import com.peakda.server.common.image.ImageResizer
 import com.peakda.server.common.storage.ObjectKeyUrlResolver
 import com.peakda.server.common.storage.ObjectStorage
@@ -17,19 +15,13 @@ class CurationImageUploader(
     private val objectKeyUrlResolver: ObjectKeyUrlResolver,
 ) {
 
-    fun upload(file: MultipartFile): UploadedImage {
+    fun upload(file: MultipartFile, usage: CurationImageUsage): UploadedImage {
         CurationImagePolicy.validate(file)
-        val resized = imageResizer.resize(file.bytes, CurationImagePolicy.VARIANTS)
+        val variant = CurationImagePolicy.variantOf(usage)
+        val resized = imageResizer.resize(file.bytes, listOf(variant)).single()
         val prefix = CurationImagePolicy.prefixOf(UUID.randomUUID().toString(), YearMonth.now())
-        var mainKey: String? = null
-        resized.forEach { result ->
-            val key = CurationImagePolicy.keyOf(prefix, result.variant)
-            objectStorage.upload(key, result.bytes, result.variant.format.mimeType)
-            if (result.variant.name == CurationImagePolicy.MAIN_VARIANT) {
-                mainKey = key
-            }
-        }
-        val objectKey = mainKey ?: throw ImageException(ErrorCode.IMAGE_PROCESSING_FAILED)
+        val objectKey = CurationImagePolicy.keyOf(prefix, variant)
+        objectStorage.upload(objectKey, resized.bytes, variant.format.mimeType)
         return UploadedImage(
             objectKey = objectKey,
             previewUrl = objectKeyUrlResolver.resolveKey(objectKey),
