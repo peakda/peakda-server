@@ -39,7 +39,7 @@ data class SpotFavoriteResponse(
     @field:Schema(description = "게시된 방문 기록 수", example = "5")
     val recordCount: Long,
 
-    @field:Schema(description = "카드 사진 URL. 최근 게시 기록 사진 최대 4장. 기록 사진이 없는 명소형은 명소 이미지 1장(관광공사 썸네일 우선, 없으면 원본)", example = "[]")
+    @field:Schema(description = "카드 사진 URL. 최근 게시 기록 사진 최대 4장. 기록 사진이 없는 명소형은 명소 이미지 1장(관광공사 썸네일 우선, 없거나 파일이 없으면 원본)", example = "[]")
     val photoUrls: List<String>,
 ) {
     @Schema(description = "찜한 스팟의 대표 개화 정보")

@@ -24,7 +24,7 @@ data class SpotSearchItem(
     @field:Schema(description = "경도", example = "126.9882")
     val longitude: Double,
 
-    @field:Schema(description = "카드 이미지 URL. 명소 이미지(관광공사 썸네일 우선, 없으면 원본)가 없으면 최근 게시 기록 사진, 없으면 null", example = "https://img.peakda.kr/spot.jpg")
+    @field:Schema(description = "카드 이미지 URL. 명소 이미지(관광공사 썸네일 우선, 없거나 파일이 없으면 원본)가 없으면 최근 게시 기록 사진, 없으면 null", example = "https://img.peakda.kr/spot.jpg")
     val thumbnailUrl: String?,
 
     @field:Schema(description = "현재 개화 정보. 해당 정보가 없으면 null")
