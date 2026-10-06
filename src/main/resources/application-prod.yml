@@ -41,7 +41,8 @@ app:
       dev: https://api.peakda.com
   storage:
     endpoint: ${STORAGE_ENDPOINT:https://s3.${AWS_REGION:ap-northeast-2}.amazonaws.com}
-    region: ${AWS_REGION:ap-northeast-2}
+    # OCI 는 render-env.sh 가 STORAGE_REGION 을 넣는다. 서명 리전이 버킷 리전과 다르면 모든 요청이 400 으로 거부된다.
+    region: ${STORAGE_REGION:${AWS_REGION:ap-northeast-2}}
     path-style-access: ${STORAGE_PATH_STYLE_ACCESS:false}
 
 external:
