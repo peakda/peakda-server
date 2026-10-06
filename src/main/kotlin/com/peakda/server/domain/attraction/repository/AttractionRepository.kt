@@ -8,6 +8,7 @@ import org.springframework.data.jpa.repository.JpaRepository
 import org.springframework.data.jpa.repository.Modifying
 import org.springframework.data.jpa.repository.Query
 import org.springframework.data.repository.query.Param
+import java.time.Instant
 
 private const val ATTRACTION_UPSERT_SQL = """
     INSERT INTO attractions (
@@ -124,6 +125,57 @@ interface AttractionRepository : JpaRepository<Attraction, Long> {
         @Param("minLng") minLng: Double,
         @Param("maxLng") maxLng: Double,
     ): List<Attraction>
+
+    /** 현재 썸네일 URL 을 아직 확인하지 않은 공개 명소. id 순. */
+    @Query(
+        """
+            SELECT new com.peakda.server.domain.attraction.repository.AttractionThumbnailCheckTarget(a.id, a.thumbnailImageUrl)
+            FROM Attraction a
+            WHERE a.visible = true
+              AND a.contentTypeCode IN :contentTypeCodes
+              AND a.thumbnailImageUrl IS NOT NULL
+              AND (a.thumbnailCheckedUrl IS NULL OR a.thumbnailCheckedUrl <> a.thumbnailImageUrl)
+            ORDER BY a.id
+        """,
+    )
+    fun findThumbnailUncheckedTargets(
+        @Param("contentTypeCodes") contentTypeCodes: Collection<String>,
+        pageable: Pageable,
+    ): List<AttractionThumbnailCheckTarget>
+
+    /** 현재 썸네일 URL 을 [checkedBefore] 이전에 확인한 공개 명소. 오래 전에 확인한 순. */
+    @Query(
+        """
+            SELECT new com.peakda.server.domain.attraction.repository.AttractionThumbnailCheckTarget(a.id, a.thumbnailImageUrl)
+            FROM Attraction a
+            WHERE a.visible = true
+              AND a.contentTypeCode IN :contentTypeCodes
+              AND a.thumbnailImageUrl IS NOT NULL
+              AND a.thumbnailCheckedUrl = a.thumbnailImageUrl
+              AND a.thumbnailCheckedAt < :checkedBefore
+            ORDER BY a.thumbnailCheckedAt, a.id
+        """,
+    )
+    fun findThumbnailCheckedBefore(
+        @Param("contentTypeCodes") contentTypeCodes: Collection<String>,
+        @Param("checkedBefore") checkedBefore: Instant,
+        pageable: Pageable,
+    ): List<AttractionThumbnailCheckTarget>
+
+    @Modifying
+    @Query(
+        """
+            UPDATE Attraction a
+            SET a.thumbnailCheckedUrl = :url, a.thumbnailMissing = :missing, a.thumbnailCheckedAt = :checkedAt
+            WHERE a.id = :id
+        """,
+    )
+    fun updateThumbnailCheck(
+        @Param("id") id: Long,
+        @Param("url") url: String,
+        @Param("missing") missing: Boolean,
+        @Param("checkedAt") checkedAt: Instant,
+    ): Int
 }
 
 data class AttractionUpsertCommand(

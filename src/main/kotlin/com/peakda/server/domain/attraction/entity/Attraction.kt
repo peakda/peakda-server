@@ -9,6 +9,7 @@ import jakarta.persistence.Id
 import jakarta.persistence.Index
 import jakarta.persistence.Table
 import jakarta.persistence.UniqueConstraint
+import java.time.Instant
 
 @Entity
 @Table(
@@ -84,6 +85,17 @@ class Attraction(
 
     @Column(name = "visible", nullable = false)
     var visible: Boolean = true,
+
+    /** 마지막으로 열리는지 확인한 썸네일 URL. 동기화로 [thumbnailImageUrl] 이 바뀌면 이전 확인 결과는 저절로 무효가 된다. */
+    @Column(name = "thumbnail_checked_url", columnDefinition = "TEXT")
+    var thumbnailCheckedUrl: String? = null,
+
+    @Column(name = "thumbnail_checked_at")
+    var thumbnailCheckedAt: Instant? = null,
+
+    /** [thumbnailCheckedUrl] 이 관광공사 이미지 서버에서 404/410 이었는지. */
+    @Column(name = "thumbnail_missing", nullable = false)
+    var thumbnailMissing: Boolean = false,
 ) : BaseTimeEntity() {
 
     @Id
@@ -91,4 +103,15 @@ class Attraction(
     @Column(name = "id")
     var id: Long? = null
         protected set
+
+    /**
+     * 목록 카드에 쓸 이미지. 관광공사 썸네일(firstimage2)을 먼저 쓰고, 썸네일이 없거나 실제 파일이 없다고 확인됐으면 원본(firstimage)을 쓴다.
+     * 관광공사는 썸네일을 만들지 못한 콘텐츠에도 썸네일 URL 을 내려 준다. 깨진 썸네일은 내려 주지 않고 null 로 둬서 호출부가 기록 사진 등으로 대체하게 한다.
+     */
+    fun cardImageUrl(): String? {
+        val thumbnail = thumbnailImageUrl
+        val thumbnailMissingConfirmed = thumbnailMissing && thumbnail == thumbnailCheckedUrl
+        if (thumbnail != null && !thumbnailMissingConfirmed) return thumbnail
+        return primaryImageUrl
+    }
 }

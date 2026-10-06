@@ -1,6 +1,7 @@
 package com.peakda.server.infrastructure.scheduler
 
 import org.springframework.boot.context.properties.ConfigurationProperties
+import java.time.Duration
 import java.time.LocalDate
 
 @ConfigurationProperties(prefix = "external.scheduler")
@@ -54,6 +55,15 @@ data class SchedulerProperties(
         val maxAttractions: Int = 4000,
     )
 
+    data class ThumbnailCheckJobProps(
+        val cron: String = "",
+        val enabled: Boolean = true,
+        /** 1회 실행당 썸네일 URL 을 확인할 최대 명소 수. 관광공사 이미지 서버에 명소당 1회 요청한다. */
+        val maxAttractions: Int = 3000,
+        /** 확인한 지 이 기간이 지난 썸네일은 다시 확인한다. */
+        val recheckAfter: Duration = Duration.ofDays(30),
+    )
+
     data class KtoSchedulerProps(
         val korService: JobProps = JobProps(),
         val durunubi: JobProps = JobProps(),
@@ -62,6 +72,7 @@ data class SchedulerProperties(
         val dataLab: JobProps = JobProps(),
         val photo: JobProps = JobProps(),
         val operatingInfo: OperatingInfoJobProps = OperatingInfoJobProps(),
+        val thumbnailCheck: ThumbnailCheckJobProps = ThumbnailCheckJobProps(),
     )
 
     data class KmaSchedulerProps(

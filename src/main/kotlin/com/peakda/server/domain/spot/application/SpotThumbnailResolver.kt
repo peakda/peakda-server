@@ -13,7 +13,7 @@ import java.time.ZoneOffset
 
 /**
  * 스팟 카드에 표시할 대표 이미지 해석기.
- * 명소는 관광공사 썸네일(firstimage2)을 먼저 쓰고 없으면 원본(firstimage)을 쓴다. 카드 크기에 원본은 과하다.
+ * 명소는 관광공사 썸네일(firstimage2)을 먼저 쓰고, 없거나 깨졌으면 원본(firstimage)을 쓴다(Attraction.cardImageUrl). 카드 크기에 원본은 과하다.
  * 명소 이미지가 없으면 최근 게시 기록의 대표 사진을 사용한다.
  */
 @Component
@@ -40,7 +40,7 @@ class SpotThumbnailResolver(
 
         val imageByAttraction = attractionRepository.findAllById(attractionIdBySpot.map { it.second })
             .mapNotNull { attraction ->
-                (attraction.thumbnailImageUrl ?: attraction.primaryImageUrl)?.let { requireNotNull(attraction.id) to it }
+                attraction.cardImageUrl()?.let { requireNotNull(attraction.id) to it }
             }
             .toMap()
 

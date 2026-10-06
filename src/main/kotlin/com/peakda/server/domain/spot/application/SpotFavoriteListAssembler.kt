@@ -115,7 +115,7 @@ class SpotFavoriteListAssembler(
     }
 
     /**
-     * 기록 사진이 없는 명소형 카드만 명소 이미지(썸네일 우선, 없으면 원본)로 대체해 빈 사진 영역을 피한다.
+     * 기록 사진이 없는 명소형 카드만 명소 이미지(썸네일 우선, 없거나 파일이 없으면 원본)로 대체해 빈 사진 영역을 피한다.
      * 대체가 필요한 카드가 없으면 명소 저장소를 조회하지 않는다.
      */
     private fun fallbackImages(
@@ -130,8 +130,7 @@ class SpotFavoriteListAssembler(
 
         return attractionRepository.findAllById(fallbackAttractionIds)
             .mapNotNull { attraction ->
-                val imageUrl = attraction.thumbnailImageUrl ?: attraction.primaryImageUrl
-                imageUrl?.let { requireNotNull(attraction.id) to it }
+                attraction.cardImageUrl()?.let { requireNotNull(attraction.id) to it }
             }
             .toMap()
     }
