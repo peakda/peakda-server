@@ -36,6 +36,7 @@ external:
       data-lab:    { cron: "0/30 * * * * *", enabled: false }
       photo:       { cron: "0/30 * * * * *", enabled: false }
       operating-info: { cron: "0/30 * * * * *", enabled: false, max-attractions: 10 }
+      thumbnail-check: { cron: "0/30 * * * * *", enabled: false, max-attractions: 10 }
     kma:
       vilage-fcst:
         cron: "0/30 * * * * *"
