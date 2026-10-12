@@ -10,6 +10,7 @@ data class CreateSpotRecordCommand(
     val visitedDate: LocalDate?,
     val bloomStage: BloomStage?,
     val memo: String?,
+    val contentLinkUrl: String?,
     val plantIds: List<Long>,
     val photoKeys: List<String>,
     val status: SpotRecordStatus,
