@@ -89,6 +89,7 @@ interface SpotRecordControllerDocs {
         ErrorCode.PLANT_NOT_FOUND,
         ErrorCode.PLANT_INACTIVE,
         ErrorCode.SPOT_RECORD_INVALID_STATUS,
+        ErrorCode.SPOT_RECORD_INVALID_CONTENT_LINK,
     )
     @PostMapping
     fun create(
@@ -111,6 +112,7 @@ interface SpotRecordControllerDocs {
         ErrorCode.PLANT_NOT_FOUND,
         ErrorCode.PLANT_INACTIVE,
         ErrorCode.SPOT_RECORD_INVALID_STATUS,
+        ErrorCode.SPOT_RECORD_INVALID_CONTENT_LINK,
     )
     @PatchMapping("/{id}")
     fun update(

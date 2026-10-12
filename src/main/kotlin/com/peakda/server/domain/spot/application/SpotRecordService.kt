@@ -38,6 +38,7 @@ class SpotRecordService(
 ) {
 
     fun create(command: CreateSpotRecordCommand): SpotRecordResponse {
+        val contentLinkUrl = command.contentLinkUrl?.let { SpotRecordContentLinkPolicy.normalize(it) }
         validatePlantIds(command.plantIds)
         validatePhotoKeysCount(command.photoKeys.size)
         if (command.status == SpotRecordStatus.PUBLISHED) {
@@ -59,6 +60,7 @@ class SpotRecordService(
             existingDraft.visitedDate = command.visitedDate
             existingDraft.bloomStage = command.bloomStage
             existingDraft.memo = command.memo
+            existingDraft.applyContentLink(contentLinkUrl)
             existingDraft.status = command.status
             existingDraft.publishedAt = if (command.status == SpotRecordStatus.PUBLISHED) now else null
             existingDraft
@@ -72,7 +74,7 @@ class SpotRecordService(
                     memo = command.memo,
                     status = command.status,
                     publishedAt = if (command.status == SpotRecordStatus.PUBLISHED) now else null,
-                )
+                ).apply { applyContentLink(contentLinkUrl) }
             )
         }
 
@@ -87,6 +89,7 @@ class SpotRecordService(
         command.visitedDate?.let { record.visitedDate = it }
         command.bloomStage?.let { record.bloomStage = it }
         command.memo?.let { record.memo = it.takeIf { value -> value.isNotEmpty() } }
+        command.contentLinkUrl?.let { record.applyContentLink(SpotRecordContentLinkPolicy.normalize(it)) }
         command.plantIds?.let {
             validatePlantIds(it)
             replacePlants(command.recordId, it)
@@ -167,6 +170,12 @@ class SpotRecordService(
         val record = spotRecordRepository.findById(recordId).orElseThrow { SpotRecordNotFoundException() }
         if (record.userId != userId) throw SpotRecordForbiddenException()
         return record
+    }
+
+    /** 정규화된 URL 을 저장하고 플랫폼을 다시 분류한다. null 이면 링크를 지운다. */
+    private fun SpotRecord.applyContentLink(normalizedUrl: String?) {
+        contentLinkUrl = normalizedUrl
+        contentLinkPlatform = normalizedUrl?.let { SpotRecordContentLinkPolicy.classify(it) }
     }
 
     private fun validatePlantIds(plantIds: List<Long>) {

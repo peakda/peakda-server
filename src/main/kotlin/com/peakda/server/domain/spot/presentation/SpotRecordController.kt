@@ -53,6 +53,7 @@ class SpotRecordController(
             visitedDate = request.visitedDate,
             bloomStage = request.bloomStage,
             memo = request.memo,
+            contentLinkUrl = request.contentLinkUrl,
             plantIds = request.plantIds,
             photoKeys = request.photoKeys,
             status = request.status,
@@ -73,6 +74,7 @@ class SpotRecordController(
             visitedDate = request.visitedDate,
             bloomStage = request.bloomStage,
             memo = request.memo,
+            contentLinkUrl = request.contentLinkUrl,
             plantIds = request.plantIds,
             photoKeys = request.photoKeys,
         )

@@ -26,6 +26,15 @@ data class CreateSpotRecordRequest(
     @field:Schema(description = "메모 (최대 1000자)", example = "벚꽃이 정말 만개했어요.")
     val memo: String? = null,
 
+    @field:Size(max = 2048)
+    @field:Schema(
+        description = "관련 콘텐츠 링크 1개 (선택). 플랫폼은 서버가 hostname 으로 분류한다 — " +
+            "instagram.com → INSTAGRAM, blog.naver.com → NAVER_BLOG, youtube.com·youtu.be → YOUTUBE, 그 외 UNSUPPORTED. " +
+            "스킴이 없으면 https 로 보정한다. null 이나 빈 문자열이면 링크 없음.",
+        example = "https://www.instagram.com/p/C5y7abcDEF/",
+    )
+    val contentLinkUrl: String? = null,
+
     @field:Size(max = 10)
     @field:Schema(description = "선택한 식물 id 리스트. PUBLISHED 시 1개 이상, ACTIVE 상태만 허용.")
     val plantIds: List<Long> = emptyList(),
