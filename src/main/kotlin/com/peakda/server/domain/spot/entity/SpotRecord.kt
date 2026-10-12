@@ -39,6 +39,13 @@ class SpotRecord(
     @Column(name = "memo", columnDefinition = "TEXT")
     var memo: String? = null,
 
+    @Column(name = "content_link_url", columnDefinition = "TEXT")
+    var contentLinkUrl: String? = null,
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "content_link_platform", columnDefinition = "TEXT")
+    var contentLinkPlatform: ContentLinkPlatform? = null,
+
     @Enumerated(EnumType.STRING)
     @Column(name = "status", nullable = false, columnDefinition = "TEXT")
     var status: SpotRecordStatus,

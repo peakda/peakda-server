@@ -16,6 +16,8 @@ data class SpotRecordSummaryResponse(
     val visitedDate: LocalDate?,
     val bloomStage: BloomStage?,
     val memo: String?,
+    @field:Schema(description = "관련 콘텐츠 링크 (없으면 null)")
+    val contentLink: SpotRecordResponse.ContentLink? = null,
     val plants: List<SpotRecordResponse.PlantSummary>,
     @field:Schema(description = "대표(첫 번째) 사진 — 없으면 null")
     val coverPhoto: SpotRecordResponse.PhotoEntry?,

@@ -20,6 +20,13 @@ data class UpdateSpotRecordRequest(
     @field:Schema(description = "메모 교체 (최대 1000자, 빈 문자열을 보내면 메모 삭제)")
     val memo: String? = null,
 
+    @field:Size(max = 2048)
+    @field:Schema(
+        description = "관련 콘텐츠 링크 교체 (null 이면 변경하지 않음, 빈 문자열을 보내면 링크 삭제). 플랫폼은 서버가 다시 분류한다.",
+        example = "https://youtu.be/dQw4w9WgXcQ",
+    )
+    val contentLinkUrl: String? = null,
+
     @field:Size(max = 10)
     @field:Schema(description = "식물 id 리스트 교체 (null 이면 변경하지 않음)")
     val plantIds: List<Long>? = null,

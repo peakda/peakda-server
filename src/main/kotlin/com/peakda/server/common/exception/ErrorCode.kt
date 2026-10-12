@@ -54,6 +54,7 @@ enum class ErrorCode(
     SPOT_RECORD_NOT_FOUND(HttpStatus.NOT_FOUND, "스팟 기록을 찾을 수 없습니다."),
     SPOT_RECORD_FORBIDDEN(HttpStatus.FORBIDDEN, "본인이 작성한 스팟 기록만 수정/삭제할 수 있습니다."),
     SPOT_RECORD_INVALID_STATUS(HttpStatus.BAD_REQUEST, "게시에 필요한 필수 항목이 누락되었습니다."),
+    SPOT_RECORD_INVALID_CONTENT_LINK(HttpStatus.BAD_REQUEST, "관련 콘텐츠 링크 주소가 올바르지 않습니다."),
 
     PLANT_NOT_FOUND(HttpStatus.NOT_FOUND, "식물을 찾을 수 없습니다."),
     PLANT_INACTIVE(HttpStatus.BAD_REQUEST, "선택한 식물 중 사용할 수 없는 항목이 있습니다."),

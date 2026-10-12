@@ -7,6 +7,7 @@ import com.peakda.server.domain.spot.entity.Spot
 import com.peakda.server.domain.spot.entity.SpotRecord
 import com.peakda.server.domain.spot.entity.SpotRecordPhoto
 import com.peakda.server.domain.spot.presentation.response.SpotRecordResponse
+import com.peakda.server.domain.spot.presentation.response.SpotRecordResponse.ContentLink
 import com.peakda.server.domain.spot.presentation.response.SpotRecordResponse.PhotoEntry
 import com.peakda.server.domain.spot.presentation.response.SpotRecordResponse.PlantSummary
 import com.peakda.server.domain.spot.presentation.response.SpotRecordResponse.SpotSummary
@@ -61,6 +62,7 @@ class SpotRecordResponseAssembler(
             visitedDate = record.visitedDate,
             bloomStage = record.bloomStage,
             memo = record.memo,
+            contentLink = record.toContentLink(),
             plants = plants.map { it.toSummary() },
             photos = photos.map { it.toEntry() },
             status = record.status,
@@ -84,6 +86,7 @@ class SpotRecordResponseAssembler(
             visitedDate = record.visitedDate,
             bloomStage = record.bloomStage,
             memo = record.memo,
+            contentLink = record.toContentLink(),
             plants = plants.map { it.toSummary() },
             coverPhoto = photos.firstOrNull(),
             photos = photos,
@@ -141,6 +144,12 @@ class SpotRecordResponseAssembler(
         nickname = nickname,
         profileImageUrl = profileImageUrlResolver.thumbnailUrl(profileImageUrl),
     )
+
+    private fun SpotRecord.toContentLink(): ContentLink? {
+        val url = contentLinkUrl ?: return null
+        val platform = contentLinkPlatform ?: return null
+        return ContentLink(url = url, platform = platform)
+    }
 
     private fun Plant.toSummary() = PlantSummary(id = requireNotNull(id), name = name)
 
