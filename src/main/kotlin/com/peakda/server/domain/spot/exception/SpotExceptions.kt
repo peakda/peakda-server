@@ -9,6 +9,7 @@ class SpotFavoriteNotFoundException : BusinessException(ErrorCode.SPOT_FAVORITE_
 class SpotRecordNotFoundException : BusinessException(ErrorCode.SPOT_RECORD_NOT_FOUND)
 class SpotRecordForbiddenException : BusinessException(ErrorCode.SPOT_RECORD_FORBIDDEN)
 class SpotRecordInvalidStatusException : BusinessException(ErrorCode.SPOT_RECORD_INVALID_STATUS)
+class SpotRecordInvalidContentLinkException : BusinessException(ErrorCode.SPOT_RECORD_INVALID_CONTENT_LINK)
 class PlantNotFoundException : BusinessException(ErrorCode.PLANT_NOT_FOUND)
 class PlantInactiveException : BusinessException(ErrorCode.PLANT_INACTIVE)
 class PlantInvalidNameException : BusinessException(ErrorCode.INVALID_REQUEST)
