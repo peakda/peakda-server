@@ -2,6 +2,7 @@ package com.peakda.server.domain.spot.presentation.response
 
 import com.peakda.server.domain.feed.presentation.response.ReactionSummary
 import com.peakda.server.domain.spot.entity.BloomStage
+import com.peakda.server.domain.spot.entity.ContentLinkPlatform
 import com.peakda.server.domain.spot.entity.SpotRecordStatus
 import com.peakda.server.domain.spot.entity.SpotType
 import io.swagger.v3.oas.annotations.media.Schema
@@ -27,6 +28,9 @@ data class SpotRecordResponse(
 
     @field:Schema(description = "메모", example = "벚꽃이 정말 만개했어요.")
     val memo: String?,
+
+    @field:Schema(description = "관련 콘텐츠 링크 (없으면 null)")
+    val contentLink: ContentLink? = null,
 
     @field:Schema(description = "기록된 식물 목록")
     val plants: List<PlantSummary>,
@@ -70,6 +74,14 @@ data class SpotRecordResponse(
     data class PlantSummary(
         val id: Long,
         val name: String,
+    )
+
+    @Schema(description = "관련 콘텐츠 링크 — 미리보기(제목·썸네일)는 클라이언트가 url 로 조회한다")
+    data class ContentLink(
+        @field:Schema(description = "링크 URL (스킴 보정된 값)", example = "https://www.instagram.com/p/C5y7abcDEF/")
+        val url: String,
+        @field:Schema(description = "hostname 으로 분류한 플랫폼. UNSUPPORTED 면 URL 만 노출한다", example = "INSTAGRAM")
+        val platform: ContentLinkPlatform,
     )
 
     @Schema(description = "사진 항목")
