@@ -3,6 +3,7 @@ package com.peakda.server.common.security
 import com.peakda.server.common.security.filter.JwtAuthenticationFilter
 import com.peakda.server.common.security.cookie.CookieProperties
 import com.peakda.server.common.security.jwt.JwtTokenProvider
+import com.peakda.server.domain.auth.session.application.AuthSessionCache
 import com.peakda.server.common.page.PageRequest
 import com.peakda.server.common.page.PageResponse
 import com.peakda.server.domain.feed.application.FeedReactionService
@@ -65,6 +66,9 @@ class SecurityConfigMockMvcTest {
 
     @MockitoBean
     lateinit var signupSessionService: SignupSessionService
+
+    @MockitoBean
+    lateinit var authSessionCache: AuthSessionCache
 
     @MockitoBean
     lateinit var feedService: FeedService

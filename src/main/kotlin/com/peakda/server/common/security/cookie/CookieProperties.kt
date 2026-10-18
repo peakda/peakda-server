@@ -12,4 +12,6 @@ data class CookieProperties(
     val refreshTokenName: String = "refresh-token",
     val signupTokenName: String = "signup-token",
     val signupTokenValidityInSeconds: Long = 900,
+    val deviceIdName: String = "device-id",
+    val deviceIdValidityInSeconds: Long = 31_536_000,
 )

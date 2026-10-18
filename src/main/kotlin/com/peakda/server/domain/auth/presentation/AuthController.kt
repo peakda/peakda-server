@@ -58,6 +58,7 @@ class AuthController(
         val issued = authService.completeSignup(
             principal = principal,
             request = request,
+            httpRequest = httpRequest,
             response = response,
             bearerAuthenticated = BearerTokens.from(httpRequest) != null,
         )
@@ -77,7 +78,7 @@ class AuthController(
         response: HttpServletResponse,
     ): ResponseEntity<ApiResponse<Unit>> {
         val userId = requireNotNull(principal.getUser().id)
-        authService.logout(userId, response)
+        authService.logout(userId, principal.sessionId, response)
         return ResponseEntity.ok(ApiResponse.success(HttpStatus.OK))
     }
 }

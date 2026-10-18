@@ -3,7 +3,9 @@ package com.peakda.server.common.security
 import com.peakda.server.common.exception.GlobalExceptionHandler
 import com.peakda.server.common.security.cookie.CookieProperties
 import com.peakda.server.common.security.filter.JwtAuthenticationFilter
+import com.peakda.server.common.security.jwt.JwtClaims
 import com.peakda.server.common.security.jwt.JwtTokenProvider
+import com.peakda.server.domain.auth.session.application.AuthSessionCache
 import com.peakda.server.domain.auth.app.application.AppAuthService
 import com.peakda.server.domain.auth.application.AuthService
 import com.peakda.server.domain.auth.oauth.model.OAuth2LoginType
@@ -69,6 +71,9 @@ class NicknameCheckSecurityMockMvcTest {
     lateinit var signupSessionService: SignupSessionService
 
     @MockitoBean
+    lateinit var authSessionCache: AuthSessionCache
+
+    @MockitoBean
     lateinit var authService: AuthService
 
     @MockitoBean
@@ -91,8 +96,8 @@ class NicknameCheckSecurityMockMvcTest {
     fun setUp() {
         `when`(cookieProperties.accessTokenName).thenReturn("access-token")
         `when`(cookieProperties.signupTokenName).thenReturn("signup-token")
-        `when`(jwtTokenProvider.validateToken("valid-user-token")).thenReturn(true)
-        `when`(jwtTokenProvider.getUserIdFromToken("valid-user-token")).thenReturn(42L)
+        `when`(jwtTokenProvider.parse("valid-user-token"))
+            .thenReturn(JwtClaims(userId = 42L, sessionId = null, refresh = false))
         `when`(userRepository.findById(42L)).thenReturn(Optional.of(user))
         `when`(signupSessionService.findValidByToken("valid-signup-token")).thenReturn(signupSession)
         `when`(authService.checkNickname("peakda")).thenReturn(NicknameCheckResponse(available = true))

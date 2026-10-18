@@ -5,6 +5,7 @@ import com.peakda.server.domain.auth.app.application.AppAuthService
 import com.peakda.server.domain.auth.app.presentation.request.AppTokenExchangeRequest
 import com.peakda.server.domain.auth.app.presentation.request.AppTokenRefreshRequest
 import com.peakda.server.domain.auth.app.presentation.response.AppTokenResponse
+import com.peakda.server.domain.auth.session.presentation.request.SessionDeviceRequest
 import org.springframework.http.HttpStatus
 import org.springframework.http.ResponseEntity
 import org.springframework.web.bind.annotation.RequestMapping
@@ -19,14 +20,20 @@ class AppAuthController(
     override fun exchange(
         request: AppTokenExchangeRequest,
     ): ResponseEntity<ApiResponse<AppTokenResponse>> {
-        val response = appAuthService.exchange(request.code)
+        val response = appAuthService.exchange(
+            code = request.code,
+            device = request.device?.toSessionDevice() ?: SessionDeviceRequest.unknownApp(),
+        )
         return ResponseEntity.ok(ApiResponse.success(HttpStatus.OK, response))
     }
 
     override fun refresh(
         request: AppTokenRefreshRequest,
     ): ResponseEntity<ApiResponse<AppTokenResponse>> {
-        val response = appAuthService.refresh(request.refreshToken)
+        val response = appAuthService.refresh(
+            refreshToken = request.refreshToken,
+            device = request.device?.toSessionDevice() ?: SessionDeviceRequest.unknownApp(),
+        )
         return ResponseEntity.ok(ApiResponse.success(HttpStatus.OK, response))
     }
 }

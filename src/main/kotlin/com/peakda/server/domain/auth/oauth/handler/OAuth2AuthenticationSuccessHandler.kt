@@ -10,6 +10,7 @@ import com.peakda.server.domain.auth.app.application.AuthorizationCodePayload
 import com.peakda.server.domain.auth.app.application.AuthorizationCodeService
 import com.peakda.server.domain.auth.application.TokenIssueService
 import com.peakda.server.domain.auth.oauth.model.OAuth2ClientKind
+import com.peakda.server.domain.auth.session.application.WebSessionDevices
 import jakarta.servlet.http.HttpServletRequest
 import jakarta.servlet.http.HttpServletResponse
 import org.slf4j.LoggerFactory
@@ -26,6 +27,7 @@ class OAuth2AuthenticationSuccessHandler(
     private val cookieProperties: CookieProperties,
     private val jwtProperties: JwtProperties,
     private val tokenIssueService: TokenIssueService,
+    private val webSessionDevices: WebSessionDevices,
     private val authorizationCodeService: AuthorizationCodeService,
     private val appLoginProperties: AppLoginProperties,
     private val oAuth2AuthenticationFailureHandler: OAuth2AuthenticationFailureHandler,
@@ -88,7 +90,9 @@ class OAuth2AuthenticationSuccessHandler(
             return
         }
 
-        val tokenResponse = tokenIssueService.issue(user)
+        val device = webSessionDevices.resolve(request)
+        val tokenResponse = tokenIssueService.issue(user, device)
+        webSessionDevices.writeCookie(response, device)
 
         val accessTokenCookie = CookieUtils.createAccessTokenCookie(
             token = tokenResponse.accessToken,
@@ -97,7 +101,7 @@ class OAuth2AuthenticationSuccessHandler(
         )
         val refreshTokenCookie = CookieUtils.createRefreshTokenCookie(
             token = tokenResponse.refreshToken,
-            maxAge = jwtProperties.refreshTokenValidityInSeconds,
+            maxAge = tokenResponse.refreshTokenExpiresIn,
             properties = cookieProperties
         )
         val signupTokenCookie = CookieUtils.deleteSignupTokenCookie(cookieProperties)

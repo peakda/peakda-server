@@ -2,7 +2,7 @@ package com.peakda.server.domain.user.application
 
 import com.peakda.server.common.security.cookie.CookieProperties
 import com.peakda.server.common.security.cookie.CookieUtils
-import com.peakda.server.domain.auth.application.RefreshTokenService
+import com.peakda.server.domain.auth.session.application.AuthSessionService
 import com.peakda.server.domain.notification.application.BloomTimingAlertService
 import com.peakda.server.domain.notification.application.DeviceTokenService
 import com.peakda.server.domain.notification.application.NotificationService
@@ -26,7 +26,7 @@ class UserWithdrawService(
     private val notificationService: NotificationService,
     private val bloomTimingAlertService: BloomTimingAlertService,
     private val deviceTokenService: DeviceTokenService,
-    private val refreshTokenService: RefreshTokenService,
+    private val authSessionService: AuthSessionService,
     private val cookieProperties: CookieProperties,
 ) {
 
@@ -49,7 +49,7 @@ class UserWithdrawService(
 
         user.withdraw()
 
-        refreshTokenService.deleteRefreshToken(userId)
+        authSessionService.revokeAll(userId)
         response.addHeader("Set-Cookie", CookieUtils.deleteAccessTokenCookie(cookieProperties).toString())
         response.addHeader("Set-Cookie", CookieUtils.deleteRefreshTokenCookie(cookieProperties).toString())
         SecurityContextHolder.clearContext()
