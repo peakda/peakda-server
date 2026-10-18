@@ -5,7 +5,7 @@ import com.peakda.server.domain.auth.app.application.AppAuthService
 import com.peakda.server.domain.auth.app.presentation.request.AppTokenExchangeRequest
 import com.peakda.server.domain.auth.app.presentation.request.AppTokenRefreshRequest
 import com.peakda.server.domain.auth.app.presentation.response.AppTokenResponse
-import com.peakda.server.domain.auth.session.presentation.request.SessionDeviceRequest
+import com.peakda.server.domain.auth.session.application.SessionDevice
 import org.springframework.http.HttpStatus
 import org.springframework.http.ResponseEntity
 import org.springframework.web.bind.annotation.RequestMapping
@@ -22,7 +22,7 @@ class AppAuthController(
     ): ResponseEntity<ApiResponse<AppTokenResponse>> {
         val response = appAuthService.exchange(
             code = request.code,
-            device = request.device?.toSessionDevice() ?: SessionDeviceRequest.unknownApp(),
+            device = request.device?.toSessionDevice() ?: SessionDevice.unknownApp(),
         )
         return ResponseEntity.ok(ApiResponse.success(HttpStatus.OK, response))
     }
@@ -32,7 +32,7 @@ class AppAuthController(
     ): ResponseEntity<ApiResponse<AppTokenResponse>> {
         val response = appAuthService.refresh(
             refreshToken = request.refreshToken,
-            device = request.device?.toSessionDevice() ?: SessionDeviceRequest.unknownApp(),
+            device = request.device?.toSessionDevice() ?: SessionDevice.unknownApp(),
         )
         return ResponseEntity.ok(ApiResponse.success(HttpStatus.OK, response))
     }

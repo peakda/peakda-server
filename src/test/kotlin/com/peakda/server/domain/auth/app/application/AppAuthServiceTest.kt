@@ -5,6 +5,7 @@ import com.peakda.server.common.exception.ErrorCode
 import com.peakda.server.common.security.jwt.JwtProperties
 import com.peakda.server.common.security.jwt.TokenResponse
 import com.peakda.server.domain.auth.app.presentation.response.AppAuthStatus
+import com.peakda.server.domain.auth.application.RotatedTokens
 import com.peakda.server.domain.auth.application.TokenIssueService
 import com.peakda.server.domain.auth.session.application.SessionDevice
 import com.peakda.server.domain.auth.session.entity.SessionPlatform
@@ -108,7 +109,7 @@ class AppAuthServiceTest {
 
     @Test
     fun `재발급은 회전 결과를 그대로 옮긴다`() {
-        `when`(tokenIssueService.rotate("old-refresh-token", DEVICE)).thenReturn(TOKENS)
+        `when`(tokenIssueService.rotate("old-refresh-token", DEVICE)).thenReturn(RotatedTokens(TOKENS, "device-1"))
 
         val response = service.refresh("old-refresh-token", DEVICE)
 

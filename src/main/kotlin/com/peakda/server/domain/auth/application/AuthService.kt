@@ -14,7 +14,7 @@ import com.peakda.server.common.storage.ObjectStorage
 import com.peakda.server.domain.auth.presentation.response.UserInfoResponse
 import com.peakda.server.domain.auth.session.application.AuthSessionService
 import com.peakda.server.domain.auth.session.application.WebSessionDevices
-import com.peakda.server.domain.auth.session.presentation.request.SessionDeviceRequest
+import com.peakda.server.domain.auth.session.application.SessionDevice
 import com.peakda.server.domain.auth.signup.application.SignupProfileImagePolicy
 import com.peakda.server.domain.auth.signup.presentation.request.SignupCompleteRequest
 import com.peakda.server.domain.auth.signup.presentation.response.NicknameCheckResponse
@@ -143,12 +143,12 @@ class AuthService(
         signupSessionRepository.delete(signupSession)
 
         if (bearerAuthenticated) {
-            return tokenIssueService.issue(user, request.device?.toSessionDevice() ?: SessionDeviceRequest.unknownApp())
+            return tokenIssueService.issue(user, request.device?.toSessionDevice() ?: SessionDevice.unknownApp())
         }
 
         val device = webSessionDevices.resolve(httpRequest)
         val tokenResponse = tokenIssueService.issue(user, device)
-        webSessionDevices.writeCookie(response, device)
+        webSessionDevices.writeCookie(response, device.deviceId)
         val signupTokenCookie = CookieUtils.deleteSignupTokenCookie(cookieProperties)
         val accessTokenCookie = CookieUtils.createAccessTokenCookie(
             token = tokenResponse.accessToken,
@@ -172,9 +172,9 @@ class AuthService(
         val refreshToken = CookieUtils.getRefreshTokenFromCookies(request.cookies, cookieProperties)
             ?: throw AuthorizationException(ErrorCode.REFRESH_TOKEN_EXPIRED)
 
-        val device = webSessionDevices.resolve(request)
-        val tokenResponse = tokenIssueService.rotate(refreshToken, device)
-        webSessionDevices.writeCookie(response, device)
+        val rotated = tokenIssueService.rotate(refreshToken, webSessionDevices.resolve(request))
+        val tokenResponse = rotated.tokens
+        webSessionDevices.writeCookie(response, rotated.deviceId)
 
         val accessTokenCookie = CookieUtils.createAccessTokenCookie(
             token = tokenResponse.accessToken,

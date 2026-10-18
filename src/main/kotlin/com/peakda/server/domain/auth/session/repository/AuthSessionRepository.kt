@@ -27,6 +27,11 @@ interface AuthSessionRepository : JpaRepository<AuthSession, UUID> {
 
     fun findByUserId(userId: Long): List<AuthSession>
 
+    /** 이미 다른 요청이 지운 세션이면 0 을 돌려준다. 엔티티 삭제는 이 경우 낙관적 락 예외로 실패한다. */
+    @Modifying(flushAutomatically = true)
+    @Query("DELETE FROM AuthSession s WHERE s.id = :id")
+    fun deleteByIdReturningCount(@Param("id") id: UUID): Int
+
     @Modifying(flushAutomatically = true)
     @Query("DELETE FROM AuthSession s WHERE s.userId = :userId AND s.expiresAt <= :now")
     fun deleteExpiredByUserId(@Param("userId") userId: Long, @Param("now") now: Instant): Int

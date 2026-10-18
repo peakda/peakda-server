@@ -21,10 +21,10 @@ class WebSessionDevices(
     )
 
     /** 처음 받은 브라우저에는 발급하고, 이미 있으면 만료일을 다시 늘린다. */
-    fun writeCookie(response: HttpServletResponse, device: SessionDevice) {
+    fun writeCookie(response: HttpServletResponse, deviceId: String) {
         response.addHeader(
             HttpHeaders.SET_COOKIE,
-            CookieUtils.createDeviceIdCookie(device.deviceId, cookieProperties).toString(),
+            CookieUtils.createDeviceIdCookie(deviceId, cookieProperties).toString(),
         )
     }
 }

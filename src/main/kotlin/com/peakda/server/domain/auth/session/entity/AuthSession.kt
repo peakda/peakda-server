@@ -13,7 +13,6 @@ import jakarta.persistence.Table
 import jakarta.persistence.Transient
 import jakarta.persistence.UniqueConstraint
 import org.springframework.data.domain.Persistable
-import java.time.Duration
 import java.time.Instant
 import java.util.UUID
 
@@ -84,14 +83,18 @@ class AuthSession(
 
     fun isCurrent(refreshTokenHash: String): Boolean = this.refreshTokenHash == refreshTokenHash
 
-    /** 직전 토큰이고 회전한 지 [grace] 이내면 동시 재발급·응답 유실로 다시 온 요청으로 본다. */
-    fun isRecentlyRotated(refreshTokenHash: String, now: Instant, grace: Duration): Boolean {
-        val rotatedAt = rotatedAt ?: return false
-        return previousRefreshTokenHash == refreshTokenHash && !rotatedAt.plus(grace).isBefore(now)
-    }
+    /**
+     * 직전 토큰. 현재 토큰이 한 번이라도 쓰였다면 그때 회전되어 직전 토큰이 바뀌었을 것이므로,
+     * 직전 토큰이 다시 왔다는 건 클라이언트가 현재 토큰을 받지 못했다는 뜻이다(동시 재발급·응답 유실).
+     */
+    fun isPrevious(refreshTokenHash: String): Boolean = previousRefreshTokenHash == refreshTokenHash
 
-    fun rotate(newRefreshTokenHash: String, now: Instant, expiresAt: Instant) {
-        previousRefreshTokenHash = refreshTokenHash
+    /**
+     * [presentedRefreshTokenHash] 로 재발급해 [newRefreshTokenHash] 를 현재 토큰으로 둔다.
+     * 직전 토큰으로 다시 회전할 때도 직전 토큰은 그대로 두어, 받지 못한 토큰만 무효가 된다.
+     */
+    fun rotate(presentedRefreshTokenHash: String, newRefreshTokenHash: String, now: Instant, expiresAt: Instant) {
+        previousRefreshTokenHash = presentedRefreshTokenHash
         refreshTokenHash = newRefreshTokenHash
         rotatedAt = now
         lastUsedAt = now

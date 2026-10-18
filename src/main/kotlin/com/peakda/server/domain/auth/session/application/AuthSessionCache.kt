@@ -2,6 +2,7 @@ package com.peakda.server.domain.auth.session.application
 
 import com.peakda.server.common.security.jwt.JwtProperties
 import com.peakda.server.common.security.jwt.TokenResponse
+import com.peakda.server.domain.auth.application.RotatedTokens
 import org.springframework.data.redis.core.StringRedisTemplate
 import org.springframework.stereotype.Component
 import java.time.Duration
@@ -45,6 +46,27 @@ class AuthSessionCache(
         )
     }
 
+    fun saveLegacyMigration(userId: Long, legacyRefreshTokenHash: String, migrated: RotatedTokens, ttl: Duration) {
+        val tokens = migrated.tokens
+        val value = listOf(tokens.tokenType, tokens.accessToken, tokens.refreshToken, tokens.refreshTokenExpiresIn.toString(), migrated.deviceId)
+            .joinToString(SEPARATOR)
+        redisTemplate.opsForValue().set(legacyMigrationKey(userId, legacyRefreshTokenHash), value, ttl)
+    }
+
+    fun findLegacyMigration(userId: Long, legacyRefreshTokenHash: String): RotatedTokens? {
+        val parts = redisTemplate.opsForValue().get(legacyMigrationKey(userId, legacyRefreshTokenHash))
+            ?.split(SEPARATOR)
+            ?.takeIf { it.size == 5 }
+            ?: return null
+        val tokens = TokenResponse(
+            tokenType = parts[0],
+            accessToken = parts[1],
+            refreshToken = parts[2],
+            refreshTokenExpiresIn = parts[3].toLongOrNull() ?: return null,
+        )
+        return RotatedTokens(tokens, parts[4])
+    }
+
     fun findLegacyRefreshToken(userId: Long): String? = redisTemplate.opsForValue().get(legacyKey(userId))
 
     fun deleteLegacyRefreshToken(userId: Long) {
@@ -56,6 +78,8 @@ class AuthSessionCache(
     private fun rotationKey(sessionId: UUID, hash: String) = "auth:session:rotation:$sessionId:$hash"
 
     private fun legacyKey(userId: Long) = "refresh:$userId"
+
+    private fun legacyMigrationKey(userId: Long, hash: String) = "auth:session:legacy-migration:$userId:$hash"
 
     companion object {
         private const val SEPARATOR = "\n"

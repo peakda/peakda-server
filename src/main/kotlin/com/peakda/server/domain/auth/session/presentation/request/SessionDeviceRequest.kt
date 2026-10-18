@@ -24,9 +24,4 @@ data class SessionDeviceRequest(
     val platform: SessionPlatform? = null,
 ) {
     fun toSessionDevice(): SessionDevice = SessionDevice.app(deviceId, deviceName, platform)
-
-    companion object {
-        /** 기기 정보를 보내지 않는 구버전 앱. */
-        fun unknownApp(): SessionDevice = SessionDevice.app(null, null, null)
-    }
 }

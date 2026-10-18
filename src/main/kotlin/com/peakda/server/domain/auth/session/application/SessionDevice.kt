@@ -25,6 +25,9 @@ data class SessionDevice(
             platform = platform,
         )
 
+        /** 기기 정보를 보내지 않는 구버전 앱. */
+        fun unknownApp(): SessionDevice = app(null, null, null)
+
         fun web(deviceId: String?, userAgent: String?): SessionDevice = SessionDevice(
             deviceId = normalizeId(deviceId),
             deviceName = WebDeviceNames.of(userAgent),

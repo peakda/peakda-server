@@ -92,7 +92,7 @@ class OAuth2AuthenticationSuccessHandler(
 
         val device = webSessionDevices.resolve(request)
         val tokenResponse = tokenIssueService.issue(user, device)
-        webSessionDevices.writeCookie(response, device)
+        webSessionDevices.writeCookie(response, device.deviceId)
 
         val accessTokenCookie = CookieUtils.createAccessTokenCookie(
             token = tokenResponse.accessToken,

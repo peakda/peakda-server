@@ -64,7 +64,8 @@ class TokenIssueService(
     /**
      * 리프레시 토큰을 검증하고 새 토큰 쌍으로 회전한다.
      * - 현재 토큰이면 회전한다.
-     * - 직전 토큰이고 회전 직후면(동시 재발급·응답 유실) 직전 회전 결과를 그대로 돌려준다.
+     * - 직전 토큰이면 클라이언트가 현재 토큰을 받지 못한 것이다(동시 재발급·응답 유실).
+     *   회전 직후면 그 결과를 그대로 돌려주고, 시간이 지났으면 다시 회전한다.
      * - 그 밖의 옛 토큰이면 탈취로 보고 그 세션만 폐기한다.
      *
      * 세션 폐기 뒤 예외를 던지므로 예외로 롤백되지 않게 한다.
@@ -72,7 +73,7 @@ class TokenIssueService(
      * @param device 세션 도입 전 토큰을 세션으로 옮길 때만 쓴다.
      */
     @Transactional(noRollbackFor = [AuthorizationException::class])
-    fun rotate(refreshToken: String, device: SessionDevice): TokenResponse {
+    fun rotate(refreshToken: String, device: SessionDevice): RotatedTokens {
         val claims = jwtTokenProvider.parse(refreshToken)
             ?: throw AuthorizationException(ErrorCode.REFRESH_TOKEN_EXPIRED)
         val sessionId = claims.sessionId ?: return migrateLegacy(claims, refreshToken, device)
@@ -88,41 +89,50 @@ class TokenIssueService(
         }
 
         val hash = RefreshTokenHash.of(refreshToken)
-        return when {
-            session.isCurrent(hash) -> rotateCurrent(session, hash, now)
-            session.isRecentlyRotated(hash, now, authSessionProperties.rotationGrace) ->
-                authSessionCache.findRotation(sessionId, hash)
-                    ?: throw AuthorizationException(ErrorCode.REFRESH_TOKEN_INVALID)
+        val tokens = when {
+            session.isCurrent(hash) -> rotateWith(session, hash, now)
+            session.isPrevious(hash) -> authSessionCache.findRotation(sessionId, hash) ?: rotateWith(session, hash, now)
             else -> {
                 authSessionService.revoke(session)
                 log.warn("Refresh token 재사용 감지 - 탈취 의심, 세션 폐기. userId: {}, sessionId: {}", session.userId, sessionId)
                 throw AuthorizationException(ErrorCode.REFRESH_TOKEN_INVALID)
             }
         }
+        return RotatedTokens(tokens, session.deviceId)
     }
 
-    private fun rotateCurrent(session: AuthSession, hash: String, now: Instant): TokenResponse {
+    private fun rotateWith(session: AuthSession, presentedHash: String, now: Instant): TokenResponse {
         val user = findUser(session.userId)
         val tokens = generate(user, session.id, session.clientType)
         session.rotate(
+            presentedRefreshTokenHash = presentedHash,
             newRefreshTokenHash = RefreshTokenHash.of(tokens.refreshToken),
             now = now,
             expiresAt = now.plusSeconds(tokens.refreshTokenExpiresIn),
         )
-        authSessionCache.saveRotation(session.id, hash, tokens, authSessionProperties.rotationGrace)
+        authSessionCache.saveRotation(session.id, presentedHash, tokens, authSessionProperties.rotationGrace)
         return tokens
     }
 
     /**
      * 세션 도입 전에 발급된 리프레시 토큰. 그때 저장해 둔 값과 같으면 새 세션으로 옮겨 로그인을 이어 준다.
      * 다르면 거절만 하고 저장값은 지우지 않는다 — 지우면 그 값을 가진 정상 기기까지 로그아웃된다.
+     *
+     * 사용자 행을 잠가 같은 토큰의 이전을 한 번만 하고, 결과를 잠깐 남겨 동시 요청·응답 유실 재시도에 같은 토큰 쌍을 돌려준다.
      */
-    private fun migrateLegacy(claims: JwtClaims, refreshToken: String, device: SessionDevice): TokenResponse {
+    private fun migrateLegacy(claims: JwtClaims, refreshToken: String, device: SessionDevice): RotatedTokens {
+        val user = userRepository.findByIdForUpdate(claims.userId)
+            ?: throw AuthorizationException(ErrorCode.RESOURCE_NOT_FOUND)
+        val hash = RefreshTokenHash.of(refreshToken)
+        authSessionCache.findLegacyMigration(claims.userId, hash)?.let { return it }
+
         if (authSessionCache.findLegacyRefreshToken(claims.userId) != refreshToken) {
             throw AuthorizationException(ErrorCode.REFRESH_TOKEN_INVALID)
         }
+        val migrated = RotatedTokens(issue(user, device), device.deviceId)
+        authSessionCache.saveLegacyMigration(claims.userId, hash, migrated, authSessionProperties.rotationGrace)
         authSessionCache.deleteLegacyRefreshToken(claims.userId)
-        return issue(findUser(claims.userId), device)
+        return migrated
     }
 
     private fun findUser(userId: Long): User = userRepository.findById(userId)

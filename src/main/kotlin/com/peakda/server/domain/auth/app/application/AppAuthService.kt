@@ -35,7 +35,7 @@ class AppAuthService(
         }
 
     fun refresh(refreshToken: String, device: SessionDevice): AppTokenResponse =
-        tokens(tokenIssueService.rotate(refreshToken, device))
+        tokens(tokenIssueService.rotate(refreshToken, device).tokens)
 
     /** 다른 진입점(가입 완료)에서 발급한 토큰을 앱 응답 형식으로 옮긴다. */
     fun tokens(tokens: TokenResponse): AppTokenResponse = AppTokenResponse.authenticated(

@@ -5,6 +5,7 @@ import com.peakda.server.common.exception.ErrorCode
 import com.peakda.server.common.security.jwt.JwtProperties
 import com.peakda.server.common.security.jwt.TokenResponse
 import com.peakda.server.common.test.IntegrationTestSupport
+import com.peakda.server.domain.auth.application.RotatedTokens
 import com.peakda.server.domain.auth.application.TokenIssueService
 import com.peakda.server.domain.auth.oauth.model.OAuth2LoginType
 import com.peakda.server.domain.auth.session.entity.SessionClientType
@@ -65,6 +66,7 @@ class AuthSessionIntegrationTest : IntegrationTestSupport() {
     lateinit var events: ApplicationEvents
 
     private val rotations = ConcurrentHashMap<String, TokenResponse>()
+    private val migrations = ConcurrentHashMap<String, RotatedTokens>()
     private lateinit var user: User
 
     @BeforeEach
@@ -82,6 +84,7 @@ class AuthSessionIntegrationTest : IntegrationTestSupport() {
             ),
         )
         rotations.clear()
+        migrations.clear()
         doAnswer { invocation ->
             rotations["${invocation.getArgument<UUID>(0)}:${invocation.getArgument<String>(1)}"] =
                 invocation.getArgument(2)
@@ -90,6 +93,14 @@ class AuthSessionIntegrationTest : IntegrationTestSupport() {
         doAnswer { invocation ->
             rotations["${invocation.getArgument<UUID>(0)}:${invocation.getArgument<String>(1)}"]
         }.`when`(authSessionCache).findRotation(anyUuid(), anyString())
+        doAnswer { invocation ->
+            migrations["${invocation.getArgument<Long>(0)}:${invocation.getArgument<String>(1)}"] =
+                invocation.getArgument(2)
+            null
+        }.`when`(authSessionCache).saveLegacyMigration(anyLong(), anyString(), anyRotated(), anyDuration())
+        doAnswer { invocation ->
+            migrations["${invocation.getArgument<Long>(0)}:${invocation.getArgument<String>(1)}"]
+        }.`when`(authSessionCache).findLegacyMigration(anyLong(), anyString())
     }
 
     @Test
@@ -97,7 +108,7 @@ class AuthSessionIntegrationTest : IntegrationTestSupport() {
         val android = tokenIssueService.issue(user, app("android-1"))
         tokenIssueService.issue(user, SessionDevice.web(null, CHROME_MAC))
 
-        val rotated = tokenIssueService.rotate(android.refreshToken, app("android-1"))
+        val rotated = tokenIssueService.rotate(android.refreshToken, app("android-1")).tokens
 
         assertThat(rotated.refreshToken).isNotEqualTo(android.refreshToken)
         assertThat(authSessionRepository.findByUserId(userId())).hasSize(2)
@@ -120,11 +131,11 @@ class AuthSessionIntegrationTest : IntegrationTestSupport() {
     fun `직전 토큰으로 곧바로 다시 재발급하면 같은 토큰 쌍을 돌려주고 세션을 유지한다`() {
         val issued = tokenIssueService.issue(user, app("android-1"))
 
-        val first = tokenIssueService.rotate(issued.refreshToken, app("android-1"))
-        val retried = tokenIssueService.rotate(issued.refreshToken, app("android-1"))
+        val first = tokenIssueService.rotate(issued.refreshToken, app("android-1")).tokens
+        val retried = tokenIssueService.rotate(issued.refreshToken, app("android-1")).tokens
 
         assertThat(retried).isEqualTo(first)
-        assertThat(tokenIssueService.rotate(first.refreshToken, app("android-1")).refreshToken)
+        assertThat(tokenIssueService.rotate(first.refreshToken, app("android-1")).tokens.refreshToken)
             .isNotEqualTo(first.refreshToken)
     }
 
@@ -141,7 +152,7 @@ class AuthSessionIntegrationTest : IntegrationTestSupport() {
                 executor.submit<TokenResponse> {
                     ready.countDown()
                     start.await()
-                    tokenIssueService.rotate(issued.refreshToken, app("android-1"))
+                    tokenIssueService.rotate(issued.refreshToken, app("android-1")).tokens
                 }
             }
             assertThat(ready.await(5, TimeUnit.SECONDS)).isTrue()
@@ -159,10 +170,10 @@ class AuthSessionIntegrationTest : IntegrationTestSupport() {
     fun `두 번 이상 지난 토큰을 다시 쓰면 그 세션만 폐기한다`() {
         val android = tokenIssueService.issue(user, app("android-1"))
         val web = tokenIssueService.issue(user, SessionDevice.web(null, CHROME_MAC))
-        val second = tokenIssueService.rotate(android.refreshToken, app("android-1"))
-        tokenIssueService.rotate(second.refreshToken, app("android-1"))
+        val second = tokenIssueService.rotate(android.refreshToken, app("android-1")).tokens
+        tokenIssueService.rotate(second.refreshToken, app("android-1")).tokens
 
-        assertThatThrownBy { tokenIssueService.rotate(android.refreshToken, app("android-1")) }
+        assertThatThrownBy { tokenIssueService.rotate(android.refreshToken, app("android-1")).tokens }
             .isInstanceOf(AuthorizationException::class.java)
             .hasFieldOrPropertyWithValue("errorCode", ErrorCode.REFRESH_TOKEN_INVALID)
 
@@ -176,7 +187,7 @@ class AuthSessionIntegrationTest : IntegrationTestSupport() {
     fun `액세스 토큰으로는 재발급하지 못한다`() {
         val issued = tokenIssueService.issue(user, app("android-1"))
 
-        assertThatThrownBy { tokenIssueService.rotate(issued.accessToken, app("android-1")) }
+        assertThatThrownBy { tokenIssueService.rotate(issued.accessToken, app("android-1")).tokens }
             .isInstanceOf(AuthorizationException::class.java)
             .hasFieldOrPropertyWithValue("errorCode", ErrorCode.REFRESH_TOKEN_INVALID)
         assertThat(authSessionRepository.findByUserId(userId())).hasSize(1)
@@ -187,7 +198,7 @@ class AuthSessionIntegrationTest : IntegrationTestSupport() {
         val first = tokenIssueService.issue(user, app("device-1"))
         (2..5).forEach { tokenIssueService.issue(user, app("device-$it")) }
         // device-1 을 다시 쓰면 가장 오래 안 쓴 기기는 device-2 가 된다.
-        tokenIssueService.rotate(first.refreshToken, app("device-1"))
+        tokenIssueService.rotate(first.refreshToken, app("device-1")).tokens
 
         tokenIssueService.issue(user, app("device-6"))
 
@@ -203,7 +214,7 @@ class AuthSessionIntegrationTest : IntegrationTestSupport() {
         tokenIssueService.issue(user, app("android-1"))
 
         assertThat(authSessionRepository.findByUserId(userId())).hasSize(1)
-        assertThatThrownBy { tokenIssueService.rotate(before.refreshToken, app("android-1")) }
+        assertThatThrownBy { tokenIssueService.rotate(before.refreshToken, app("android-1")).tokens }
             .isInstanceOf(AuthorizationException::class.java)
             .hasFieldOrPropertyWithValue("errorCode", ErrorCode.REFRESH_TOKEN_INVALID)
         assertThat(events.stream(AuthSessionRevokedEvent::class.java)).isEmpty()
@@ -214,7 +225,7 @@ class AuthSessionIntegrationTest : IntegrationTestSupport() {
         val legacy = legacyRefreshToken(userId())
         `when`(authSessionCache.findLegacyRefreshToken(userId())).thenReturn(legacy)
 
-        val migrated = tokenIssueService.rotate(legacy, app("android-1"))
+        val migrated = tokenIssueService.rotate(legacy, app("android-1")).tokens
 
         val session = authSessionRepository.findByUserId(userId()).single()
         assertThat(jwtTokenProvider.parse(migrated.refreshToken)!!.sessionId).isEqualTo(session.id)
@@ -259,6 +270,42 @@ class AuthSessionIntegrationTest : IntegrationTestSupport() {
         assertThat(authSessionRepository.findByUserId(userId())).hasSize(1)
     }
 
+    @Test
+    fun `회전 결과가 사라진 뒤 직전 토큰이 와도 세션을 지우지 않고 다시 회전한다`() {
+        val issued = tokenIssueService.issue(user, app("android-1"))
+        val lost = tokenIssueService.rotate(issued.refreshToken, app("android-1")).tokens
+        rotations.clear()
+
+        val retried = tokenIssueService.rotate(issued.refreshToken, app("android-1")).tokens
+
+        assertThat(retried.refreshToken).isNotEqualTo(lost.refreshToken)
+        assertThat(tokenIssueService.rotate(retried.refreshToken, app("android-1")).tokens.refreshToken)
+            .isNotEqualTo(retried.refreshToken)
+        assertThat(events.stream(AuthSessionRevokedEvent::class.java)).isEmpty()
+    }
+
+    @Test
+    fun `세션 도입 전 토큰 이전을 다시 요청하면 같은 토큰 쌍을 돌려준다`() {
+        val legacy = legacyRefreshToken(userId())
+        `when`(authSessionCache.findLegacyRefreshToken(userId())).thenReturn(legacy)
+
+        val first = tokenIssueService.rotate(legacy, app("android-1"))
+        `when`(authSessionCache.findLegacyRefreshToken(userId())).thenReturn(null)
+        val retried = tokenIssueService.rotate(legacy, app("android-1"))
+
+        assertThat(retried).isEqualTo(first)
+        assertThat(authSessionRepository.findByUserId(userId())).hasSize(1)
+    }
+
+    @Test
+    fun `웹 재발급은 요청 쿠키가 아니라 세션의 기기 식별자를 돌려준다`() {
+        val web = tokenIssueService.issue(user, SessionDevice.web("browser-1", CHROME_MAC))
+
+        val rotated = tokenIssueService.rotate(web.refreshToken, SessionDevice.web(null, CHROME_MAC))
+
+        assertThat(rotated.deviceId).isEqualTo("browser-1")
+    }
+
     private fun userId(): Long = requireNotNull(user.id)
 
     private fun app(deviceId: String) = SessionDevice.app(deviceId, "SM-S918N", SessionPlatform.ANDROID)
@@ -279,6 +326,9 @@ class AuthSessionIntegrationTest : IntegrationTestSupport() {
 
     private fun anyTokens(): TokenResponse =
         org.mockito.ArgumentMatchers.any(TokenResponse::class.java) ?: PLACEHOLDER_TOKENS
+
+    private fun anyRotated(): RotatedTokens =
+        org.mockito.ArgumentMatchers.any(RotatedTokens::class.java) ?: RotatedTokens(PLACEHOLDER_TOKENS, "")
 
     private fun anyDuration(): Duration = org.mockito.ArgumentMatchers.any(Duration::class.java) ?: Duration.ZERO
 

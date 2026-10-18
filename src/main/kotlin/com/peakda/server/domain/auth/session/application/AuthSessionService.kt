@@ -9,6 +9,8 @@ import com.peakda.server.domain.user.repository.UserRepository
 import org.springframework.context.ApplicationEventPublisher
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
+import org.springframework.transaction.support.TransactionSynchronization
+import org.springframework.transaction.support.TransactionSynchronizationManager
 import java.time.Instant
 import java.util.UUID
 
@@ -40,18 +42,17 @@ class AuthSessionService(
         userRepository.findByIdForUpdate(userId) ?: throw UserNotFoundException()
         authSessionRepository.deleteExpiredByUserId(userId, now)
 
+        // 같은 (user_id, device_id) 를 지우고 다시 넣는다. 벌크 삭제라 insert 보다 먼저 실행된다.
         authSessionRepository.findByUserIdAndDeviceId(userId, device.deviceId)?.let { replaced ->
-            authSessionRepository.delete(replaced)
-            authSessionCache.markRevoked(listOf(replaced.id))
+            if (authSessionRepository.deleteByIdReturningCount(replaced.id) > 0) {
+                markRevokedAfterCommit(listOf(replaced.id))
+            }
         }
-        // 같은 (user_id, device_id) 를 지우고 다시 넣으므로, insert 보다 delete 가 먼저 나가게 한다.
-        authSessionRepository.flush()
 
         val active = authSessionRepository.findByUserIdOrderByLastUsedAtAsc(userId)
         val overflow = active.size - (properties.maxDevicesPerUser - 1)
         if (overflow > 0) {
             active.take(overflow).forEach(::revoke)
-            authSessionRepository.flush()
         }
 
         return authSessionRepository.save(
@@ -72,10 +73,11 @@ class AuthSessionService(
     /** 재발급 중인 세션을 잠근다. 같은 세션의 재발급은 한 번에 하나만 처리된다. */
     fun findForRotation(sessionId: UUID): AuthSession? = authSessionRepository.findByIdForUpdate(sessionId)
 
+    /** 다른 요청(기기 해제·한도 초과·탈취 의심)이 먼저 지웠으면 아무것도 하지 않는다. */
     fun revoke(session: AuthSession) {
-        authSessionRepository.delete(session)
-        authSessionCache.markRevoked(listOf(session.id))
-        eventPublisher.publishEvent(AuthSessionRevokedEvent(session.userId, session.deviceId))
+        if (authSessionRepository.deleteByIdReturningCount(session.id) == 0) return
+        markRevokedAfterCommit(listOf(session.id))
+        eventPublisher.publishEvent(AuthSessionRevokedEvent(session.userId, session.deviceId, Instant.now()))
     }
 
     @Transactional(readOnly = true)
@@ -109,7 +111,24 @@ class AuthSessionService(
     fun revokeAll(userId: Long) {
         val sessionIds = authSessionRepository.findByUserId(userId).map { it.id }
         authSessionRepository.deleteAllByUserIdInBulk(userId)
-        authSessionCache.markRevoked(sessionIds)
+        markRevokedAfterCommit(sessionIds)
         authSessionCache.deleteLegacyRefreshToken(userId)
+    }
+
+    /**
+     * 해제 표시는 DB 삭제가 커밋된 뒤에 남긴다. 먼저 남기면 롤백됐을 때 살아 있는 세션이 액세스 토큰 유효기간 동안 막힌다.
+     * 커밋 직후 잠깐은 액세스 토큰이 통하지만, 세션 행이 이미 없어 재발급은 막힌다.
+     */
+    private fun markRevokedAfterCommit(sessionIds: List<UUID>) {
+        if (sessionIds.isEmpty()) return
+        if (!TransactionSynchronizationManager.isSynchronizationActive()) {
+            authSessionCache.markRevoked(sessionIds)
+            return
+        }
+        TransactionSynchronizationManager.registerSynchronization(object : TransactionSynchronization {
+            override fun afterCommit() {
+                authSessionCache.markRevoked(sessionIds)
+            }
+        })
     }
 }
