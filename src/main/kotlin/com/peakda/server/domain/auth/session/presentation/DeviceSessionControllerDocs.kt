@@ -22,7 +22,8 @@ interface DeviceSessionControllerDocs {
     @Operation(
         summary = "로그인된 기기 목록",
         description = "현재 사용자 계정으로 로그인된 기기(앱 설치·웹 브라우저)를 등록일 최신순으로 조회한다. " +
-            "최대 maxCount 대까지 로그인할 수 있고, 넘으면 가장 오래 사용하지 않은 기기가 자동으로 로그아웃된다. " +
+            "최대 maxCount 대까지 로그인할 수 있고, 넘으면 새로 로그인한 기기와 같은 종류(앱·웹) 중 " +
+            "가장 오래 사용하지 않은 기기가 자동으로 로그아웃된다. " +
             "current 가 true 인 항목이 지금 요청한 기기다.",
         security = [SecurityRequirement(name = "accessTokenCookie"), SecurityRequirement(name = "bearerToken")],
     )

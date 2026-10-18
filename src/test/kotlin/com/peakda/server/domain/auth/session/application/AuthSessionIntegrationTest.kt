@@ -208,6 +208,18 @@ class AuthSessionIntegrationTest : IntegrationTestSupport() {
     }
 
     @Test
+    fun `웹으로 로그인해 한도를 넘으면 더 오래 안 쓴 앱보다 웹 세션을 먼저 해제한다`() {
+        tokenIssueService.issue(user, app("android-1"))
+        (1..4).forEach { tokenIssueService.issue(user, SessionDevice.web("browser-$it", CHROME_MAC)) }
+
+        tokenIssueService.issue(user, SessionDevice.web("browser-5", CHROME_MAC))
+
+        val deviceIds = authSessionRepository.findByUserId(userId()).map { it.deviceId }
+        assertThat(deviceIds).containsExactlyInAnyOrder("android-1", "browser-2", "browser-3", "browser-4", "browser-5")
+        assertThat(events.stream(AuthSessionRevokedEvent::class.java).map { it.deviceId }).containsExactly("browser-1")
+    }
+
+    @Test
     fun `같은 기기로 다시 로그인하면 기기 수가 늘지 않고 이전 토큰은 쓸 수 없다`() {
         val before = tokenIssueService.issue(user, app("android-1"))
 

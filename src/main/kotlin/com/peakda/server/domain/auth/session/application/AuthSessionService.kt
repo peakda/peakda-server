@@ -29,6 +29,7 @@ class AuthSessionService(
 
     /**
      * 새 세션을 만든다. 같은 기기의 기존 세션은 교체하고, 기기 수가 한도를 넘으면 가장 오래 안 쓴 세션부터 해제한다.
+     * 해제는 새 세션과 같은 종류(앱·웹)에서 먼저 고른다 — 웹 로그인이 쌓여 한동안 안 연 앱이 로그아웃되지 않게 한다.
      * 동시에 두 기기에서 로그인해도 한도를 넘지 않도록 사용자 행을 잠근 뒤 센다.
      */
     fun open(
@@ -52,7 +53,8 @@ class AuthSessionService(
         val active = authSessionRepository.findByUserIdOrderByLastUsedAtAsc(userId)
         val overflow = active.size - (properties.maxDevicesPerUser - 1)
         if (overflow > 0) {
-            active.take(overflow).forEach(::revoke)
+            val (sameType, otherType) = active.partition { it.clientType == device.clientType }
+            (sameType + otherType).take(overflow).forEach(::revoke)
         }
 
         return authSessionRepository.save(
