@@ -52,7 +52,7 @@ class DeviceTokenRepositoryTest : IntegrationTestSupport() {
 
     @Test
     @Transactional
-    fun `기기 식별자 없이 재등록해도 남아 있던 식별자는 유지하고 기기 단위로 지울 수 있다`() {
+    fun `기기 식별자 없이 재등록해도 남아 있던 식별자는 유지하고 해제 시각 전에 등록된 기기 토큰만 지운다`() {
         repository.upsert(1L, "token-a", DevicePlatform.ANDROID.name, "device-1")
         repository.upsert(1L, "token-a", DevicePlatform.ANDROID.name, null)
         repository.upsert(1L, "token-b", DevicePlatform.ANDROID.name, "device-2")
@@ -61,7 +61,10 @@ class DeviceTokenRepositoryTest : IntegrationTestSupport() {
             .containsEntry("token-a", "device-1")
             .containsEntry("token-b", "device-2")
 
-        repository.deleteByUserIdAndDeviceId(1L, "device-1")
+        assertThat(repository.deleteByDeviceUpdatedBefore(1L, "device-1", Instant.now().minus(1, ChronoUnit.HOURS)))
+            .isEqualTo(0)
+        assertThat(repository.deleteByDeviceUpdatedBefore(1L, "device-1", Instant.now().plus(1, ChronoUnit.HOURS)))
+            .isEqualTo(1)
 
         assertThat(repository.findByUserId(1L).map { it.token }).containsExactly("token-b")
     }

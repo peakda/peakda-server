@@ -18,6 +18,6 @@ class AuthSessionRevokedListener(
     @Async
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
     fun onSessionRevoked(event: AuthSessionRevokedEvent) {
-        deviceTokenService.deleteByDevice(event.userId, event.deviceId)
+        deviceTokenService.deleteByDevice(event.userId, event.deviceId, event.revokedAt)
     }
 }

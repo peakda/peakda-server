@@ -13,7 +13,9 @@ interface DeviceTokenRepository : JpaRepository<DeviceToken, Long> {
 
     fun deleteByUserIdAndToken(userId: Long, token: String)
 
-    fun deleteByUserIdAndDeviceId(userId: Long, deviceId: String)
+    @Modifying
+    @Query("DELETE FROM DeviceToken d WHERE d.userId = :userId AND d.deviceId = :deviceId AND d.updatedAt <= :before")
+    fun deleteByDeviceUpdatedBefore(userId: Long, deviceId: String, before: Instant): Int
 
     /**
      * FCM 이 무효로 응답한 토큰을 한 번에 삭제한다. 실패 토큰마다 개별 삭제하면
