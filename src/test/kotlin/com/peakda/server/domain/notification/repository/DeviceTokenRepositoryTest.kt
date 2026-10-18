@@ -40,8 +40,8 @@ class DeviceTokenRepositoryTest : IntegrationTestSupport() {
     @Test
     @Transactional
     fun `upsert 는 새 토큰을 삽입하고 같은 토큰 재등록 시 소유자와 플랫폼을 갱신한다`() {
-        repository.upsert(1L, "token-a", DevicePlatform.ANDROID.name)
-        repository.upsert(2L, "token-a", DevicePlatform.IOS.name)
+        repository.upsert(1L, "token-a", DevicePlatform.ANDROID.name, null)
+        repository.upsert(2L, "token-a", DevicePlatform.IOS.name, null)
 
         val tokens = repository.findAll().filter { it.token == "token-a" }
         assertThat(tokens).hasSize(1)
@@ -52,9 +52,25 @@ class DeviceTokenRepositoryTest : IntegrationTestSupport() {
 
     @Test
     @Transactional
+    fun `기기 식별자 없이 재등록해도 남아 있던 식별자는 유지하고 기기 단위로 지울 수 있다`() {
+        repository.upsert(1L, "token-a", DevicePlatform.ANDROID.name, "device-1")
+        repository.upsert(1L, "token-a", DevicePlatform.ANDROID.name, null)
+        repository.upsert(1L, "token-b", DevicePlatform.ANDROID.name, "device-2")
+
+        assertThat(repository.findByUserId(1L).associate { it.token to it.deviceId })
+            .containsEntry("token-a", "device-1")
+            .containsEntry("token-b", "device-2")
+
+        repository.deleteByUserIdAndDeviceId(1L, "device-1")
+
+        assertThat(repository.findByUserId(1L).map { it.token }).containsExactly("token-b")
+    }
+
+    @Test
+    @Transactional
     fun `deleteExceeding 은 최근 사용 순으로 keep 개만 남긴다`() {
         for (i in 1..5) {
-            repository.upsert(1L, "token-$i", DevicePlatform.ANDROID.name)
+            repository.upsert(1L, "token-$i", DevicePlatform.ANDROID.name, null)
         }
 
         val deleted = repository.deleteExceeding(1L, 3)
@@ -68,7 +84,7 @@ class DeviceTokenRepositoryTest : IntegrationTestSupport() {
     @Transactional
     fun `1024바이트를 초과한 토큰은 DB 제약으로 거부한다`() {
         assertThatThrownBy {
-            repository.upsert(1L, "a".repeat(1025), DevicePlatform.ANDROID.name)
+            repository.upsert(1L, "a".repeat(1025), DevicePlatform.ANDROID.name, null)
         }.isInstanceOf(DataIntegrityViolationException::class.java)
     }
 
@@ -76,7 +92,7 @@ class DeviceTokenRepositoryTest : IntegrationTestSupport() {
     @Transactional
     fun `deleteByTokenIn 은 지정한 토큰만 한 번에 지운다`() {
         for (i in 1..3) {
-            repository.upsert(1L, "token-$i", DevicePlatform.ANDROID.name)
+            repository.upsert(1L, "token-$i", DevicePlatform.ANDROID.name, null)
         }
 
         val deleted = repository.deleteByTokenIn(listOf("token-1", "token-3"))
@@ -88,7 +104,7 @@ class DeviceTokenRepositoryTest : IntegrationTestSupport() {
     @Test
     @Transactional
     fun `deleteUpdatedBefore 는 기준 시각 이전에 갱신된 토큰만 지운다`() {
-        repository.upsert(1L, "token-a", DevicePlatform.ANDROID.name)
+        repository.upsert(1L, "token-a", DevicePlatform.ANDROID.name, null)
 
         assertThat(repository.deleteUpdatedBefore(Instant.now().minus(1, ChronoUnit.DAYS))).isEqualTo(0)
         assertThat(repository.deleteUpdatedBefore(Instant.now().plus(1, ChronoUnit.DAYS))).isEqualTo(1)

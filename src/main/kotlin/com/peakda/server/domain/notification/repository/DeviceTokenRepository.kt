@@ -13,6 +13,8 @@ interface DeviceTokenRepository : JpaRepository<DeviceToken, Long> {
 
     fun deleteByUserIdAndToken(userId: Long, token: String)
 
+    fun deleteByUserIdAndDeviceId(userId: Long, deviceId: String)
+
     /**
      * FCM 이 무효로 응답한 토큰을 한 번에 삭제한다. 실패 토큰마다 개별 삭제하면
      * 멀티캐스트 한 묶음(최대 500건)에서 실패 수만큼 삭제 쿼리가 나간다.
@@ -34,20 +36,22 @@ interface DeviceTokenRepository : JpaRepository<DeviceToken, Long> {
     /**
      * 디바이스 토큰을 멱등하게 등록한다. 이미 등록된 토큰이면 소유자와 플랫폼을 갱신하므로
      * 기기 소유자가 변경된 경우에도 토큰은 한 사용자에게만 귀속된다.
+     * 기기 식별자를 보내지 않는 구버전 앱의 재등록은 이미 남은 식별자를 지우지 않는다.
      */
     @Modifying
     @Query(
         value = """
-            INSERT INTO device_tokens (user_id, token, platform, created_at, updated_at)
-            VALUES (:userId, :token, :platform, now(), now())
+            INSERT INTO device_tokens (user_id, token, platform, device_id, created_at, updated_at)
+            VALUES (:userId, :token, :platform, :deviceId, now(), now())
             ON CONFLICT (token) DO UPDATE SET
                 user_id = :userId,
                 platform = :platform,
+                device_id = COALESCE(EXCLUDED.device_id, device_tokens.device_id),
                 updated_at = now()
         """,
         nativeQuery = true,
     )
-    fun upsert(userId: Long, token: String, platform: String)
+    fun upsert(userId: Long, token: String, platform: String, deviceId: String?)
 
     /**
      * 사용자의 활성 토큰을 최근 사용 순으로 [keep]개만 남기고 삭제한다.

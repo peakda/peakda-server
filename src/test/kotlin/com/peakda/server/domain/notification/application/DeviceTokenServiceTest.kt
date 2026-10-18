@@ -31,7 +31,7 @@ class DeviceTokenServiceTest {
 
         inOrder(userRepository, deviceTokenRepository).apply {
             verify(userRepository).findByIdForUpdate(USER_ID)
-            verify(deviceTokenRepository).upsert(USER_ID, TOKEN, DevicePlatform.ANDROID.name)
+            verify(deviceTokenRepository).upsert(USER_ID, TOKEN, DevicePlatform.ANDROID.name, null)
             verify(deviceTokenRepository).deleteExceeding(USER_ID, 10)
         }
     }
@@ -40,7 +40,7 @@ class DeviceTokenServiceTest {
     fun `디바이스 토큰 등록은 네이티브 upsert에 위임한다`() {
         service.register(USER_ID, TOKEN, DevicePlatform.ANDROID)
 
-        verify(deviceTokenRepository).upsert(USER_ID, TOKEN, DevicePlatform.ANDROID.name)
+        verify(deviceTokenRepository).upsert(USER_ID, TOKEN, DevicePlatform.ANDROID.name, null)
     }
 
     @Test

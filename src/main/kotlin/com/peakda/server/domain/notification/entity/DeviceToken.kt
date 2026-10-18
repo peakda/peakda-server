@@ -28,6 +28,9 @@ class DeviceToken(
     @Enumerated(EnumType.STRING)
     @Column(name = "platform", nullable = false, columnDefinition = "TEXT")
     val platform: DevicePlatform,
+
+    @Column(name = "device_id", columnDefinition = "TEXT")
+    val deviceId: String? = null,
 ) : BaseTimeEntity() {
 
     @Id
