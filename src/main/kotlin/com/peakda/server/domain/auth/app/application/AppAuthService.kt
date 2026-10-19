@@ -6,6 +6,7 @@ import com.peakda.server.common.security.jwt.JwtProperties
 import com.peakda.server.common.security.jwt.TokenResponse
 import com.peakda.server.domain.auth.app.presentation.response.AppTokenResponse
 import com.peakda.server.domain.auth.application.TokenIssueService
+import com.peakda.server.domain.auth.session.application.SessionDevice
 import com.peakda.server.domain.auth.signup.application.SignupSessionService
 import com.peakda.server.domain.user.entity.UserStatus
 import com.peakda.server.domain.user.repository.UserRepository
@@ -26,32 +27,33 @@ class AppAuthService(
     private val jwtProperties: JwtProperties,
 ) {
 
-    fun exchange(code: String): AppTokenResponse =
+    fun exchange(code: String, device: SessionDevice): AppTokenResponse =
         when (val payload = authorizationCodeService.consume(code)) {
             null -> throw AuthorizationException(ErrorCode.AUTH_CODE_INVALID)
-            is AuthorizationCodePayload.Authenticated -> authenticated(payload.userId)
+            is AuthorizationCodePayload.Authenticated -> authenticated(payload.userId, device)
             is AuthorizationCodePayload.SignupRequired -> signupRequired(payload.signupToken)
         }
 
-    fun refresh(refreshToken: String): AppTokenResponse = tokens(tokenIssueService.rotate(refreshToken))
+    fun refresh(refreshToken: String, device: SessionDevice): AppTokenResponse =
+        tokens(tokenIssueService.rotate(refreshToken, device).tokens)
 
     /** 다른 진입점(가입 완료)에서 발급한 토큰을 앱 응답 형식으로 옮긴다. */
     fun tokens(tokens: TokenResponse): AppTokenResponse = AppTokenResponse.authenticated(
         tokens = tokens,
         accessTokenExpiresIn = jwtProperties.accessTokenValidityInSeconds,
-        refreshTokenExpiresIn = jwtProperties.refreshTokenValidityInSeconds,
+        refreshTokenExpiresIn = tokens.refreshTokenExpiresIn,
     )
 
     /**
      * 코드 발급과 교환 사이(짧지만 0 은 아니다)에 계정 상태가 바뀔 수 있으므로 여기서 다시 확인한다.
      */
-    private fun authenticated(userId: Long): AppTokenResponse {
+    private fun authenticated(userId: Long, device: SessionDevice): AppTokenResponse {
         val user = userRepository.findById(userId)
             .orElseThrow { AuthorizationException(ErrorCode.USER_NOT_FOUND) }
         if (user.status != UserStatus.ACTIVE) {
             throw AuthorizationException(ErrorCode.UNAUTHORIZED)
         }
-        return tokens(tokenIssueService.issue(user))
+        return tokens(tokenIssueService.issue(user, device))
     }
 
     private fun signupRequired(signupToken: String): AppTokenResponse {

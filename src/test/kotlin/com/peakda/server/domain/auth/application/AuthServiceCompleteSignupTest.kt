@@ -8,6 +8,9 @@ import com.peakda.server.common.security.principal.SignupSessionPrincipal
 import com.peakda.server.common.storage.ObjectKeyUrlResolver
 import com.peakda.server.common.storage.ObjectStorage
 import com.peakda.server.domain.auth.oauth.model.OAuth2LoginType
+import com.peakda.server.domain.auth.session.application.AuthSessionService
+import com.peakda.server.domain.auth.session.application.SessionDevice
+import com.peakda.server.domain.auth.session.application.WebSessionDevices
 import com.peakda.server.domain.auth.signup.entity.SignupSession
 import com.peakda.server.domain.auth.signup.presentation.request.SignupCompleteRequest
 import com.peakda.server.domain.auth.signup.repository.SignupSessionRepository
@@ -23,6 +26,7 @@ import org.junit.jupiter.api.Test
 import org.mockito.ArgumentMatchers.any
 import org.mockito.Mockito.mock
 import org.mockito.Mockito.`when`
+import org.springframework.mock.web.MockHttpServletRequest
 import org.springframework.mock.web.MockHttpServletResponse
 import org.springframework.test.util.ReflectionTestUtils
 import java.time.Instant
@@ -35,14 +39,15 @@ class AuthServiceCompleteSignupTest {
 
     private val service = AuthService(
         userRepository = userRepository,
-        cookieProperties = CookieProperties(domain = null, secure = false, sameSite = "Lax"),
+        cookieProperties = COOKIE_PROPERTIES,
         jwtProperties = JwtProperties(
             secret = "test-secret",
             accessTokenValidityInSeconds = 1800,
             refreshTokenValidityInSeconds = 1_209_600,
         ),
-        refreshTokenService = mock(RefreshTokenService::class.java),
         tokenIssueService = tokenIssueService,
+        authSessionService = mock(AuthSessionService::class.java),
+        webSessionDevices = WebSessionDevices(COOKIE_PROPERTIES),
         signupSessionRepository = signupSessionRepository,
         imageResizer = mock(ImageResizer::class.java),
         objectStorage = mock(ObjectStorage::class.java),
@@ -61,12 +66,13 @@ class AuthServiceCompleteSignupTest {
                 savedUser = it
             }
         }
-        `when`(tokenIssueService.issue(anyUser())).thenReturn(TokenResponse("Bearer", "access", "refresh"))
+        `when`(tokenIssueService.issue(anyUser(), anyDevice()))
+            .thenReturn(TokenResponse("Bearer", "access", "refresh", 604_800))
     }
 
     @Test
     fun `가입 세션 토큰을 Bearer 로 보내면 앱 가입으로 남긴다`() {
-        val issued = service.completeSignup(principal(), request(), MockHttpServletResponse(), bearerAuthenticated = true)
+        val issued = service.completeSignup(principal(), request(), MockHttpServletRequest(), MockHttpServletResponse(), bearerAuthenticated = true)
 
         assertThat(issued).isNotNull
         assertThat(savedUser?.signupChannel).isEqualTo(SignupChannel.APP)
@@ -76,10 +82,11 @@ class AuthServiceCompleteSignupTest {
     fun `signup-token 쿠키로 보내면 웹 가입으로 남긴다`() {
         val response = MockHttpServletResponse()
 
-        val issued = service.completeSignup(principal(), request(), response, bearerAuthenticated = false)
+        val issued = service.completeSignup(principal(), request(), MockHttpServletRequest(), response, bearerAuthenticated = false)
 
         assertThat(issued).isNull()
-        assertThat(response.getHeaders("Set-Cookie")).hasSize(3)
+        assertThat(response.getHeaders("Set-Cookie")).hasSize(4)
+        assertThat(response.getHeaders("Set-Cookie")).anyMatch { it.startsWith("device-id=") }
         assertThat(savedUser?.signupChannel).isEqualTo(SignupChannel.WEB)
     }
 
@@ -103,9 +110,13 @@ class AuthServiceCompleteSignupTest {
 
     private fun anyUser(): User = any(User::class.java) ?: PLACEHOLDER_USER
 
+    private fun anyDevice(): SessionDevice = any(SessionDevice::class.java) ?: PLACEHOLDER_DEVICE
+
     companion object {
         private const val USER_ID = 31L
         private const val SESSION_ID = 42L
+        private val COOKIE_PROPERTIES = CookieProperties(domain = null, secure = false, sameSite = "Lax")
+        private val PLACEHOLDER_DEVICE = SessionDevice.app(null, null, null)
         private val PLACEHOLDER_USER = User(
             provider = OAuth2LoginType.KAKAO,
             providerId = "placeholder",

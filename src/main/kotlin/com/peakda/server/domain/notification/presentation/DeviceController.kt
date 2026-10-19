@@ -20,7 +20,7 @@ class DeviceController(
         request: RegisterDeviceRequest,
     ): ResponseEntity<ApiResponse<Unit>> {
         val userId = requireNotNull(principal.getUser().id)
-        deviceTokenService.register(userId, request.token, request.platform)
+        deviceTokenService.register(userId, request.token, request.platform, request.deviceId)
         return ResponseEntity.ok(ApiResponse.success(HttpStatus.OK))
     }
 

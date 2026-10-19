@@ -7,6 +7,7 @@ import io.jsonwebtoken.security.Keys
 import jakarta.annotation.PostConstruct
 import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Component
+import java.util.UUID
 import javax.crypto.SecretKey
 
 @Component
@@ -22,27 +23,23 @@ class JwtTokenProvider(
         this.key = Keys.hmacShaKeyFor(keyBytes)
     }
 
-    fun validateToken(token: String): Boolean {
-        return try {
-            parser().parseSignedClaims(token)
-            true
+    /** 서명·만료를 검증하고 클레임을 꺼낸다. 검증에 실패하거나 subject 가 사용자 id 가 아니면 null. */
+    fun parse(token: String): JwtClaims? {
+        val payload = try {
+            parser().parseSignedClaims(token).payload
         } catch (e: JwtException) {
             log.debug("JWT 검증 실패: {}", e.message)
-            false
+            return null
         } catch (e: IllegalArgumentException) {
             log.debug("JWT 검증 실패: {}", e.message)
-            false
+            return null
         }
-    }
-
-    fun getUserIdFromToken(token: String): Long? {
-        return try {
-            parser().parseSignedClaims(token).payload.subject?.toLongOrNull()
-        } catch (e: JwtException) {
-            null
-        } catch (e: IllegalArgumentException) {
-            null
-        }
+        val userId = payload.subject?.toLongOrNull() ?: return null
+        val sessionId = payload.get(JwtTokenGeneratorImpl.SESSION_ID_KEY, String::class.java)
+            ?.let { runCatching { UUID.fromString(it) }.getOrNull() }
+        val refresh = payload.get(JwtTokenGeneratorImpl.TOKEN_TYPE_KEY, String::class.java) ==
+            JwtTokenGeneratorImpl.REFRESH_TOKEN_TYPE
+        return JwtClaims(userId = userId, sessionId = sessionId, refresh = refresh)
     }
 
     private fun parser() = Jwts.parser().verifyWith(key).build()

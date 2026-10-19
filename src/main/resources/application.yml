@@ -92,6 +92,7 @@ app:
     secret: ${JWT_SECRET}
     access-token-validity-in-seconds: 1800
     refresh-token-validity-in-seconds: 604800
+    app-refresh-token-validity-in-seconds: 2592000
   cookie:
     domain: ${COOKIE_DOMAIN}
     secure: ${COOKIE_SECURE}

@@ -14,6 +14,10 @@ object CookieUtils {
     fun createSignupTokenCookie(token: String, properties: CookieProperties): ResponseCookie =
         baseCookie(properties.signupTokenName, token, properties.signupTokenValidityInSeconds, properties)
 
+    /** 브라우저 식별자. 로그아웃해도 지우지 않아 같은 브라우저의 재로그인이 기기 수를 늘리지 않는다. */
+    fun createDeviceIdCookie(deviceId: String, properties: CookieProperties): ResponseCookie =
+        baseCookie(properties.deviceIdName, deviceId, properties.deviceIdValidityInSeconds, properties)
+
     fun deleteAccessTokenCookie(properties: CookieProperties): ResponseCookie =
         baseCookie(properties.accessTokenName, "", 0, properties)
 
@@ -28,6 +32,9 @@ object CookieUtils {
 
     fun getRefreshTokenFromCookies(cookies: Array<Cookie>?, properties: CookieProperties): String? =
         cookies?.firstOrNull { it.name == properties.refreshTokenName }?.value
+
+    fun getDeviceIdFromCookies(cookies: Array<Cookie>?, properties: CookieProperties): String? =
+        cookies?.firstOrNull { it.name == properties.deviceIdName }?.value
 
     fun getSignupTokenFromCookies(cookies: Array<Cookie>?, properties: CookieProperties): String? =
         cookies?.firstOrNull { it.name == properties.signupTokenName }?.value

@@ -1,7 +1,9 @@
 package com.peakda.server.domain.auth.signup.presentation.request
 
+import com.peakda.server.domain.auth.session.presentation.request.SessionDeviceRequest
 import com.peakda.server.domain.seasonal.entity.BloomCategory
 import io.swagger.v3.oas.annotations.media.Schema
+import jakarta.validation.Valid
 import jakarta.validation.constraints.NotEmpty
 import jakarta.validation.constraints.Pattern
 import jakarta.validation.constraints.Size
@@ -36,4 +38,8 @@ data class SignupCompleteRequest(
     )
     @field:NotEmpty
     val favoriteCategories: Set<BloomCategory>,
+
+    @field:Valid
+    @field:Schema(description = "앱 가입 시 로그인 기기 정보. 웹은 보내지 않는다.", nullable = true)
+    val device: SessionDeviceRequest? = null,
 )

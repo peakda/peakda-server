@@ -17,15 +17,22 @@ class DeviceTokenService(
     private val properties: DeviceTokenProperties,
 ) {
 
-    fun register(userId: Long, token: String, platform: DevicePlatform) {
+    fun register(userId: Long, token: String, platform: DevicePlatform, deviceId: String? = null) {
         userRepository.findByIdForUpdate(userId) ?: throw UserNotFoundException()
-        deviceTokenRepository.upsert(userId, token, platform.name)
+        deviceTokenRepository.upsert(userId, token, platform.name, deviceId)
         deviceTokenRepository.deleteExceeding(userId, properties.maxPerUser)
     }
 
     fun unregister(userId: Long, token: String) {
         deviceTokenRepository.deleteByUserIdAndToken(userId, token)
     }
+
+    /**
+     * 로그아웃·해제된 기기의 토큰을 지운다. 그 기기로 이 사용자의 알림이 더 가지 않는다.
+     * [revokedAt] 이후에 다시 등록된 토큰(재로그인)은 남긴다.
+     */
+    fun deleteByDevice(userId: Long, deviceId: String, revokedAt: Instant): Int =
+        deviceTokenRepository.deleteByDeviceUpdatedBefore(userId, deviceId, revokedAt)
 
     fun deleteAllByUser(userId: Long) {
         deviceTokenRepository.deleteByUserId(userId)
