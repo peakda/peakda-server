@@ -1,6 +1,6 @@
 package com.peakda.server.common.test
 
-import com.peakda.server.domain.auth.application.RefreshTokenService
+import com.peakda.server.domain.auth.session.application.AuthSessionCache
 import org.redisson.api.RedissonClient
 import org.springframework.boot.test.context.SpringBootTest
 import org.springframework.boot.testcontainers.service.connection.ServiceConnection
@@ -25,7 +25,7 @@ import org.testcontainers.containers.PostgreSQLContainer
 abstract class IntegrationTestSupport {
 
     @MockitoBean
-    lateinit var refreshTokenService: RefreshTokenService
+    lateinit var authSessionCache: AuthSessionCache
 
     @MockitoBean
     lateinit var redissonClient: RedissonClient

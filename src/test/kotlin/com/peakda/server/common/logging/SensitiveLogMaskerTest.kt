@@ -15,8 +15,8 @@ class SensitiveLogMaskerTest {
         val refresh = SensitiveLogMasker.mask("request=${AppTokenRefreshRequest("eyJhbGciOi.payload.sig")}")
         val exchange = SensitiveLogMasker.mask("request=${AppTokenExchangeRequest("one-time-code_123")}")
 
-        assertThat(refresh).isEqualTo("request=AppTokenRefreshRequest(refreshToken=***)")
-        assertThat(exchange).isEqualTo("request=AppTokenExchangeRequest(code=***)")
+        assertThat(refresh).isEqualTo("request=AppTokenRefreshRequest(refreshToken=***, device=null)")
+        assertThat(exchange).isEqualTo("request=AppTokenExchangeRequest(code=***, device=null)")
     }
 
     @Test
@@ -24,7 +24,7 @@ class SensitiveLogMaskerTest {
         val platform = DevicePlatform.entries.first()
         val masked = SensitiveLogMasker.mask("request=${RegisterDeviceRequest("fcm:APA91b-x_y", platform)}")
 
-        assertThat(masked).isEqualTo("request=RegisterDeviceRequest(token=***, platform=$platform)")
+        assertThat(masked).isEqualTo("request=RegisterDeviceRequest(token=***, platform=$platform, deviceId=null)")
     }
 
     @Test

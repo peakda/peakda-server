@@ -5,7 +5,10 @@ import com.peakda.server.common.exception.ErrorCode
 import com.peakda.server.common.security.jwt.JwtProperties
 import com.peakda.server.common.security.jwt.TokenResponse
 import com.peakda.server.domain.auth.app.presentation.response.AppAuthStatus
+import com.peakda.server.domain.auth.application.RotatedTokens
 import com.peakda.server.domain.auth.application.TokenIssueService
+import com.peakda.server.domain.auth.session.application.SessionDevice
+import com.peakda.server.domain.auth.session.entity.SessionPlatform
 import com.peakda.server.domain.auth.signup.application.SignupSessionService
 import com.peakda.server.domain.auth.signup.entity.SignupSession
 import com.peakda.server.domain.user.entity.User
@@ -43,16 +46,16 @@ class AppAuthServiceTest {
         val user = activeUser()
         `when`(authorizationCodeService.consume(CODE)).thenReturn(AuthorizationCodePayload.Authenticated(USER_ID))
         `when`(userRepository.findById(USER_ID)).thenReturn(Optional.of(user))
-        `when`(tokenIssueService.issue(user)).thenReturn(TOKENS)
+        `when`(tokenIssueService.issue(user, DEVICE)).thenReturn(TOKENS)
 
-        val response = service.exchange(CODE)
+        val response = service.exchange(CODE, DEVICE)
 
         assertThat(response.status).isEqualTo(AppAuthStatus.AUTHENTICATED)
         assertThat(response.accessToken).isEqualTo("access-token")
         assertThat(response.refreshToken).isEqualTo("refresh-token")
         assertThat(response.tokenType).isEqualTo("Bearer")
         assertThat(response.accessTokenExpiresIn).isEqualTo(1800)
-        assertThat(response.refreshTokenExpiresIn).isEqualTo(604800)
+        assertThat(response.refreshTokenExpiresIn).isEqualTo(2_592_000)
         assertThat(response.signupToken).isNull()
     }
 
@@ -64,7 +67,7 @@ class AppAuthServiceTest {
             .thenReturn(AuthorizationCodePayload.SignupRequired(SIGNUP_TOKEN))
         `when`(signupSessionService.findValidByToken(SIGNUP_TOKEN)).thenReturn(session)
 
-        val response = service.exchange(CODE)
+        val response = service.exchange(CODE, DEVICE)
 
         assertThat(response.status).isEqualTo(AppAuthStatus.SIGNUP_REQUIRED)
         assertThat(response.signupToken).isEqualTo(SIGNUP_TOKEN)
@@ -76,7 +79,7 @@ class AppAuthServiceTest {
     fun `이미 쓰였거나 만료된 코드는 교환하지 못한다`() {
         `when`(authorizationCodeService.consume(CODE)).thenReturn(null)
 
-        assertThatThrownBy { service.exchange(CODE) }
+        assertThatThrownBy { service.exchange(CODE, DEVICE) }
             .isInstanceOf(AuthorizationException::class.java)
             .hasFieldOrPropertyWithValue("errorCode", ErrorCode.AUTH_CODE_INVALID)
     }
@@ -88,7 +91,7 @@ class AppAuthServiceTest {
         `when`(authorizationCodeService.consume(CODE)).thenReturn(AuthorizationCodePayload.Authenticated(USER_ID))
         `when`(userRepository.findById(USER_ID)).thenReturn(Optional.of(user))
 
-        assertThatThrownBy { service.exchange(CODE) }
+        assertThatThrownBy { service.exchange(CODE, DEVICE) }
             .isInstanceOf(AuthorizationException::class.java)
             .hasFieldOrPropertyWithValue("errorCode", ErrorCode.UNAUTHORIZED)
     }
@@ -99,16 +102,16 @@ class AppAuthServiceTest {
             .thenReturn(AuthorizationCodePayload.SignupRequired(SIGNUP_TOKEN))
         `when`(signupSessionService.findValidByToken(SIGNUP_TOKEN)).thenReturn(null)
 
-        assertThatThrownBy { service.exchange(CODE) }
+        assertThatThrownBy { service.exchange(CODE, DEVICE) }
             .isInstanceOf(AuthorizationException::class.java)
             .hasFieldOrPropertyWithValue("errorCode", ErrorCode.SIGNUP_SESSION_EXPIRED)
     }
 
     @Test
     fun `재발급은 회전 결과를 그대로 옮긴다`() {
-        `when`(tokenIssueService.rotate("old-refresh-token")).thenReturn(TOKENS)
+        `when`(tokenIssueService.rotate("old-refresh-token", DEVICE)).thenReturn(RotatedTokens(TOKENS, "device-1"))
 
-        val response = service.refresh("old-refresh-token")
+        val response = service.refresh("old-refresh-token", DEVICE)
 
         assertThat(response.status).isEqualTo(AppAuthStatus.AUTHENTICATED)
         assertThat(response.accessToken).isEqualTo("access-token")
@@ -125,6 +128,8 @@ class AppAuthServiceTest {
             tokenType = "Bearer",
             accessToken = "access-token",
             refreshToken = "refresh-token",
+            refreshTokenExpiresIn = 2_592_000,
         )
+        private val DEVICE = SessionDevice.app("device-1", "SM-S918N", SessionPlatform.ANDROID)
     }
 }

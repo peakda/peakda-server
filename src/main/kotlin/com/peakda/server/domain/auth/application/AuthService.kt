@@ -12,6 +12,9 @@ import com.peakda.server.common.security.principal.SignupSessionPrincipal
 import com.peakda.server.common.storage.ObjectKeyUrlResolver
 import com.peakda.server.common.storage.ObjectStorage
 import com.peakda.server.domain.auth.presentation.response.UserInfoResponse
+import com.peakda.server.domain.auth.session.application.AuthSessionService
+import com.peakda.server.domain.auth.session.application.WebSessionDevices
+import com.peakda.server.domain.auth.session.application.SessionDevice
 import com.peakda.server.domain.auth.signup.application.SignupProfileImagePolicy
 import com.peakda.server.domain.auth.signup.presentation.request.SignupCompleteRequest
 import com.peakda.server.domain.auth.signup.presentation.response.NicknameCheckResponse
@@ -37,8 +40,9 @@ class AuthService(
     private val userRepository: UserRepository,
     private val cookieProperties: CookieProperties,
     private val jwtProperties: JwtProperties,
-    private val refreshTokenService: RefreshTokenService,
     private val tokenIssueService: TokenIssueService,
+    private val authSessionService: AuthSessionService,
+    private val webSessionDevices: WebSessionDevices,
     private val signupSessionRepository: SignupSessionRepository,
     private val imageResizer: ImageResizer,
     private val objectStorage: ObjectStorage,
@@ -107,6 +111,7 @@ class AuthService(
     fun completeSignup(
         principal: SignupSessionPrincipal,
         request: SignupCompleteRequest,
+        httpRequest: HttpServletRequest,
         response: HttpServletResponse,
         bearerAuthenticated: Boolean,
     ): TokenResponse? {
@@ -137,9 +142,13 @@ class AuthService(
 
         signupSessionRepository.delete(signupSession)
 
-        val tokenResponse = tokenIssueService.issue(user)
-        if (bearerAuthenticated) return tokenResponse
+        if (bearerAuthenticated) {
+            return tokenIssueService.issue(user, request.device?.toSessionDevice() ?: SessionDevice.unknownApp())
+        }
 
+        val device = webSessionDevices.resolve(httpRequest)
+        val tokenResponse = tokenIssueService.issue(user, device)
+        webSessionDevices.writeCookie(response, device.deviceId)
         val signupTokenCookie = CookieUtils.deleteSignupTokenCookie(cookieProperties)
         val accessTokenCookie = CookieUtils.createAccessTokenCookie(
             token = tokenResponse.accessToken,
@@ -148,7 +157,7 @@ class AuthService(
         )
         val refreshTokenCookie = CookieUtils.createRefreshTokenCookie(
             token = tokenResponse.refreshToken,
-            maxAge = jwtProperties.refreshTokenValidityInSeconds,
+            maxAge = tokenResponse.refreshTokenExpiresIn,
             properties = cookieProperties,
         )
 
@@ -163,7 +172,9 @@ class AuthService(
         val refreshToken = CookieUtils.getRefreshTokenFromCookies(request.cookies, cookieProperties)
             ?: throw AuthorizationException(ErrorCode.REFRESH_TOKEN_EXPIRED)
 
-        val tokenResponse = tokenIssueService.rotate(refreshToken)
+        val rotated = tokenIssueService.rotate(refreshToken, webSessionDevices.resolve(request))
+        val tokenResponse = rotated.tokens
+        webSessionDevices.writeCookie(response, rotated.deviceId)
 
         val accessTokenCookie = CookieUtils.createAccessTokenCookie(
             token = tokenResponse.accessToken,
@@ -172,7 +183,7 @@ class AuthService(
         )
         val refreshTokenCookie = CookieUtils.createRefreshTokenCookie(
             token = tokenResponse.refreshToken,
-            maxAge = jwtProperties.refreshTokenValidityInSeconds,
+            maxAge = tokenResponse.refreshTokenExpiresIn,
             properties = cookieProperties
         )
 
@@ -180,9 +191,9 @@ class AuthService(
         response.addHeader("Set-Cookie", refreshTokenCookie.toString())
     }
 
-    fun logout(userId: Long, response: HttpServletResponse) {
-        // Redis에서 Refresh Token 삭제
-        refreshTokenService.deleteRefreshToken(userId)
+    /** 지금 요청한 기기만 로그아웃한다. 다른 기기의 로그인은 유지된다. */
+    fun logout(userId: Long, sessionId: UUID?, response: HttpServletResponse) {
+        authSessionService.revokeCurrent(userId, sessionId)
 
         val accessTokenCookie = CookieUtils.deleteAccessTokenCookie(cookieProperties)
         val refreshTokenCookie = CookieUtils.deleteRefreshTokenCookie(cookieProperties)
