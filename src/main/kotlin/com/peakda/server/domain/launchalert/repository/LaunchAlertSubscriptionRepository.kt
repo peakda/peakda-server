@@ -48,27 +48,19 @@ interface LaunchAlertSubscriptionRepository : JpaRepository<LaunchAlertSubscript
         pageable: Pageable,
     ): Page<LaunchAlertSubscription>
 
-    fun findAllByPlatformOrderByIdAsc(platform: LaunchAlertPlatform): List<LaunchAlertSubscription>
+    fun countByPlatform(platform: LaunchAlertPlatform): Long
+
+    fun findTop100ByPlatformAndIdGreaterThanOrderByIdAsc(
+        platform: LaunchAlertPlatform,
+        id: Long,
+    ): List<LaunchAlertSubscription>
 
     /**
-     * 내려받은 신청에 내려받은 시각을 찍는다. 조회한 id 로만 찍는다 — id 범위로 찍으면 조회 시점에 아직
-     * 커밋되지 않았던 더 작은 id 의 신청까지 찍혀, 메일을 못 받은 채 파기될 수 있다.
+     * 메일을 보낸 신청을 한 건씩 바로 지운다. 묶음이 끝난 뒤 한꺼번에 지우면, 그 사이 잡이 끊겼을 때
+     * 이미 메일을 받은 사람이 다음 실행에서 또 받는다.
      */
+    @Transactional
     @Modifying
-    @Query(
-        value = """
-            UPDATE launch_alert_subscriptions
-            SET exported_at = :exportedAt, updated_at = :exportedAt
-            WHERE id = ANY(CAST(:ids AS bigint[])) AND exported_at IS NULL
-        """,
-        nativeQuery = true,
-    )
-    fun markExported(
-        @Param("ids") ids: LongArray,
-        @Param("exportedAt") exportedAt: Instant,
-    ): Int
-
-    @Modifying
-    @Query("DELETE FROM LaunchAlertSubscription s WHERE s.platform = :platform AND s.exportedAt IS NOT NULL")
-    fun deleteExported(@Param("platform") platform: LaunchAlertPlatform): Int
+    @Query("DELETE FROM LaunchAlertSubscription s WHERE s.id = :id")
+    fun deleteSent(@Param("id") id: Long): Int
 }

@@ -15,9 +15,9 @@ import java.time.Instant
 /**
  * 랜딩 페이지의 앱 출시 알림 신청 1건.
  *
- * 회원과 무관한 개인정보라 users 와 연결하지 않는다. 출시 안내를 보내면 목적을 다하므로 관리자가 파기한다.
+ * 회원과 무관한 개인정보라 users 와 연결하지 않는다.
  * 저장은 같은 이메일 재신청을 한 번에 처리하려고 레포지토리의 upsert 로만 한다.
- * 파기는 [exportedAt] 이 찍힌 신청, 즉 관리자가 실제로 내려받아 메일을 보낸 신청만 대상으로 한다.
+ * 출시 안내 메일을 보내는 즉시 지운다. 보내지 못한 신청만 남는다.
  */
 @Entity
 @Table(
@@ -40,10 +40,6 @@ class LaunchAlertSubscription(
     @Column(name = "consented_at", nullable = false)
     val consentedAt: Instant,
 ) : BaseTimeEntity() {
-
-    @Column(name = "exported_at")
-    var exportedAt: Instant? = null
-        protected set
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)

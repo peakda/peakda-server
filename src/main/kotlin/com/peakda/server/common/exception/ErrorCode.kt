@@ -87,4 +87,10 @@ enum class ErrorCode(
     LAUNCH_ALERT_CONSENT_REQUIRED(HttpStatus.BAD_REQUEST, "개인정보 수집·이용에 동의해야 알림을 신청할 수 있습니다."),
     LAUNCH_ALERT_RATE_LIMIT(HttpStatus.TOO_MANY_REQUESTS, "신청이 너무 많습니다. 잠시 후 다시 시도해 주세요."),
     LAUNCH_ALERT_SUBSCRIPTION_NOT_FOUND(HttpStatus.NOT_FOUND, "출시 알림 신청을 찾을 수 없습니다."),
+    LAUNCH_ALERT_MAIL_UNAVAILABLE(HttpStatus.SERVICE_UNAVAILABLE, "메일 발송 또는 발송 잡이 꺼져 있습니다."),
+    LAUNCH_ALERT_MAIL_SEND_FAILED(HttpStatus.BAD_GATEWAY, "메일을 보내지 못했습니다."),
+    LAUNCH_ALERT_DISPATCH_IN_PROGRESS(HttpStatus.CONFLICT, "이미 출시 안내를 보내는 중입니다."),
+    LAUNCH_ALERT_NO_RECIPIENTS(HttpStatus.BAD_REQUEST, "보낼 출시 알림 신청이 없습니다."),
+    LAUNCH_ALERT_DISPATCH_NOT_FOUND(HttpStatus.NOT_FOUND, "출시 안내 발송을 찾을 수 없습니다."),
+    LAUNCH_ALERT_DISPATCH_NOT_CANCELABLE(HttpStatus.CONFLICT, "보내는 중인 발송만 멈출 수 있습니다."),
 }

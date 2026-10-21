@@ -22,9 +22,6 @@ data class LaunchAlertSubscriptionResponse(
     @field:Schema(description = "동의 시각. 재신청하면 갱신된다", example = "2026-10-21T03:12:45Z")
     val consentedAt: Instant,
 
-    @field:Schema(description = "발송 대상으로 내려받은 시각. 아직이면 null", example = "2026-11-02T01:00:00Z", nullable = true)
-    val exportedAt: Instant?,
-
     @field:Schema(description = "최초 신청 시각", example = "2026-10-21T03:12:45Z")
     val createdAt: Instant,
 ) {
@@ -36,7 +33,6 @@ data class LaunchAlertSubscriptionResponse(
                 email = subscription.email,
                 consentVersion = subscription.consentVersion,
                 consentedAt = subscription.consentedAt,
-                exportedAt = subscription.exportedAt,
                 createdAt = subscription.createdAt,
             )
     }

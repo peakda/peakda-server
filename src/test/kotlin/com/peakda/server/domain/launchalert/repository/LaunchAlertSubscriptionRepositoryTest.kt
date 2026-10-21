@@ -1,20 +1,26 @@
 package com.peakda.server.domain.launchalert.repository
 
 import com.peakda.server.common.test.IntegrationTestSupport
+import com.peakda.server.domain.launchalert.entity.LaunchAlertDispatch
 import com.peakda.server.domain.launchalert.entity.LaunchAlertPlatform
 import jakarta.persistence.EntityManager
 import org.assertj.core.api.Assertions.assertThat
+import org.assertj.core.api.Assertions.assertThatThrownBy
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.springframework.beans.factory.annotation.Autowired
+import org.springframework.dao.DataIntegrityViolationException
 import org.springframework.transaction.annotation.Transactional
 import java.time.Instant
 
-/** upsert 의 ON CONFLICT 와 파기 범위가 PostgreSQL 에서 실제로 맞게 도는지 확인한다. */
+/** upsert 의 ON CONFLICT, 커서 조회, 발송 중 한 건 제약이 PostgreSQL 에서 실제로 맞게 도는지 확인한다. */
 class LaunchAlertSubscriptionRepositoryTest : IntegrationTestSupport() {
 
     @Autowired
     lateinit var repository: LaunchAlertSubscriptionRepository
+
+    @Autowired
+    lateinit var dispatchRepository: LaunchAlertDispatchRepository
 
     @Autowired
     lateinit var entityManager: EntityManager
@@ -22,6 +28,7 @@ class LaunchAlertSubscriptionRepositoryTest : IntegrationTestSupport() {
     @BeforeEach
     fun cleanUp() {
         repository.deleteAll()
+        dispatchRepository.deleteAll()
     }
 
     @Test
@@ -39,34 +46,29 @@ class LaunchAlertSubscriptionRepositoryTest : IntegrationTestSupport() {
 
     @Test
     @Transactional
-    fun `파기는 내려받은 신청만 지워 그 뒤 신청은 남긴다`() {
-        repository.upsert(IOS, "a@peakda.com", "v1", FIRST)
-        repository.upsert(IOS, "b@peakda.com", "v1", FIRST)
-        val exported = repository.findAllByPlatformOrderByIdAsc(LaunchAlertPlatform.IOS)
-        repository.upsert(IOS, "c@peakda.com", "v1", SECOND)
+    fun `커서 다음 신청만 id 순으로 가져오고 보낸 신청은 한 건씩 지운다`() {
+        listOf("a", "b", "c").forEach { repository.upsert(IOS, "$it@peakda.com", "v1", FIRST) }
+        val ids = repository.findAll().map { requireNotNull(it.id) }.sorted()
 
-        val marked = repository.markExported(exported.map { requireNotNull(it.id) }.toLongArray(), SECOND)
-        val deleted = repository.deleteExported(LaunchAlertPlatform.IOS)
+        val next = repository.findTop100ByPlatformAndIdGreaterThanOrderByIdAsc(LaunchAlertPlatform.IOS, ids[0])
+        val deleted = repository.deleteSent(ids[1])
         entityManager.clear()
 
-        assertThat(marked).isEqualTo(2)
-        assertThat(deleted).isEqualTo(2)
-        assertThat(repository.findAll().map { it.email }).containsExactly("c@peakda.com")
+        assertThat(next.map { it.email }).containsExactly("b@peakda.com", "c@peakda.com")
+        assertThat(deleted).isEqualTo(1)
+        assertThat(repository.countByPlatform(LaunchAlertPlatform.IOS)).isEqualTo(2)
     }
 
     @Test
-    @Transactional
-    fun `다시 내려받아도 처음 내려받은 시각을 유지한다`() {
-        repository.upsert(IOS, "a@peakda.com", "v1", FIRST)
-        val id = requireNotNull(repository.findAll().single().id)
+    fun `플랫폼마다 발송 중인 발송은 하나뿐이다`() {
+        dispatchRepository.saveAndFlush(dispatch())
 
-        repository.markExported(longArrayOf(id), FIRST)
-        val markedAgain = repository.markExported(longArrayOf(id), SECOND)
-        entityManager.clear()
-
-        assertThat(markedAgain).isZero()
-        assertThat(repository.findAll().single().exportedAt).isEqualTo(FIRST)
+        assertThatThrownBy { dispatchRepository.saveAndFlush(dispatch()) }
+            .isInstanceOf(DataIntegrityViolationException::class.java)
     }
+
+    private fun dispatch() =
+        LaunchAlertDispatch(platform = LaunchAlertPlatform.IOS, storeUrl = "https://apps.apple.com/kr/app/id1", requestedBy = 1L)
 
     companion object {
         private val IOS = LaunchAlertPlatform.IOS.name

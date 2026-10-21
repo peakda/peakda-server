@@ -6,14 +6,25 @@ import java.time.Duration
 /**
  * @property consentVersion 랜딩 페이지에 보이는 개인정보 수집·이용 안내 문구의 버전. 문구를 바꾸면 함께 올린다.
  * @property rateLimit 같은 IP 의 신청 횟수 제한. 비로그인 공개 API 라 자동 대량 등록을 막는다.
+ * @property dispatch 출시 안내 메일 발송 속도와 중단 기준
  */
 @ConfigurationProperties(prefix = "app.launch-alert")
 data class LaunchAlertProperties(
     val consentVersion: String = "2026-10-21",
     val rateLimit: RateLimit = RateLimit(),
+    val dispatch: Dispatch = Dispatch(),
 ) {
     data class RateLimit(
         val maxPerWindow: Long = 10,
         val window: Duration = Duration.ofHours(1),
+    )
+
+    /**
+     * @property sendInterval 메일 사이 간격. 발송 서비스의 초당 한도를 넘지 않게 한다.
+     * @property maxConsecutiveFailures 연속으로 이만큼 실패하면 SMTP 장애로 보고 발송을 중단한다.
+     */
+    data class Dispatch(
+        val sendInterval: Duration = Duration.ofMillis(200),
+        val maxConsecutiveFailures: Int = 10,
     )
 }
