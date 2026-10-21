@@ -11,6 +11,7 @@ const NAV_ITEMS = [
     ['jobs', '/admin/jobs.html', '스케줄러 잡'],
     ['audit-logs', '/admin/audit-logs.html', '감사 로그'],
     ['location-usage-logs', '/admin/location-usage-logs.html', '위치정보 이용내역'],
+    ['launch-alerts', '/admin/launch-alerts.html', '출시 알림 신청'],
 ];
 
 function renderSidebar(activePage) {

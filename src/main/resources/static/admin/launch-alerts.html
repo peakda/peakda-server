@@ -1,0 +1,73 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link rel="stylesheet" href="css/app.css">
+  <title>출시 알림 신청 | PEAKDA Admin</title>
+  <script type="module" src="./js/launch-alerts.js"></script>
+</head>
+<body data-page="launch-alerts">
+  <div id="app-shell" class="app-shell">
+    <aside id="app-sidebar" class="app-sidebar" aria-label="관리자 메뉴"></aside>
+    <div class="app-workspace">
+      <header id="app-header" class="app-header"></header>
+      <main id="page-content" class="page-content" tabindex="-1">
+        <section class="page-section" aria-labelledby="launch-alert-title">
+          <div class="page-heading">
+            <div>
+              <p class="eyebrow">운영</p>
+              <h1 id="launch-alert-title">iOS 출시 알림 신청</h1>
+            </div>
+            <button type="button" class="button" id="launch-alert-refresh-button">새로고침</button>
+          </div>
+
+          <section class="panel" aria-labelledby="launch-alert-dispatch-title">
+            <div class="panel-header">
+              <div>
+                <h2 id="launch-alert-dispatch-title">출시 안내 발송</h2>
+                <p>목록을 CSV로 내려받아 메일을 보낸 뒤, 내려받은 신청을 파기합니다. 내려받은 뒤 들어온 신청은 남습니다.</p>
+              </div>
+              <div class="panel-actions">
+                <button type="button" class="button button-primary" id="launch-alert-export-button">발송 대상 CSV 내려받기</button>
+                <button type="button" class="button button-danger" id="launch-alert-purge-button">발송 완료 · 파기</button>
+              </div>
+            </div>
+            <div class="panel-body">
+              <p class="muted" id="launch-alert-export-status" aria-live="polite">"내려받음" 열에 시각이 있는 신청만 파기됩니다.</p>
+            </div>
+          </section>
+
+          <form id="launch-alert-filter-form" class="toolbar" aria-label="출시 알림 신청 검색">
+            <label class="field field-inline" for="launch-alert-email">
+              <span>이메일</span>
+              <input id="launch-alert-email" name="email" type="search" placeholder="xxx.com" autocomplete="off">
+            </label>
+            <button type="submit" class="button">검색</button>
+          </form>
+
+          <div class="table-wrap" aria-live="polite" aria-busy="false" id="launch-alert-table-wrap">
+            <table class="data-table">
+              <caption>출시 알림 신청 목록</caption>
+              <thead>
+                <tr>
+                  <th scope="col">이메일</th>
+                  <th scope="col">동의 문구 버전</th>
+                  <th scope="col">동의 시각</th>
+                  <th scope="col">내려받음</th>
+                  <th scope="col">최초 신청</th>
+                  <th scope="col"><span class="sr-only">조치</span></th>
+                </tr>
+              </thead>
+              <tbody id="launch-alert-table-body"></tbody>
+            </table>
+          </div>
+          <nav id="launch-alert-pagination" class="pagination" aria-label="출시 알림 신청 페이지"></nav>
+        </section>
+      </main>
+    </div>
+  </div>
+  <div id="toast-region" class="toast-region" aria-live="polite" aria-atomic="true"></div>
+  <div id="modal-root"></div>
+</body>
+</html>
