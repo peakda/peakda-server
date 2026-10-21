@@ -26,15 +26,48 @@
             <div class="panel-header">
               <div>
                 <h2 id="launch-alert-dispatch-title">출시 안내 발송</h2>
-                <p>목록을 CSV로 내려받아 메일을 보낸 뒤, 내려받은 신청을 파기합니다. 내려받은 뒤 들어온 신청은 남습니다.</p>
-              </div>
-              <div class="panel-actions">
-                <button type="button" class="button button-primary" id="launch-alert-export-button">발송 대상 CSV 내려받기</button>
-                <button type="button" class="button button-danger" id="launch-alert-purge-button">발송 완료 · 파기</button>
+                <p>남은 신청 전체에 메일을 보냅니다. 보낸 신청은 바로 지워지고, 보내지 못한 신청만 목록에 남습니다.</p>
               </div>
             </div>
-            <div class="panel-body">
-              <p class="muted" id="launch-alert-export-status" aria-live="polite">"내려받음" 열에 시각이 있는 신청만 파기됩니다.</p>
+            <form id="launch-alert-dispatch-form" class="panel-body form-grid" aria-label="출시 안내 발송">
+              <label class="field">
+                <span class="field__label">App Store 주소</span>
+                <input id="launch-alert-store-url" class="field__control" type="url" required
+                  placeholder="https://apps.apple.com/kr/app/..." autocomplete="off">
+              </label>
+              <label class="field">
+                <span class="field__label">테스트 받을 주소</span>
+                <input id="launch-alert-test-email" class="field__control" type="email" placeholder="본인 이메일" autocomplete="email">
+              </label>
+              <div class="panel-actions">
+                <button type="button" class="button" id="launch-alert-test-button">테스트 발송</button>
+                <button type="button" class="button button-danger" id="launch-alert-dispatch-button">전체 발송</button>
+              </div>
+            </form>
+          </section>
+
+          <section class="panel" aria-labelledby="launch-alert-history-title">
+            <div class="panel-header">
+              <div>
+                <h2 id="launch-alert-history-title">발송 이력</h2>
+                <p>요청 후 30초 안에 시작해 100건씩 보냅니다. 보내는 중에는 이 표가 자동으로 갱신됩니다.</p>
+              </div>
+            </div>
+            <div class="table-wrap">
+              <table class="data-table">
+                <caption>출시 안내 발송 이력</caption>
+                <thead>
+                  <tr>
+                    <th scope="col">상태</th>
+                    <th scope="col">보냄</th>
+                    <th scope="col">실패</th>
+                    <th scope="col">요청</th>
+                    <th scope="col">종료</th>
+                    <th scope="col"><span class="sr-only">조치</span></th>
+                  </tr>
+                </thead>
+                <tbody id="launch-alert-dispatch-body"></tbody>
+              </table>
             </div>
           </section>
 
@@ -54,7 +87,6 @@
                   <th scope="col">이메일</th>
                   <th scope="col">동의 문구 버전</th>
                   <th scope="col">동의 시각</th>
-                  <th scope="col">내려받음</th>
                   <th scope="col">최초 신청</th>
                   <th scope="col"><span class="sr-only">조치</span></th>
                 </tr>

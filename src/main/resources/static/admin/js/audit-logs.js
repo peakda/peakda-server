@@ -39,8 +39,9 @@ const ACTION_LABELS = {
   USER_SUSPEND: '사용자 정지',
   USER_UNSUSPEND: '사용자 정지 해제',
   SCHEDULER_JOB_TRIGGER: '잡 수동 실행',
-  LAUNCH_ALERT_EXPORT: '출시 알림 대상 내려받기',
-  LAUNCH_ALERT_PURGE: '출시 알림 신청 파기',
+  LAUNCH_ALERT_DISPATCH: '출시 안내 발송',
+  LAUNCH_ALERT_DISPATCH_CANCEL: '출시 안내 발송 멈춤',
+  LAUNCH_ALERT_TEST_SEND: '출시 안내 테스트 발송',
   LAUNCH_ALERT_DELETE: '출시 알림 신청 삭제',
 };
 

@@ -10,12 +10,23 @@ import {
 } from './ui.js';
 
 const PLATFORM = 'IOS';
-const COLUMN_COUNT = 6;
+const COLUMN_COUNT = 5;
+const DISPATCH_COLUMN_COUNT = 6;
+const POLL_INTERVAL_MS = 10000;
+
+const STATUS_LABELS = {
+  DISPATCHING: '보내는 중',
+  COMPLETED: '완료',
+  FAILED: '중단',
+  CANCELED: '멈춤',
+};
 
 const state = {
   page: 0,
   size: 20,
   email: '',
+  totalElements: 0,
+  pollTimer: null,
 };
 
 const els = {};
@@ -23,20 +34,23 @@ const els = {};
 document.addEventListener('DOMContentLoaded', () => {
   initLayout({
     title: 'iOS 출시 알림 신청',
-    description: '랜딩 페이지에서 받은 출시 알림 신청을 확인하고, 안내 메일을 보낸 뒤 파기합니다.',
+    description: '랜딩 페이지에서 받은 출시 알림 신청을 확인하고, 출시 안내 메일을 보냅니다.',
   });
   bindElements();
   bindEvents();
-  loadSubscriptions();
+  refresh();
 });
 
 function bindElements() {
   els.form = document.querySelector('#launch-alert-filter-form');
   els.email = document.querySelector('#launch-alert-email');
   els.refreshButton = document.querySelector('#launch-alert-refresh-button');
-  els.exportButton = document.querySelector('#launch-alert-export-button');
-  els.purgeButton = document.querySelector('#launch-alert-purge-button');
-  els.exportStatus = document.querySelector('#launch-alert-export-status');
+  els.dispatchForm = document.querySelector('#launch-alert-dispatch-form');
+  els.storeUrl = document.querySelector('#launch-alert-store-url');
+  els.testEmail = document.querySelector('#launch-alert-test-email');
+  els.testButton = document.querySelector('#launch-alert-test-button');
+  els.dispatchButton = document.querySelector('#launch-alert-dispatch-button');
+  els.dispatchBody = document.querySelector('#launch-alert-dispatch-body');
   els.tableWrap = document.querySelector('#launch-alert-table-wrap');
   els.tbody = document.querySelector('#launch-alert-table-body');
   els.pagination = document.querySelector('#launch-alert-pagination');
@@ -49,13 +63,24 @@ function bindEvents() {
     state.email = els.email.value.trim();
     loadSubscriptions();
   });
-  els.refreshButton.addEventListener('click', loadSubscriptions);
-  els.exportButton.addEventListener('click', exportRecipients);
-  els.purgeButton.addEventListener('click', purgeExported);
+  els.refreshButton.addEventListener('click', refresh);
+  els.testButton.addEventListener('click', sendTestMail);
+  // 입력란에서 Enter 를 눌러도 전체 발송이 시작되지 않게, 폼 제출은 막고 버튼으로만 보낸다.
+  els.dispatchForm.addEventListener('submit', (event) => event.preventDefault());
+  els.dispatchButton.addEventListener('click', requestDispatch);
+  els.dispatchBody.addEventListener('click', (event) => {
+    const button = event.target.closest('button[data-action="cancel"]');
+    if (button) cancelDispatch(button.dataset.id);
+  });
   els.tbody.addEventListener('click', (event) => {
     const button = event.target.closest('button[data-action="delete"]');
     if (button) deleteSubscription(button.dataset.id, button.dataset.email);
   });
+}
+
+function refresh() {
+  loadSubscriptions();
+  loadDispatches();
 }
 
 async function loadSubscriptions() {
@@ -64,6 +89,7 @@ async function loadSubscriptions() {
     const page = await request('/api/admin/launch-alerts', {
       query: { platform: PLATFORM, email: state.email, page: state.page, size: state.size },
     });
+    if (!state.email) state.totalElements = page.totalElements ?? 0;
     renderRows(page.content || []);
     renderPagination(els.pagination, page, (nextPage) => {
       state.page = nextPage;
@@ -88,7 +114,6 @@ function renderRows(subscriptions) {
       <td><strong>${escapeHtml(subscription.email)}</strong></td>
       <td>${escapeHtml(subscription.consentVersion)}</td>
       <td>${escapeHtml(formatDateTime(subscription.consentedAt))}</td>
-      <td>${subscription.exportedAt ? escapeHtml(formatDateTime(subscription.exportedAt)) : '<span class="muted">-</span>'}</td>
       <td>${escapeHtml(formatDateTime(subscription.createdAt))}</td>
       <td>
         <button
@@ -103,47 +128,107 @@ function renderRows(subscriptions) {
   `).join('');
 }
 
-async function exportRecipients() {
-  els.exportButton.disabled = true;
+async function loadDispatches() {
   try {
-    const recipients = await request('/api/admin/launch-alerts/recipients', { query: { platform: PLATFORM } });
-    if (!recipients.count) {
-      els.exportStatus.textContent = '발송할 신청이 없습니다.';
-      return;
-    }
-    downloadCsv(recipients.emails);
-    els.exportStatus.textContent = `${recipients.count}건을 내려받았습니다. 메일을 모두 보낸 뒤 "발송 완료 · 파기"를 누르세요.`;
-    loadSubscriptions();
+    const page = await request('/api/admin/launch-alerts/dispatches', { query: { page: 0, size: 5 } });
+    const dispatches = page.content || [];
+    renderDispatches(dispatches);
+    schedulePoll(dispatches.some((dispatch) => dispatch.status === 'DISPATCHING'));
   } catch (error) {
-    showToast(error.message || '발송 대상을 내려받지 못했습니다.', 'error');
-  } finally {
-    els.exportButton.disabled = false;
+    els.dispatchBody.innerHTML = emptyTableRow(DISPATCH_COLUMN_COUNT, '발송 이력을 불러오지 못했습니다.');
   }
 }
 
-async function purgeExported() {
+function renderDispatches(dispatches) {
+  const inProgress = dispatches.some((dispatch) => dispatch.status === 'DISPATCHING');
+  els.dispatchButton.disabled = inProgress;
+  if (!dispatches.length) {
+    els.dispatchBody.innerHTML = emptyTableRow(DISPATCH_COLUMN_COUNT, '아직 보낸 적이 없습니다.');
+    return;
+  }
+
+  els.dispatchBody.innerHTML = dispatches.map((dispatch) => `
+    <tr>
+      <td><strong>${escapeHtml(STATUS_LABELS[dispatch.status] || dispatch.status)}</strong></td>
+      <td>${escapeHtml(dispatch.sentCount)}</td>
+      <td>${escapeHtml(dispatch.failedCount)}</td>
+      <td>${escapeHtml(formatDateTime(dispatch.requestedAt))}</td>
+      <td>${dispatch.completedAt ? escapeHtml(formatDateTime(dispatch.completedAt)) : '-'}</td>
+      <td>${dispatch.status === 'DISPATCHING'
+        ? `<button type="button" class="button button-small button-danger" data-action="cancel" data-id="${escapeHtml(dispatch.id)}">멈춤</button>`
+        : ''}</td>
+    </tr>
+  `).join('');
+}
+
+/** 보내는 중이면 진행 수와 남은 신청이 바뀌므로 주기적으로 다시 읽는다. */
+function schedulePoll(inProgress) {
+  clearTimeout(state.pollTimer);
+  state.pollTimer = inProgress ? setTimeout(refresh, POLL_INTERVAL_MS) : null;
+}
+
+async function sendTestMail() {
+  if (!els.storeUrl.reportValidity()) return;
+  const email = els.testEmail.value.trim();
+  if (!email || !els.testEmail.checkValidity()) {
+    els.testEmail.focus();
+    showToast('테스트 받을 이메일을 입력해 주세요.', 'error');
+    return;
+  }
+
+  els.testButton.disabled = true;
+  try {
+    await request('/api/admin/launch-alerts/dispatches/test', {
+      method: 'POST',
+      body: { platform: PLATFORM, storeUrl: els.storeUrl.value.trim(), email },
+    });
+    showToast('테스트 메일을 보냈습니다. 받은편지함과 스팸함을 확인해 주세요.');
+  } catch (error) {
+    showToast(error.message || '테스트 메일을 보내지 못했습니다.', 'error');
+  } finally {
+    els.testButton.disabled = false;
+  }
+}
+
+async function requestDispatch() {
+  if (!els.storeUrl.reportValidity()) return;
   const confirmed = await confirmAction({
-    title: '내려받은 신청을 파기할까요?',
-    message: '"내려받음" 시각이 있는 신청을 모두 지웁니다. 그 뒤에 들어온 신청은 남습니다. 메일을 보내기 전이라면 취소하세요.',
-    confirmLabel: '파기',
+    title: `신청 ${state.totalElements}건에 출시 안내를 보낼까요?`,
+    message: '남은 신청 전체에 메일을 보내고, 보낸 신청은 바로 지웁니다. 테스트 메일로 내용과 링크를 먼저 확인하세요.',
+    confirmLabel: '전체 발송',
     danger: true,
   });
   if (!confirmed) return;
 
-  els.purgeButton.disabled = true;
+  els.dispatchButton.disabled = true;
   try {
-    const result = await request('/api/admin/launch-alerts', {
-      method: 'DELETE',
-      query: { platform: PLATFORM },
+    await request('/api/admin/launch-alerts/dispatches', {
+      method: 'POST',
+      body: { platform: PLATFORM, storeUrl: els.storeUrl.value.trim() },
     });
-    els.exportStatus.textContent = `${result.deletedCount}건을 파기했습니다.`;
-    showToast(`${result.deletedCount}건을 파기했습니다.`);
-    state.page = 0;
-    loadSubscriptions();
+    showToast('발송을 요청했습니다. 30초 안에 시작합니다.');
+    loadDispatches();
   } catch (error) {
-    showToast(error.message || '파기하지 못했습니다.', 'error');
-  } finally {
-    els.purgeButton.disabled = false;
+    els.dispatchButton.disabled = false;
+    showToast(error.message || '발송을 요청하지 못했습니다.', 'error');
+  }
+}
+
+async function cancelDispatch(id) {
+  const confirmed = await confirmAction({
+    title: '발송을 멈출까요?',
+    message: '지금 보내는 한 통까지만 나가고 멈춥니다. 남은 신청은 목록에 그대로 남습니다.',
+    confirmLabel: '멈춤',
+    danger: true,
+  });
+  if (!confirmed) return;
+
+  try {
+    await request(`/api/admin/launch-alerts/dispatches/${encodeURIComponent(id)}/cancel`, { method: 'POST' });
+    showToast('발송을 멈췄습니다.');
+    refresh();
+  } catch (error) {
+    showToast(error.message || '발송을 멈추지 못했습니다.', 'error');
   }
 }
 
@@ -163,24 +248,4 @@ async function deleteSubscription(id, email) {
   } catch (error) {
     showToast(error.message || '신청을 삭제하지 못했습니다.', 'error');
   }
-}
-
-function downloadCsv(emails) {
-  // Excel 이 UTF-8 로 열도록 BOM 을 붙인다.
-  const csv = `\uFEFFemail\n${emails.map(toCsvCell).join('\n')}\n`;
-  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' });
-  const url = URL.createObjectURL(blob);
-  const link = document.createElement('a');
-  link.href = url;
-  link.download = `launch-alert-${PLATFORM.toLowerCase()}-${new Date().toISOString().slice(0, 10)}.csv`;
-  document.body.append(link);
-  link.click();
-  link.remove();
-  URL.revokeObjectURL(url);
-}
-
-/** 서버가 형식을 막지만, 스프레드시트가 수식으로 읽지 않도록 한 번 더 감싼다. */
-function toCsvCell(value) {
-  const text = /^[=+\-@\t\r]/.test(value) ? `'${value}` : value;
-  return `"${text.replaceAll('"', '""')}"`;
 }
