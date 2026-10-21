@@ -1,0 +1,8 @@
+package com.peakda.server.domain.launchalert.exception
+
+import com.peakda.server.common.exception.BusinessException
+import com.peakda.server.common.exception.ErrorCode
+
+class LaunchAlertConsentRequiredException : BusinessException(ErrorCode.LAUNCH_ALERT_CONSENT_REQUIRED)
+class LaunchAlertRateLimitException : BusinessException(ErrorCode.LAUNCH_ALERT_RATE_LIMIT)
+class LaunchAlertSubscriptionNotFoundException : BusinessException(ErrorCode.LAUNCH_ALERT_SUBSCRIPTION_NOT_FOUND)

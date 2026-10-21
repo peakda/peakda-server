@@ -100,6 +100,8 @@ class SecurityConfig(
                         "/api/festivals/**",
                         "/api/sitemap",
                     ).permitAll()
+                    // 랜딩 페이지의 앱 출시 알림 신청. 비회원이 쓰므로 인증 없이 받고 IP 별 횟수로 막는다.
+                    .requestMatchers(HttpMethod.POST, "/api/launch-alerts").permitAll()
                     .requestMatchers(HttpMethod.GET, "/api/auth/signup/nickname/check")
                     .hasAnyRole("SIGNUP", "USER")
                     .requestMatchers(

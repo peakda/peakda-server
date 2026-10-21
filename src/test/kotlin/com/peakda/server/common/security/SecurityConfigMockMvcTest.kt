@@ -103,6 +103,13 @@ class SecurityConfigMockMvcTest {
     }
 
     @Test
+    fun `anonymous users can subscribe to launch alerts but cannot manage them`() {
+        mockMvc.post("/api/launch-alerts").andExpect { status { isOk() } }
+        mockMvc.get("/api/launch-alerts").andExpect { status { isUnauthorized() } }
+        mockMvc.get("/api/admin/launch-alerts").andExpect { status { isUnauthorized() } }
+    }
+
+    @Test
     fun `invalid bearer token still allows browsing but cannot access personal data`() {
         mockMvc.get("/api/feed") { header("Authorization", "Bearer invalid") }
             .andExpect { status { isOk() } }
@@ -180,6 +187,9 @@ class SecurityConfigMockMvcTest {
 
         @GetMapping("/api/users/me", "/api/auth/me")
         fun me(): ResponseEntity<Unit> = ResponseEntity.ok().build()
+
+        @PostMapping("/api/launch-alerts")
+        fun launchAlert(): ResponseEntity<Unit> = ResponseEntity.ok().build()
 
         @PostMapping("/api/spots/favorites")
         fun mutate(): ResponseEntity<Unit> = ResponseEntity.ok().build()

@@ -83,4 +83,8 @@ enum class ErrorCode(
 
     SCHEDULER_JOB_NOT_FOUND(HttpStatus.NOT_FOUND, "스케줄러 잡을 찾을 수 없습니다."),
     SCHEDULER_JOB_ALREADY_RUNNING(HttpStatus.CONFLICT, "이미 실행 중인 스케줄러 잡입니다."),
+
+    LAUNCH_ALERT_CONSENT_REQUIRED(HttpStatus.BAD_REQUEST, "개인정보 수집·이용에 동의해야 알림을 신청할 수 있습니다."),
+    LAUNCH_ALERT_RATE_LIMIT(HttpStatus.TOO_MANY_REQUESTS, "신청이 너무 많습니다. 잠시 후 다시 시도해 주세요."),
+    LAUNCH_ALERT_SUBSCRIPTION_NOT_FOUND(HttpStatus.NOT_FOUND, "출시 알림 신청을 찾을 수 없습니다."),
 }
