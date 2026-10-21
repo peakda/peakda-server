@@ -9,4 +9,5 @@ enum class AdminAuditTargetType {
     NOTICE,
     SCHEDULER_JOB,
     CONGESTION_LINK,
+    LAUNCH_ALERT,
 }
