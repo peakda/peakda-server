@@ -2,6 +2,7 @@ package com.peakda.server.domain.launchalert.application
 
 import com.peakda.server.domain.launchalert.entity.LaunchAlertDispatch
 import com.peakda.server.domain.launchalert.entity.LaunchAlertDispatchStatus
+import com.peakda.server.domain.launchalert.exception.LaunchAlertMailTemplateNotFoundException
 import com.peakda.server.domain.launchalert.repository.LaunchAlertDispatchRepository
 import com.peakda.server.domain.launchalert.repository.LaunchAlertSubscriptionRepository
 import com.peakda.server.infrastructure.mail.EmailSendException
@@ -21,12 +22,16 @@ import java.time.Instant
  * 수신자마다 "커서 이동 → 발송 → 신청 삭제·건수 기록" 순서로 진행을 바로 저장한다. 보내기 전에 커서를 옮기므로
  * 배포·DB 장애로 중간에 끊겨도 같은 발송에서 같은 사람에게 두 번 보내지 않는다. 끊긴 그 한 명은 신청이 남아
  * 다음 발송 대상이 된다. SMTP 응답을 기다리는 동안에는 트랜잭션을 열어 두지 않는다.
+ *
+ * 주소 형식 오류·수신 거부처럼 다시 보내도 받을 수 없는 신청은 목적을 이룰 수 없으므로 실패로 세고 바로 지운다
+ * (안내 문구 "발송 후 지체 없이 파기"). 연결 오류 같은 일시 실패만 다시 보낼 수 있게 남긴다.
  */
 @Service
 class LaunchAlertFanoutService(
     private val dispatchRepository: LaunchAlertDispatchRepository,
     private val subscriptionRepository: LaunchAlertSubscriptionRepository,
     private val mailComposer: LaunchAlertMailComposer,
+    private val mailTemplateService: LaunchAlertMailTemplateService,
     private val emailSender: EmailSender,
     private val properties: LaunchAlertProperties,
     transactionManager: PlatformTransactionManager,
@@ -53,6 +58,18 @@ class LaunchAlertFanoutService(
             platform = dispatch.platform,
             id = dispatch.cursorId,
         )
+        if (subscriptions.isEmpty()) {
+            update(dispatchId) { if (it.dispatching) it.complete(Instant.now(clock)) }
+            return 0
+        }
+        // 발송 중에는 문구 수정을 막으므로 묶음마다 한 번 읽으면 된다.
+        val content = try {
+            mailTemplateService.content(dispatch.platform)
+        } catch (e: LaunchAlertMailTemplateNotFoundException) {
+            log.warn("출시 안내 문구가 없어 발송을 중단한다. dispatchId={}", dispatchId)
+            update(dispatchId) { if (it.dispatching) it.fail(Instant.now(clock)) }
+            return 0
+        }
         var sent = 0
         var transientFailures = 0
 
@@ -65,14 +82,17 @@ class LaunchAlertFanoutService(
             if (!stillDispatching) return sent
 
             try {
-                emailSender.send(mailComposer.compose(dispatch.platform, dispatch.storeUrl, subscription.email))
+                emailSender.send(mailComposer.compose(content, dispatch.storeUrl, subscription.email))
             } catch (e: EmailSendException) {
                 // 예외 객체를 넘기지 않는다. 원인 메시지에 수신 주소가 들어 있다.
                 log.warn(
                     "출시 안내 메일 발송 실패. dispatchId={}, subscriptionId={}, permanent={}, reason={}",
                     dispatchId, subscriptionId, e.permanent, e.reason,
                 )
-                update(dispatchId) { it.recordFailed() }
+                transactionTemplate.executeWithoutResult {
+                    if (e.permanent) subscriptionRepository.deleteSent(subscriptionId)
+                    dispatchRepository.findById(dispatchId).orElseThrow().recordFailed()
+                }
                 // 주소 하나의 문제는 SMTP 장애 판단에 넣지 않는다. 앞쪽의 잘못된 주소 몇 개가 발송 전체를 막지 않게 한다.
                 if (!e.permanent && ++transientFailures >= properties.dispatch.maxConsecutiveFailures) {
                     update(dispatchId) { if (it.dispatching) it.fail(Instant.now(clock)) }

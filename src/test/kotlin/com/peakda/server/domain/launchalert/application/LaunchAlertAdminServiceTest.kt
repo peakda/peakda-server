@@ -6,6 +6,7 @@ import com.peakda.server.domain.admin.entity.AdminAuditAction
 import com.peakda.server.domain.admin.entity.AdminAuditTargetType
 import com.peakda.server.domain.launchalert.entity.LaunchAlertDispatch
 import com.peakda.server.domain.launchalert.entity.LaunchAlertDispatchStatus
+import com.peakda.server.domain.launchalert.entity.LaunchAlertMailTemplate
 import com.peakda.server.domain.launchalert.entity.LaunchAlertPlatform
 import com.peakda.server.domain.launchalert.exception.LaunchAlertDispatchInProgressException
 import com.peakda.server.domain.launchalert.exception.LaunchAlertDispatchNotCancelableException
@@ -14,6 +15,7 @@ import com.peakda.server.domain.launchalert.exception.LaunchAlertMailUnavailable
 import com.peakda.server.domain.launchalert.exception.LaunchAlertNoRecipientsException
 import com.peakda.server.domain.launchalert.exception.LaunchAlertSubscriptionNotFoundException
 import com.peakda.server.domain.launchalert.repository.LaunchAlertDispatchRepository
+import com.peakda.server.domain.launchalert.repository.LaunchAlertMailTemplateRepository
 import com.peakda.server.domain.launchalert.repository.LaunchAlertSubscriptionRepository
 import com.peakda.server.infrastructure.mail.EmailMessage
 import com.peakda.server.infrastructure.mail.EmailSendException
@@ -40,11 +42,20 @@ class LaunchAlertAdminServiceTest {
     private val dispatchRepository = mock(LaunchAlertDispatchRepository::class.java)
     private val auditRecorder = mock(AdminAuditRecorder::class.java)
     private val emailSender = RecordingEmailSender()
+    private val mailTemplateRepository = mock(LaunchAlertMailTemplateRepository::class.java).also {
+        `when`(it.findByIdForUpdate(LaunchAlertPlatform.IOS))
+            .thenReturn(LaunchAlertMailTemplate(LaunchAlertPlatform.IOS, "제목", "큰 제목", "본문", "버튼", "하단"))
+    }
+    private val mailTemplateService = mock(LaunchAlertMailTemplateService::class.java).also {
+        `when`(it.content(LaunchAlertPlatform.IOS)).thenReturn(LaunchAlertMailContent("제목", "큰 제목", "본문", "버튼", "하단"))
+    }
 
     private val service = LaunchAlertAdminService(
         subscriptionRepository = subscriptionRepository,
         dispatchRepository = dispatchRepository,
         mailComposer = LaunchAlertMailComposer(),
+        mailTemplateService = mailTemplateService,
+        mailTemplateRepository = mailTemplateRepository,
         emailSender = emailSender,
         adminAuditRecorder = auditRecorder,
         schedulerProperties = SchedulerProperties(enabled = true),
@@ -81,7 +92,7 @@ class LaunchAlertAdminServiceTest {
     @Test
     fun `발송 잡이 꺼져 있으면 발송을 시작하지 않는다`() {
         val serviceWithJobOff = LaunchAlertAdminService(
-            subscriptionRepository, dispatchRepository, LaunchAlertMailComposer(), emailSender, auditRecorder,
+            subscriptionRepository, dispatchRepository, LaunchAlertMailComposer(), mailTemplateService, mailTemplateRepository, emailSender, auditRecorder,
             SchedulerProperties(enabled = false),
         )
 

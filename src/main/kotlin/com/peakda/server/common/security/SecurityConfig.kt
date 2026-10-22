@@ -14,7 +14,11 @@ import org.springframework.security.config.annotation.web.configuration.EnableWe
 import org.springframework.security.config.http.SessionCreationPolicy
 import org.springframework.security.oauth2.client.web.OAuth2LoginAuthenticationFilter
 import org.springframework.security.web.SecurityFilterChain
+import org.springframework.security.web.header.writers.DelegatingRequestMatcherHeaderWriter
 import org.springframework.security.web.header.writers.ReferrerPolicyHeaderWriter
+import org.springframework.security.web.header.writers.StaticHeadersWriter
+import org.springframework.security.web.servlet.util.matcher.PathPatternRequestMatcher
+import org.springframework.security.web.util.matcher.NegatedRequestMatcher
 import org.springframework.web.cors.CorsConfigurationSource
 
 @Configuration
@@ -44,6 +48,13 @@ class SecurityConfig(
             "/api/auth/app/token",
             "/api/auth/app/token/refresh",
         )
+
+        private const val CSP_HEADER = "Content-Security-Policy"
+        private const val DEFAULT_CSP = "default-src 'self'; img-src 'self' data: https:; frame-ancestors 'self'"
+        private const val MAIL_PREVIEW_CSP =
+            "default-src 'none'; style-src 'unsafe-inline'; img-src https: data:; frame-ancestors 'self'"
+        private val MAIL_PREVIEW_MATCHER =
+            PathPatternRequestMatcher.withDefaults().matcher(HttpMethod.GET, "/api/admin/launch-alerts/mail-template/preview")
     }
 
     @Bean
@@ -63,9 +74,19 @@ class SecurityConfig(
                     .frameOptions { it.sameOrigin() }
                     .contentTypeOptions(Customizer.withDefaults())
                     .cacheControl { it.disable() }
-                    .contentSecurityPolicy {
-                        it.policyDirectives("default-src 'self'; img-src 'self' data: https:; frame-ancestors 'self'")
-                    }
+                    // 메일 미리보기만 인라인 스타일을 허용한다(메일 HTML 은 인라인 스타일이 필수). 스크립트는 모두 막는다.
+                    .addHeaderWriter(
+                        DelegatingRequestMatcherHeaderWriter(
+                            MAIL_PREVIEW_MATCHER,
+                            StaticHeadersWriter(CSP_HEADER, MAIL_PREVIEW_CSP),
+                        ),
+                    )
+                    .addHeaderWriter(
+                        DelegatingRequestMatcherHeaderWriter(
+                            NegatedRequestMatcher(MAIL_PREVIEW_MATCHER),
+                            StaticHeadersWriter(CSP_HEADER, DEFAULT_CSP),
+                        ),
+                    )
                     .referrerPolicy {
                         it.policy(ReferrerPolicyHeaderWriter.ReferrerPolicy.NO_REFERRER)
                     }

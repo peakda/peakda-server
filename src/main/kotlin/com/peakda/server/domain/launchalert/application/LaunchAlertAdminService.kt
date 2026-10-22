@@ -11,12 +11,14 @@ import com.peakda.server.domain.launchalert.exception.LaunchAlertDispatchInProgr
 import com.peakda.server.domain.launchalert.exception.LaunchAlertDispatchNotCancelableException
 import com.peakda.server.domain.launchalert.exception.LaunchAlertDispatchNotFoundException
 import com.peakda.server.domain.launchalert.exception.LaunchAlertMailSendFailedException
+import com.peakda.server.domain.launchalert.exception.LaunchAlertMailTemplateNotFoundException
 import com.peakda.server.domain.launchalert.exception.LaunchAlertMailUnavailableException
 import com.peakda.server.domain.launchalert.exception.LaunchAlertNoRecipientsException
 import com.peakda.server.domain.launchalert.exception.LaunchAlertSubscriptionNotFoundException
 import com.peakda.server.domain.launchalert.presentation.response.LaunchAlertDispatchResponse
 import com.peakda.server.domain.launchalert.presentation.response.LaunchAlertSubscriptionResponse
 import com.peakda.server.domain.launchalert.repository.LaunchAlertDispatchRepository
+import com.peakda.server.domain.launchalert.repository.LaunchAlertMailTemplateRepository
 import com.peakda.server.domain.launchalert.repository.LaunchAlertSubscriptionRepository
 import com.peakda.server.infrastructure.mail.EmailSendException
 import com.peakda.server.infrastructure.mail.EmailSender
@@ -44,6 +46,8 @@ class LaunchAlertAdminService(
     private val subscriptionRepository: LaunchAlertSubscriptionRepository,
     private val dispatchRepository: LaunchAlertDispatchRepository,
     private val mailComposer: LaunchAlertMailComposer,
+    private val mailTemplateService: LaunchAlertMailTemplateService,
+    private val mailTemplateRepository: LaunchAlertMailTemplateRepository,
     private val emailSender: EmailSender,
     private val adminAuditRecorder: AdminAuditRecorder,
     private val schedulerProperties: SchedulerProperties,
@@ -83,6 +87,8 @@ class LaunchAlertAdminService(
      */
     fun requestDispatch(adminId: Long, command: RequestLaunchAlertDispatchCommand): LaunchAlertDispatchResponse {
         if (!emailSender.available || !dispatchJobEnabled()) throw LaunchAlertMailUnavailableException()
+        // 문구 수정과 겹치지 않게 문구 행을 잠근다. 발송이 시작되면 문구 수정은 막힌다.
+        mailTemplateRepository.findByIdForUpdate(command.platform) ?: throw LaunchAlertMailTemplateNotFoundException()
         if (dispatchRepository.existsByPlatformAndStatus(command.platform, LaunchAlertDispatchStatus.DISPATCHING)) {
             throw LaunchAlertDispatchInProgressException()
         }
@@ -122,7 +128,8 @@ class LaunchAlertAdminService(
         // 실패한 시도도 남도록 보내기 전에 기록한다. 받는 주소는 남기지 않는다.
         record(adminId, AdminAuditAction.LAUNCH_ALERT_TEST_SEND, 0, command.platform.name)
         try {
-            emailSender.send(mailComposer.compose(command.platform, command.storeUrl, command.email.trim()))
+            val content = mailTemplateService.content(command.platform)
+            emailSender.send(mailComposer.compose(content, command.storeUrl, command.email.trim()))
         } catch (e: EmailSendException) {
             log.warn("출시 안내 테스트 메일 발송 실패. permanent={}, reason={}", e.permanent, e.reason)
             throw LaunchAlertMailSendFailedException()

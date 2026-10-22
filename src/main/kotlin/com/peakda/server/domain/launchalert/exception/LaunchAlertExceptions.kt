@@ -12,3 +12,4 @@ class LaunchAlertDispatchInProgressException : BusinessException(ErrorCode.LAUNC
 class LaunchAlertNoRecipientsException : BusinessException(ErrorCode.LAUNCH_ALERT_NO_RECIPIENTS)
 class LaunchAlertDispatchNotFoundException : BusinessException(ErrorCode.LAUNCH_ALERT_DISPATCH_NOT_FOUND)
 class LaunchAlertDispatchNotCancelableException : BusinessException(ErrorCode.LAUNCH_ALERT_DISPATCH_NOT_CANCELABLE)
+class LaunchAlertMailTemplateNotFoundException : BusinessException(ErrorCode.LAUNCH_ALERT_MAIL_TEMPLATE_NOT_FOUND)

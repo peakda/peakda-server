@@ -4,6 +4,7 @@ import com.peakda.server.domain.launchalert.entity.LaunchAlertDispatch
 import com.peakda.server.domain.launchalert.entity.LaunchAlertDispatchStatus
 import com.peakda.server.domain.launchalert.entity.LaunchAlertPlatform
 import com.peakda.server.domain.launchalert.entity.LaunchAlertSubscription
+import com.peakda.server.domain.launchalert.exception.LaunchAlertMailTemplateNotFoundException
 import com.peakda.server.domain.launchalert.repository.LaunchAlertDispatchRepository
 import com.peakda.server.domain.launchalert.repository.LaunchAlertSubscriptionRepository
 import com.peakda.server.infrastructure.mail.EmailMessage
@@ -32,6 +33,9 @@ class LaunchAlertFanoutServiceTest {
     private val dispatchRepository = mock(LaunchAlertDispatchRepository::class.java)
     private val subscriptionRepository = mock(LaunchAlertSubscriptionRepository::class.java)
     private val emailSender = ScriptedEmailSender()
+    private val mailTemplateService = mock(LaunchAlertMailTemplateService::class.java).also {
+        `when`(it.content(LaunchAlertPlatform.IOS)).thenReturn(LaunchAlertMailContent("제목", "큰 제목", "본문", "버튼", "하단"))
+    }
     private val dispatch = LaunchAlertDispatch(LaunchAlertPlatform.IOS, STORE_URL, requestedBy = 1L)
         .also { ReflectionTestUtils.setField(it, "id", DISPATCH_ID) }
 
@@ -39,6 +43,7 @@ class LaunchAlertFanoutServiceTest {
         dispatchRepository = dispatchRepository,
         subscriptionRepository = subscriptionRepository,
         mailComposer = LaunchAlertMailComposer(),
+        mailTemplateService = mailTemplateService,
         emailSender = emailSender,
         properties = LaunchAlertProperties(dispatch = LaunchAlertProperties.Dispatch(maxConsecutiveFailures = 2)),
         transactionManager = NoOpTransactionManager(),
@@ -105,7 +110,7 @@ class LaunchAlertFanoutServiceTest {
     }
 
     @Test
-    fun `주소 문제로 실패한 신청은 장애 판단에 넣지 않고 다음 사람에게 계속 보낸다`() {
+    fun `주소 문제로 실패한 신청은 바로 지우고 장애 판단에 넣지 않은 채 다음 사람에게 계속 보낸다`() {
         givenBatch(subscription(1L, "a@peakda.com"), subscription(2L, "b@peakda.com"), subscription(3L, "c@peakda.com"))
         emailSender.permanentFailFor += listOf("a@peakda.com", "b@peakda.com")
 
@@ -113,6 +118,9 @@ class LaunchAlertFanoutServiceTest {
 
         assertThat(dispatch.status).isEqualTo(LaunchAlertDispatchStatus.COMPLETED)
         assertThat(dispatch.failedCount).isEqualTo(2)
+        assertThat(dispatch.sentCount).isEqualTo(1)
+        verify(subscriptionRepository).deleteSent(1L)
+        verify(subscriptionRepository).deleteSent(2L)
         verify(subscriptionRepository).deleteSent(3L)
     }
 
@@ -127,6 +135,17 @@ class LaunchAlertFanoutServiceTest {
         assertThat(dispatch.status).isEqualTo(LaunchAlertDispatchStatus.CANCELED)
         assertThat(dispatch.sentCount).isEqualTo(1)
         verify(subscriptionRepository, never()).deleteSent(2L)
+    }
+
+    @Test
+    fun `메일 문구가 없으면 보내지 않고 중단한다`() {
+        givenBatch(subscription(1L, "a@peakda.com"))
+        `when`(mailTemplateService.content(LaunchAlertPlatform.IOS)).thenThrow(LaunchAlertMailTemplateNotFoundException())
+
+        service.dispatchNextBatch()
+
+        assertThat(dispatch.status).isEqualTo(LaunchAlertDispatchStatus.FAILED)
+        assertThat(emailSender.sent).isEmpty()
     }
 
     @Test

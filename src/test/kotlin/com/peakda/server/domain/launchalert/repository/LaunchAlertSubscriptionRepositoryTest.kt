@@ -23,6 +23,9 @@ class LaunchAlertSubscriptionRepositoryTest : IntegrationTestSupport() {
     lateinit var dispatchRepository: LaunchAlertDispatchRepository
 
     @Autowired
+    lateinit var templateRepository: LaunchAlertMailTemplateRepository
+
+    @Autowired
     lateinit var entityManager: EntityManager
 
     @BeforeEach
@@ -65,6 +68,19 @@ class LaunchAlertSubscriptionRepositoryTest : IntegrationTestSupport() {
 
         assertThatThrownBy { dispatchRepository.saveAndFlush(dispatch()) }
             .isInstanceOf(DataIntegrityViolationException::class.java)
+    }
+
+    @Test
+    @Transactional
+    fun `마이그레이션이 iOS 기본 문구를 넣어 두고 잠금 조회 후 수정한 문구가 저장된다`() {
+        val template = requireNotNull(templateRepository.findByIdForUpdate(LaunchAlertPlatform.IOS))
+        assertThat(template.subject).isNotBlank()
+
+        template.update("새 제목", "큰 제목", "본문", "버튼", "하단", adminId = 1L)
+        templateRepository.flush()
+        entityManager.clear()
+
+        assertThat(templateRepository.findById(LaunchAlertPlatform.IOS).orElseThrow().subject).isEqualTo("새 제목")
     }
 
     private fun dispatch() =

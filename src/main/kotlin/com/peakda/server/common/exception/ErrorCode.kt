@@ -93,4 +93,5 @@ enum class ErrorCode(
     LAUNCH_ALERT_NO_RECIPIENTS(HttpStatus.BAD_REQUEST, "보낼 출시 알림 신청이 없습니다."),
     LAUNCH_ALERT_DISPATCH_NOT_FOUND(HttpStatus.NOT_FOUND, "출시 안내 발송을 찾을 수 없습니다."),
     LAUNCH_ALERT_DISPATCH_NOT_CANCELABLE(HttpStatus.CONFLICT, "보내는 중인 발송만 멈출 수 있습니다."),
+    LAUNCH_ALERT_MAIL_TEMPLATE_NOT_FOUND(HttpStatus.NOT_FOUND, "출시 안내 메일 문구를 찾을 수 없습니다."),
 }

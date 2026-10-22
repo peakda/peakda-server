@@ -56,7 +56,7 @@ interface LaunchAlertSubscriptionRepository : JpaRepository<LaunchAlertSubscript
     ): List<LaunchAlertSubscription>
 
     /**
-     * 메일을 보낸 신청을 한 건씩 바로 지운다. 묶음이 끝난 뒤 한꺼번에 지우면, 그 사이 잡이 끊겼을 때
+     * 메일을 보냈거나 주소 문제로 보낼 수 없는 신청을 한 건씩 바로 지운다. 묶음이 끝난 뒤 한꺼번에 지우면, 그 사이 잡이 끊겼을 때
      * 이미 메일을 받은 사람이 다음 실행에서 또 받는다.
      */
     @Transactional
