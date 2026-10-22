@@ -42,6 +42,7 @@ const ACTION_LABELS = {
   LAUNCH_ALERT_DISPATCH: '출시 안내 발송',
   LAUNCH_ALERT_DISPATCH_CANCEL: '출시 안내 발송 멈춤',
   LAUNCH_ALERT_TEST_SEND: '출시 안내 테스트 발송',
+  LAUNCH_ALERT_MAIL_TEMPLATE_UPDATE: '출시 안내 문구 수정',
   LAUNCH_ALERT_DELETE: '출시 알림 신청 삭제',
 };
 

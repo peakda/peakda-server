@@ -22,6 +22,46 @@
             <button type="button" class="button" id="launch-alert-refresh-button">새로고침</button>
           </div>
 
+          <section class="panel" aria-labelledby="launch-alert-template-title">
+            <div class="panel-header">
+              <div>
+                <h2 id="launch-alert-template-title">메일 문구</h2>
+                <p>HTML 은 쓸 수 없고 입력한 글자 그대로 나갑니다. 본문은 빈 줄로 문단을 나눕니다. 보내는 중에는 고칠 수 없습니다.</p>
+              </div>
+              <p class="muted" id="launch-alert-template-updated"></p>
+            </div>
+            <form id="launch-alert-template-form" class="panel-body form-grid" aria-label="메일 문구">
+              <label class="field">
+                <span class="field__label">메일 제목</span>
+                <input id="launch-alert-template-subject" class="field__control" maxlength="100" required>
+              </label>
+              <label class="field">
+                <span class="field__label">버튼 문구</span>
+                <input id="launch-alert-template-button" class="field__control" maxlength="30" required>
+              </label>
+              <label class="field full">
+                <span class="field__label">큰 제목</span>
+                <input id="launch-alert-template-headline" class="field__control" maxlength="100" required>
+              </label>
+              <label class="field full">
+                <span class="field__label">본문</span>
+                <textarea id="launch-alert-template-body" class="field__control" maxlength="2000" rows="6" required></textarea>
+              </label>
+              <label class="field full">
+                <span class="field__label">하단 안내</span>
+                <textarea id="launch-alert-template-footer" class="field__control" maxlength="500" rows="3" required></textarea>
+              </label>
+              <div class="panel-actions full">
+                <button type="submit" class="button button-primary" id="launch-alert-template-save">문구 저장</button>
+              </div>
+              <div class="full">
+                <span class="field__label">미리보기 (저장된 문구)</span>
+                <iframe id="launch-alert-template-preview" class="mail-preview" title="출시 안내 메일 미리보기"
+                  sandbox="allow-same-origin allow-popups allow-popups-to-escape-sandbox"></iframe>
+              </div>
+            </form>
+          </section>
+
           <section class="panel" aria-labelledby="launch-alert-dispatch-title">
             <div class="panel-header">
               <div>

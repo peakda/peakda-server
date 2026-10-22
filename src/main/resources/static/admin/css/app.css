@@ -1393,3 +1393,14 @@ img.image-preview {
         display: none;
     }
 }
+
+/* 출시 안내 메일 미리보기. 메일 본문 폭(480px)에 여백을 더한 높이로 둔다. */
+.mail-preview {
+    display: block;
+    width: 100%;
+    height: 520px;
+    margin-top: 6px;
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    background: #f4f5f2;
+}

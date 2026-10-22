@@ -27,7 +27,11 @@ const state = {
   email: '',
   totalElements: 0,
   pollTimer: null,
+  // 저장하지 않은 문구가 있으면 테스트·전체 발송이 예전 문구로 나간다. 먼저 저장하게 막는다.
+  templateDirty: false,
 };
+
+const TEMPLATE_FIELDS = ['subject', 'headline', 'body', 'buttonLabel', 'footer'];
 
 const els = {};
 
@@ -39,6 +43,7 @@ document.addEventListener('DOMContentLoaded', () => {
   bindElements();
   bindEvents();
   refresh();
+  loadTemplate();
 });
 
 function bindElements() {
@@ -51,6 +56,17 @@ function bindElements() {
   els.testButton = document.querySelector('#launch-alert-test-button');
   els.dispatchButton = document.querySelector('#launch-alert-dispatch-button');
   els.dispatchBody = document.querySelector('#launch-alert-dispatch-body');
+  els.templateForm = document.querySelector('#launch-alert-template-form');
+  els.templateSave = document.querySelector('#launch-alert-template-save');
+  els.templateUpdated = document.querySelector('#launch-alert-template-updated');
+  els.templatePreview = document.querySelector('#launch-alert-template-preview');
+  els.template = {
+    subject: document.querySelector('#launch-alert-template-subject'),
+    headline: document.querySelector('#launch-alert-template-headline'),
+    body: document.querySelector('#launch-alert-template-body'),
+    buttonLabel: document.querySelector('#launch-alert-template-button'),
+    footer: document.querySelector('#launch-alert-template-footer'),
+  };
   els.tableWrap = document.querySelector('#launch-alert-table-wrap');
   els.tbody = document.querySelector('#launch-alert-table-body');
   els.pagination = document.querySelector('#launch-alert-pagination');
@@ -65,6 +81,15 @@ function bindEvents() {
   });
   els.refreshButton.addEventListener('click', refresh);
   els.testButton.addEventListener('click', sendTestMail);
+  els.templateForm.addEventListener('submit', (event) => {
+    event.preventDefault();
+    saveTemplate();
+  });
+  els.templateForm.addEventListener('input', () => {
+    state.templateDirty = true;
+  });
+  // 스토어 주소를 바꾸면 미리보기 버튼 링크도 바꿔 보여 준다.
+  els.storeUrl.addEventListener('change', refreshPreview);
   // 입력란에서 Enter 를 눌러도 전체 발송이 시작되지 않게, 폼 제출은 막고 버튼으로만 보낸다.
   els.dispatchForm.addEventListener('submit', (event) => event.preventDefault());
   els.dispatchButton.addEventListener('click', requestDispatch);
@@ -167,7 +192,57 @@ function schedulePoll(inProgress) {
   state.pollTimer = inProgress ? setTimeout(refresh, POLL_INTERVAL_MS) : null;
 }
 
+async function loadTemplate() {
+  try {
+    renderTemplate(await request('/api/admin/launch-alerts/mail-template', { query: { platform: PLATFORM } }));
+  } catch (error) {
+    showToast(error.message || '메일 문구를 불러오지 못했습니다.', 'error');
+  }
+}
+
+function renderTemplate(template) {
+  TEMPLATE_FIELDS.forEach((field) => {
+    els.template[field].value = template[field] ?? '';
+  });
+  els.templateUpdated.textContent = template.updatedAt ? `최종 수정 ${formatDateTime(template.updatedAt)}` : '';
+  state.templateDirty = false;
+  refreshPreview();
+}
+
+async function saveTemplate() {
+  if (!els.templateForm.reportValidity()) return;
+  const body = { platform: PLATFORM };
+  TEMPLATE_FIELDS.forEach((field) => {
+    body[field] = els.template[field].value;
+  });
+
+  els.templateSave.disabled = true;
+  try {
+    renderTemplate(await request('/api/admin/launch-alerts/mail-template', { method: 'PUT', body }));
+    showToast('메일 문구를 저장했습니다.');
+  } catch (error) {
+    showToast(error.message || '메일 문구를 저장하지 못했습니다.', 'error');
+  } finally {
+    els.templateSave.disabled = false;
+  }
+}
+
+function refreshPreview() {
+  const query = new URLSearchParams({ platform: PLATFORM });
+  const storeUrl = els.storeUrl.value.trim();
+  if (storeUrl) query.set('storeUrl', storeUrl);
+  els.templatePreview.src = `/api/admin/launch-alerts/mail-template/preview?${query}`;
+}
+
+function ensureTemplateSaved() {
+  if (!state.templateDirty) return true;
+  els.templateSave.focus();
+  showToast('저장하지 않은 메일 문구가 있습니다. 먼저 저장해 주세요.', 'error');
+  return false;
+}
+
 async function sendTestMail() {
+  if (!ensureTemplateSaved()) return;
   if (!els.storeUrl.reportValidity()) return;
   const email = els.testEmail.value.trim();
   if (!email || !els.testEmail.checkValidity()) {
@@ -191,6 +266,7 @@ async function sendTestMail() {
 }
 
 async function requestDispatch() {
+  if (!ensureTemplateSaved()) return;
   if (!els.storeUrl.reportValidity()) return;
   const confirmed = await confirmAction({
     title: `신청 ${state.totalElements}건에 출시 안내를 보낼까요?`,
