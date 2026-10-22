@@ -28,6 +28,7 @@ external:
   scheduler:
     notification:
       notice-dispatch: { fixed-delay: 30s, enabled: true }
+      launch-alert-dispatch: { fixed-delay: 30s, enabled: true }
 
 logging:
   structured:

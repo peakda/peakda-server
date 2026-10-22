@@ -103,6 +103,23 @@ class SecurityConfigMockMvcTest {
     }
 
     @Test
+    fun `anonymous users can subscribe to launch alerts but cannot manage them`() {
+        mockMvc.post("/api/launch-alerts").andExpect { status { isOk() } }
+        mockMvc.get("/api/launch-alerts").andExpect { status { isUnauthorized() } }
+        mockMvc.get("/api/admin/launch-alerts").andExpect { status { isUnauthorized() } }
+    }
+
+    @Test
+    fun `mail preview allows inline styles but every other response keeps the strict policy`() {
+        mockMvc.get("/api/admin/launch-alerts/mail-template/preview").andExpect {
+            header { string("Content-Security-Policy", "default-src 'none'; style-src 'unsafe-inline'; img-src https: data:; frame-ancestors 'self'") }
+        }
+        mockMvc.get("/api/feed").andExpect {
+            header { string("Content-Security-Policy", "default-src 'self'; img-src 'self' data: https:; frame-ancestors 'self'") }
+        }
+    }
+
+    @Test
     fun `invalid bearer token still allows browsing but cannot access personal data`() {
         mockMvc.get("/api/feed") { header("Authorization", "Bearer invalid") }
             .andExpect { status { isOk() } }
@@ -180,6 +197,9 @@ class SecurityConfigMockMvcTest {
 
         @GetMapping("/api/users/me", "/api/auth/me")
         fun me(): ResponseEntity<Unit> = ResponseEntity.ok().build()
+
+        @PostMapping("/api/launch-alerts")
+        fun launchAlert(): ResponseEntity<Unit> = ResponseEntity.ok().build()
 
         @PostMapping("/api/spots/favorites")
         fun mutate(): ResponseEntity<Unit> = ResponseEntity.ok().build()
