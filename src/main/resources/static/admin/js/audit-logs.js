@@ -16,6 +16,7 @@ const TARGET_TYPES = {
   FESTIVAL: '축제',
   NOTICE: '공지',
   SCHEDULER_JOB: '스케줄러 잡',
+  LAUNCH_ALERT: '출시 알림 신청',
 };
 
 const ACTION_LABELS = {
@@ -38,6 +39,11 @@ const ACTION_LABELS = {
   USER_SUSPEND: '사용자 정지',
   USER_UNSUSPEND: '사용자 정지 해제',
   SCHEDULER_JOB_TRIGGER: '잡 수동 실행',
+  LAUNCH_ALERT_DISPATCH: '출시 안내 발송',
+  LAUNCH_ALERT_DISPATCH_CANCEL: '출시 안내 발송 멈춤',
+  LAUNCH_ALERT_TEST_SEND: '출시 안내 테스트 발송',
+  LAUNCH_ALERT_MAIL_TEMPLATE_UPDATE: '출시 안내 문구 수정',
+  LAUNCH_ALERT_DELETE: '출시 알림 신청 삭제',
 };
 
 const state = {

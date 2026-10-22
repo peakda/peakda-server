@@ -298,6 +298,38 @@ ssh ubuntu@$HOST 'docker stats --no-stream peakda-alloy'
   ```
 - `.env` 에 값이 없거나 틀려도 수집기만 전송에 실패하고 서비스는 그대로 돈다. 그때는 "앱 다운 또는 지표 수집 끊김" 알림이 울린다
 
+### 메일 발송 (OCI Email Delivery)
+
+출시 알림 메일(백오피스 "출시 알림 신청" → 전체 발송)은 OCI Email Delivery 의 SMTP 로 보낸다. 앱은 `MAIL_ENABLED=true` 일 때만
+실제로 보내고, 꺼져 있으면 발송 요청 자체를 거절한다(신청이 아무에게도 안 간 채 지워지지 않게).
+
+1. OCI 콘솔(오사카) → Developer Services → Email Delivery
+   - **Email Domains**: `peakda.com` 을 만들고 DKIM 을 생성한다. 콘솔이 주는 CNAME 을 가비아 DNS 에 넣는다
+   - **SPF**: 콘솔 안내의 `include:` 값을 가비아의 `peakda.com` TXT 에 넣는다. 이미 `v=spf1` TXT 가 있으면 새로 만들지 말고 그 줄에 합친다
+   - **Approved Senders**: `no-reply@peakda.com` 을 등록한다(`MAIL_FROM_ADDRESS` 와 같아야 한다)
+   - 무료 한도(일·초당 발송량)는 같은 화면의 Limits 에서 확인한다. 초과하면 `.env` 에 `LAUNCH_ALERT_SEND_INTERVAL`(기본 `200ms`)을 넣어 간격을 늘린다
+2. Identity → 발송용 사용자 → **SMTP Credentials** 를 만든다. 비밀번호는 만들 때 한 번만 보이니 바로 2-3 에 넣는다
+3. `.env` 에 넣고 앱을 다시 띄운다
+
+```sh
+ssh ubuntu@$HOST 'cd /opt/peakda && umask 077 && t=$(mktemp .env.XXXXXX) && { grep -v "^MAIL_" .env; cat; } > "$t" && mv "$t" .env' << 'EOF'
+MAIL_ENABLED=true
+MAIL_HOST=smtp.email.ap-osaka-1.oci.oraclecloud.com
+MAIL_PORT=587
+MAIL_USERNAME=<SMTP Credentials 사용자명>
+MAIL_PASSWORD=<SMTP Credentials 비밀번호>
+MAIL_FROM_ADDRESS=no-reply@peakda.com
+EOF
+# 값만 바꿨다면: ssh ubuntu@$HOST 'cd /opt/peakda && docker compose up -d app'
+```
+
+- 확인은 백오피스의 "테스트 발송"으로 본인 주소에 한 통 보내 본다. 스팸함으로 가면 DKIM·SPF 가 아직 반영되지 않은 것이다
+- `render-env.sh`(1-4)로 `.env` 를 다시 만들면 `MAIL_*` 가 빠진다. 그 뒤에는 3 을 다시 한다
+- SMTP 가 안 돼도 앱 헬스체크는 영향받지 않는다(`management.health.mail.enabled: false`). 발송만 실패하고, 일시 오류가 10건 연속되면 발송이 "중단"으로 끝난다.
+  주소 형식 오류·수신 거부는 그 신청만 남기고 계속 보낸다
+- 보내는 중에 멈추려면 백오피스 발송 이력의 "멈춤"을 누른다. 지금 보내는 한 통까지만 나가고 남은 신청은 그대로다
+- 발송 잡(`launch-alert-dispatch`)이나 스케줄러가 꺼져 있으면 발송 요청을 받지 않는다
+
 ### 백업 복원
 
 ```sh

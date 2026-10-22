@@ -20,6 +20,20 @@ spring:
   liquibase:
     change-log: classpath:db/changelog/db.changelog-master.yaml
 
+  # 출시 알림 메일 발송용 SMTP (prod: OCI Email Delivery). app.mail.enabled 가 true 일 때만 실제로 보낸다.
+  mail:
+    host: ${MAIL_HOST:}
+    port: ${MAIL_PORT:587}
+    username: ${MAIL_USERNAME:}
+    password: ${MAIL_PASSWORD:}
+    properties:
+      mail.smtp.auth: true
+      mail.smtp.starttls.enable: true
+      mail.smtp.starttls.required: true
+      mail.smtp.connectiontimeout: 5000
+      mail.smtp.timeout: 10000
+      mail.smtp.writetimeout: 10000
+
   servlet:
     multipart:
       enabled: true
@@ -83,6 +97,14 @@ spring:
             user-name-attribute: sub
 
 app:
+  mail:
+    enabled: ${MAIL_ENABLED:false}
+    from-address: ${MAIL_FROM_ADDRESS:no-reply@peakda.com}
+    from-name: 피크다
+  launch-alert:
+    dispatch:
+      # OCI Email Delivery 초당 한도에 걸리면 늘린다.
+      send-interval: ${LAUNCH_ALERT_SEND_INTERVAL:200ms}
   push:
     enabled: ${FCM_ENABLED:false}
     project-id: ${FCM_PROJECT_ID:}
@@ -258,6 +280,7 @@ external:
     notification:
       bloom-timing-alert: { cron: "0 0 8 * * *", enabled: true }
       notice-dispatch: { fixed-delay: 30s, enabled: true }
+      launch-alert-dispatch: { fixed-delay: 30s, enabled: true }
       device-token-cleanup: { cron: "0 30 3 * * *", enabled: true }
 
 peakda:
@@ -349,6 +372,10 @@ peakda:
 # 프로파일별로 다시 선언하지 않는다. dev 에서 exposure 를 덮어쓰면
 # prometheus 가 조용히 빠져 수집이 멈춘다.
 management:
+  health:
+    # SMTP 가 잠깐 안 되더라도 앱 헬스체크가 DOWN 이 되어 컨테이너가 내려가면 안 된다.
+    mail:
+      enabled: false
   endpoints:
     web:
       exposure:

@@ -1,0 +1,15 @@
+package com.peakda.server.domain.launchalert.exception
+
+import com.peakda.server.common.exception.BusinessException
+import com.peakda.server.common.exception.ErrorCode
+
+class LaunchAlertConsentRequiredException : BusinessException(ErrorCode.LAUNCH_ALERT_CONSENT_REQUIRED)
+class LaunchAlertRateLimitException : BusinessException(ErrorCode.LAUNCH_ALERT_RATE_LIMIT)
+class LaunchAlertSubscriptionNotFoundException : BusinessException(ErrorCode.LAUNCH_ALERT_SUBSCRIPTION_NOT_FOUND)
+class LaunchAlertMailUnavailableException : BusinessException(ErrorCode.LAUNCH_ALERT_MAIL_UNAVAILABLE)
+class LaunchAlertMailSendFailedException : BusinessException(ErrorCode.LAUNCH_ALERT_MAIL_SEND_FAILED)
+class LaunchAlertDispatchInProgressException : BusinessException(ErrorCode.LAUNCH_ALERT_DISPATCH_IN_PROGRESS)
+class LaunchAlertNoRecipientsException : BusinessException(ErrorCode.LAUNCH_ALERT_NO_RECIPIENTS)
+class LaunchAlertDispatchNotFoundException : BusinessException(ErrorCode.LAUNCH_ALERT_DISPATCH_NOT_FOUND)
+class LaunchAlertDispatchNotCancelableException : BusinessException(ErrorCode.LAUNCH_ALERT_DISPATCH_NOT_CANCELABLE)
+class LaunchAlertMailTemplateNotFoundException : BusinessException(ErrorCode.LAUNCH_ALERT_MAIL_TEMPLATE_NOT_FOUND)
