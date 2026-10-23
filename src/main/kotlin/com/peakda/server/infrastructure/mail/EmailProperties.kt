@@ -11,5 +11,5 @@ import org.springframework.boot.context.properties.ConfigurationProperties
 @ConfigurationProperties(prefix = "app.mail")
 data class EmailProperties(
     val fromAddress: String = "no-reply@peakda.com",
-    val fromName: String = "피크다",
+    val fromName: String = "PEAKDA",
 )

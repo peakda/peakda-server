@@ -100,7 +100,7 @@ app:
   mail:
     enabled: ${MAIL_ENABLED:false}
     from-address: ${MAIL_FROM_ADDRESS:no-reply@peakda.com}
-    from-name: 피크다
+    from-name: PEAKDA
   launch-alert:
     dispatch:
       # OCI Email Delivery 초당 한도에 걸리면 늘린다.
