@@ -65,6 +65,9 @@ class Curation(
 
     @Column(name = "published_at")
     var publishedAt: Instant? = null,
+
+    @Column(name = "pinned_at")
+    var pinnedAt: Instant? = null,
 ) : BaseTimeEntity() {
 
     @Id
