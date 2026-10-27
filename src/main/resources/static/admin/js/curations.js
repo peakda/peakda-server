@@ -39,6 +39,22 @@ pageSize.addEventListener('change', () => {
 refreshButton.addEventListener('click', () => loadCurations());
 
 rows.addEventListener('click', async (event) => {
+  const pinButton = event.target.closest('[data-action="pin"], [data-action="unpin"]');
+  if (pinButton) {
+    const id = pinButton.dataset.id;
+    const pinned = pinButton.dataset.action === 'pin';
+    try {
+      safeSetLoading(pinButton, true);
+      await request(`/api/admin/curations/${encodeURIComponent(id)}/pin`, { method: pinned ? 'PUT' : 'DELETE' });
+      toast(pinned ? '큐레이션을 고정했습니다.' : '큐레이션 고정을 해제했습니다.');
+      await loadCurations();
+    } catch (error) {
+      toast(error.message || '고정 상태 변경에 실패했습니다.', 'error');
+    } finally {
+      safeSetLoading(pinButton, false);
+    }
+    return;
+  }
   const deleteButton = event.target.closest('[data-action="delete"]');
   if (!deleteButton) return;
 
@@ -69,7 +85,7 @@ loadCurations();
 async function loadCurations() {
   try {
     safeSetLoading(refreshButton, true);
-    rows.innerHTML = tableLoadingRow(7, '큐레이션을 불러오는 중입니다.');
+    rows.innerHTML = tableLoadingRow(8, '큐레이션을 불러오는 중입니다.');
     const response = await request('/api/admin/curations', {
       query: {
         page: state.page,
@@ -81,7 +97,7 @@ async function loadCurations() {
     renderRows(pageData.content || []);
     renderPageControls(pageData);
   } catch (error) {
-    rows.innerHTML = tableEmptyRow(7, error.message || '큐레이션 목록을 불러오지 못했습니다.');
+    rows.innerHTML = tableEmptyRow(8, error.message || '큐레이션 목록을 불러오지 못했습니다.');
     pagination.replaceChildren();
     toast(error.message || '큐레이션 목록을 불러오지 못했습니다.', 'error');
   } finally {
@@ -91,7 +107,7 @@ async function loadCurations() {
 
 function renderRows(items) {
   if (!items.length) {
-    rows.innerHTML = tableEmptyRow(7, '큐레이션이 없습니다.');
+    rows.innerHTML = tableEmptyRow(8, '큐레이션이 없습니다.');
     return;
   }
 
@@ -101,6 +117,7 @@ function renderRows(items) {
     return `
       <tr>
         <td>${statusBadge(item.status)}</td>
+        <td>${pinButton(item)}</td>
         <td>${escapeHtml(item.weekLabel || '-')}</td>
         <td>
           <strong>${escapeHtml(title)}</strong>
@@ -155,6 +172,13 @@ function statusBadge(status) {
   const normalized = String(status || 'DRAFT').toLowerCase();
   const label = status === 'PUBLISHED' ? '발행' : '임시저장';
   return `<span class="badge badge-${escapeHtml(normalized)}">${escapeHtml(label)}</span>`;
+}
+
+function pinButton(item) {
+  const pinned = Boolean(item.pinnedAt);
+  return pinned
+    ? `<span class="badge badge-published">고정됨</span> <button class="button button-small button-primary" type="button" data-action="unpin" data-id="${escapeHtml(String(item.id))}">해제</button>`
+    : `<button class="button button-small button-secondary" type="button" data-action="pin" data-id="${escapeHtml(String(item.id))}">고정</button>`;
 }
 
 function formatCounts(item) {
