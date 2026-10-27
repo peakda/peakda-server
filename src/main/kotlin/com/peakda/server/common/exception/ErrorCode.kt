@@ -66,6 +66,7 @@ enum class ErrorCode(
     CURATION_NOT_FOUND(HttpStatus.NOT_FOUND, "큐레이션을 찾을 수 없습니다."),
     FESTIVAL_NOT_FOUND(HttpStatus.NOT_FOUND, "축제를 찾을 수 없습니다."),
     FESTIVAL_EDITORIAL_NOT_FOUND(HttpStatus.NOT_FOUND, "축제 상세 정보를 찾을 수 없습니다."),
+    FESTIVAL_EDITORIAL_NOT_PUBLISHED(HttpStatus.BAD_REQUEST, "발행된 축제 상세 정보만 고정할 수 있습니다."),
     CONGESTION_LINK_NOT_FOUND(HttpStatus.NOT_FOUND, "혼잡도 연결을 찾을 수 없습니다."),
     CONGESTION_LINK_ATTRACTION_REQUIRED(HttpStatus.BAD_REQUEST, "연결할 명소를 지정해야 합니다."),
 

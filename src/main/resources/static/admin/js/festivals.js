@@ -49,7 +49,7 @@ await initLayout({
 });
 
 searchForm.addEventListener('submit', searchFestivals);
-resultsBody.addEventListener('click', selectFestival);
+resultsBody.addEventListener('click', handleResultAction);
 form.addEventListener('submit', saveEditorial);
 deleteButton.addEventListener('click', deleteEditorial);
 addHighlightButton.addEventListener('click', () => addHighlight());
@@ -71,7 +71,7 @@ async function loadFestivals(page) {
   try {
     state.page = page;
     safeSetLoading(searchButton, true);
-    setLoading(resultsBody, 3, '축제를 불러오는 중입니다.');
+    setLoading(resultsBody, 4, '축제를 불러오는 중입니다.');
     const response = await request('/api/admin/festivals', {
       query: {
         q: queryInput.value.trim(),
@@ -80,10 +80,17 @@ async function loadFestivals(page) {
       },
     });
     state.lastPage = response;
+    if (state.selectedFestival) {
+      const refreshed = response.content?.find((festival) => festival.id === state.selectedFestival.id);
+      if (refreshed) {
+        state.selectedFestival = refreshed;
+        renderSummary(refreshed);
+      }
+    }
     renderResults(response);
     renderPagination(pagination, response, loadFestivals);
   } catch (error) {
-    resultsBody.innerHTML = emptyTableRow(3, error.message || '축제 목록을 불러오지 못했습니다.');
+    resultsBody.innerHTML = emptyTableRow(4, error.message || '축제 목록을 불러오지 못했습니다.');
     pagination.replaceChildren();
     toast(error.message || '축제 목록을 불러오지 못했습니다.', 'error');
   } finally {
@@ -94,7 +101,7 @@ async function loadFestivals(page) {
 function renderResults(page) {
   const festivals = page?.content || [];
   if (!festivals.length) {
-    resultsBody.innerHTML = emptyTableRow(3, '검색 결과가 없습니다.');
+    resultsBody.innerHTML = emptyTableRow(4, '검색 결과가 없습니다.');
     return;
   }
 
@@ -108,9 +115,41 @@ function renderResults(page) {
         </td>
         <td class="cell-nowrap">${escapeHtml(formatPeriod(festival))}</td>
         <td>${festival.hasEditorial ? badge(festival.editorialStatus) : badge('MISSING')}</td>
+        <td>${pinControl(festival)}</td>
       </tr>
     `;
   }).join('');
+}
+
+function pinControl(festival) {
+  if (festival.pinnedAt) {
+    return `<span class="badge">고정됨</span> <button class="button button-small button-secondary" type="button" data-action="unpin" data-festival-id="${festival.id}">해제</button>`;
+  }
+  if (festival.hasEditorial && festival.editorialStatus === 'PUBLISHED') {
+    return `<button class="button button-small button-secondary" type="button" data-action="pin" data-festival-id="${festival.id}">고정</button>`;
+  }
+  return '<span class="muted">-</span>';
+}
+
+async function handleResultAction(event) {
+  const button = event.target.closest('[data-action]');
+  if (!button) {
+    await selectFestival(event);
+    return;
+  }
+  event.stopPropagation();
+  const festivalId = Number(button.dataset.festivalId);
+  const pinned = button.dataset.action === 'pin';
+  try {
+    button.disabled = true;
+    await request(`/api/admin/festivals/${encodeURIComponent(festivalId)}/pin`, { method: pinned ? 'PUT' : 'DELETE' });
+    toast(pinned ? '축제를 고정했습니다.' : '축제 고정을 해제했습니다.');
+    await loadFestivals(state.page);
+  } catch (error) {
+    toast(error.message || '고정 상태를 변경하지 못했습니다.', 'error');
+  } finally {
+    button.disabled = false;
+  }
 }
 
 async function selectFestival(event) {
@@ -161,6 +200,7 @@ function renderSummary(festival) {
       </div>
       <div class="inline-actions">
         ${festival.hasEditorial ? badge(festival.editorialStatus) : badge('MISSING')}
+        ${festival.pinnedAt ? '<span class="badge">고정됨</span>' : ''}
       </div>
     </div>
     <div class="panel-body">

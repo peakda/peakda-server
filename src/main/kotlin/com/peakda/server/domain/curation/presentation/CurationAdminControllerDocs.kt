@@ -99,4 +99,41 @@ interface CurationAdminControllerDocs {
         @Parameter(description = "큐레이션 id", example = "101")
         @PathVariable("id") id: Long,
     ): ResponseEntity<ApiResponse<Unit>>
+
+    @Operation(
+        summary = "큐레이션 상단 고정",
+        description = "큐레이션을 탐색 탭 목록 상단에 고정한다. 여러 건을 고정할 수 있으며 최근 고정 순으로 노출한다.",
+        security = [SecurityRequirement(name = "accessTokenCookie")],
+    )
+    @ApiErrorResponses(
+        ErrorCode.INVALID_REQUEST,
+        ErrorCode.UNAUTHORIZED,
+        ErrorCode.FORBIDDEN,
+        ErrorCode.CURATION_NOT_FOUND,
+    )
+    @PutMapping("/{id}/pin")
+    fun pin(
+        @Parameter(hidden = true)
+        @AuthenticationPrincipal principal: PrincipalDetails,
+        @Parameter(description = "큐레이션 id", example = "101")
+        @PathVariable("id") id: Long,
+    ): ResponseEntity<ApiResponse<Unit>>
+
+    @Operation(
+        summary = "큐레이션 상단 고정 해제",
+        security = [SecurityRequirement(name = "accessTokenCookie")],
+    )
+    @ApiErrorResponses(
+        ErrorCode.INVALID_REQUEST,
+        ErrorCode.UNAUTHORIZED,
+        ErrorCode.FORBIDDEN,
+        ErrorCode.CURATION_NOT_FOUND,
+    )
+    @DeleteMapping("/{id}/pin")
+    fun unpin(
+        @Parameter(hidden = true)
+        @AuthenticationPrincipal principal: PrincipalDetails,
+        @Parameter(description = "큐레이션 id", example = "101")
+        @PathVariable("id") id: Long,
+    ): ResponseEntity<ApiResponse<Unit>>
 }

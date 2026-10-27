@@ -24,9 +24,10 @@ import org.mockito.Mockito.mock
 import org.mockito.Mockito.times
 import org.mockito.Mockito.verify
 import org.mockito.Mockito.`when`
-import org.springframework.data.domain.PageImpl
 import org.springframework.data.domain.PageRequest
+import org.springframework.data.domain.Pageable
 import org.springframework.test.util.ReflectionTestUtils
+import java.time.Instant
 import java.time.LocalDate
 
 class CurationQueryServiceTest {
@@ -45,17 +46,59 @@ class CurationQueryServiceTest {
     )
 
     @Test
-    fun `카드는 발행 상태만 최신 주차순 파인더로 조회한다`() {
-        val pageable = PageRequest.of(0, 5)
-        val curation = curation(1L, CurationStatus.PUBLISHED)
-        `when`(
-            curationRepository.findByStatusOrderByWeekStartDateDesc(CurationStatus.PUBLISHED, pageable),
-        ).thenReturn(PageImpl(listOf(curation), pageable, 1))
+    fun `고정 시각이 최신인 카드부터 노출하고 동률과 미고정 카드는 최신 주차순이다`() {
+        val olderPin = Instant.parse("2026-08-02T00:00:00Z")
+        val newestPin = olderPin.plusSeconds(60)
+        val rows = listOf(
+            curation(1L, CurationStatus.PUBLISHED, LocalDate.of(2026, 8, 1)),
+            curation(2L, CurationStatus.PUBLISHED, LocalDate.of(2026, 9, 1)),
+            curation(3L, CurationStatus.PUBLISHED, LocalDate.of(2026, 6, 1), olderPin),
+            curation(4L, CurationStatus.PUBLISHED, LocalDate.of(2026, 7, 1), olderPin),
+            curation(5L, CurationStatus.PUBLISHED, LocalDate.of(2026, 5, 1), newestPin),
+        )
+        `when`(curationRepository.findByStatus(CurationStatus.PUBLISHED)).thenReturn(rows)
 
-        val response = service.cards(pageable)
+        val response = service.cards(PageRequest.of(0, 5))
 
-        assertThat(response.content.map { it.id }).containsExactly(1L)
-        verify(curationRepository).findByStatusOrderByWeekStartDateDesc(CurationStatus.PUBLISHED, pageable)
+        assertThat(response.content.map { it.id }).containsExactly(5L, 4L, 3L, 2L, 1L)
+        verify(curationRepository).findByStatus(CurationStatus.PUBLISHED)
+    }
+
+    @Test
+    fun `최신 주차 페이지 밖의 오래된 고정 카드를 먼저 배치한 뒤 페이지를 나눈다`() {
+        val rows = (1L..4L).map { id ->
+            curation(
+                id,
+                CurationStatus.PUBLISHED,
+                LocalDate.of(2026, id.toInt(), 1),
+                if (id == 1L) Instant.parse("2026-09-01T00:00:00Z") else null,
+            )
+        }
+        `when`(curationRepository.findByStatus(CurationStatus.PUBLISHED)).thenReturn(rows)
+
+        val first = service.cards(PageRequest.of(0, 2))
+        val second = service.cards(PageRequest.of(1, 2))
+        val outOfRange = service.cards(PageRequest.of(Int.MAX_VALUE, 50))
+
+        assertThat(first.content.map { it.id }).containsExactly(1L, 4L)
+        assertThat(second.content.map { it.id }).containsExactly(3L, 2L)
+        assertThat(first.totalElements).isEqualTo(4)
+        assertThat(first.hasNext()).isTrue()
+        assertThat(second.number).isEqualTo(1)
+        assertThat(second.hasNext()).isFalse()
+        assertThat(outOfRange.content).isEmpty()
+        assertThat(outOfRange.totalElements).isEqualTo(4)
+        assertThat(service.cards(Pageable.unpaged()).content.map { it.id }).containsExactly(1L, 4L, 3L, 2L)
+    }
+
+    @Test
+    fun `발행본이 없으면 빈 카드 페이지를 반환한다`() {
+        `when`(curationRepository.findByStatus(CurationStatus.PUBLISHED)).thenReturn(emptyList())
+
+        val response = service.cards(PageRequest.of(0, 5))
+
+        assertThat(response.content).isEmpty()
+        assertThat(response.totalElements).isZero()
     }
 
     @Test
@@ -150,9 +193,14 @@ class CurationQueryServiceTest {
             .thenReturn(recommendations)
     }
 
-    private fun curation(id: Long, status: CurationStatus): Curation {
+    private fun curation(
+        id: Long,
+        status: CurationStatus,
+        weekStartDate: LocalDate = LocalDate.of(2026, 8, 1),
+        pinnedAt: Instant? = null,
+    ): Curation {
         val curation = Curation(
-            weekStartDate = LocalDate.of(2026, 8, 1),
+            weekStartDate = weekStartDate,
             weekEndDate = LocalDate.of(2026, 8, 7),
             weekLabel = "8월 1주차 · 8/1~8/7",
             heroImageUrl = "https://img/hero.jpg",
@@ -162,6 +210,7 @@ class CurationQueryServiceTest {
             nextTeaserOverline = "다음 주 예고",
             nextTeaserBody = "한 주 더 노란색이 이어져요.",
             status = status,
+            pinnedAt = pinnedAt,
         )
         ReflectionTestUtils.setField(curation, "id", id)
         return curation

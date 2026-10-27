@@ -12,6 +12,8 @@ import java.time.LocalDate
 
 interface CurationRepository : JpaRepository<Curation, Long> {
 
+    fun findByStatus(status: CurationStatus): List<Curation>
+
     /** 발행된 큐레이션을 최신 주차순으로 (탐색 카드·목록). */
     fun findByStatusOrderByWeekStartDateDesc(status: CurationStatus, pageable: Pageable): Page<Curation>
 

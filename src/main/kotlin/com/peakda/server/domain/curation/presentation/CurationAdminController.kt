@@ -52,4 +52,14 @@ class CurationAdminController(
         curationAdminService.delete(adminId, id)
         return ResponseEntity.ok(ApiResponse.success(HttpStatus.OK))
     }
+
+    override fun pin(principal: PrincipalDetails, id: Long): ResponseEntity<ApiResponse<Unit>> {
+        curationAdminService.pin(requireNotNull(principal.getUser().id), id)
+        return ResponseEntity.ok(ApiResponse.success(HttpStatus.OK))
+    }
+
+    override fun unpin(principal: PrincipalDetails, id: Long): ResponseEntity<ApiResponse<Unit>> {
+        curationAdminService.unpin(requireNotNull(principal.getUser().id), id)
+        return ResponseEntity.ok(ApiResponse.success(HttpStatus.OK))
+    }
 }

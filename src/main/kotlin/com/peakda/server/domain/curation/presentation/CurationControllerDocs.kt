@@ -22,7 +22,7 @@ interface CurationControllerDocs {
 
     @Operation(
         summary = "발행 큐레이션 목록",
-        description = "비로그인으로 조회할 수 있다. 발행된 주차 단위 큐레이션을 최신 주차순으로 조회한다.",
+        description = "비로그인으로 조회할 수 있다. 발행된 주차 단위 큐레이션을 최근 고정순, 최신 주차순으로 조회한다.",
     )
     @ApiErrorResponses(ErrorCode.INVALID_REQUEST)
     @GetMapping
