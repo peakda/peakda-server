@@ -7,6 +7,7 @@ import com.peakda.server.domain.festival.entity.FestivalEditorial
 import com.peakda.server.domain.festival.entity.FestivalEditorialStatus
 import com.peakda.server.domain.festival.entity.FestivalHighlight
 import com.peakda.server.domain.festival.exception.FestivalEditorialNotFoundException
+import com.peakda.server.domain.festival.exception.FestivalEditorialNotPublishedException
 import com.peakda.server.domain.festival.exception.FestivalNotFoundException
 import com.peakda.server.domain.festival.repository.FestivalEditorialRepository
 import com.peakda.server.domain.festival.repository.FestivalHighlightRepository
@@ -47,7 +48,8 @@ class FestivalEditorialAdminServiceTest {
         val first = festival(FESTIVAL_ID, "태백 해바라기축제")
         val second = festival(102L, "양평 해바라기축제")
         val pageable = PageRequest.of(0, 10)
-        val editorial = editorial(EDITORIAL_ID, FestivalEditorialStatus.DRAFT)
+        val pinnedAt = Instant.parse("2026-10-27T01:00:00Z")
+        val editorial = editorial(EDITORIAL_ID, FestivalEditorialStatus.PUBLISHED, pinnedAt = pinnedAt)
         `when`(festivalRepository.findByNameContainingIgnoreCaseOrderByIdDesc("해바라기", pageable))
             .thenReturn(PageImpl(listOf(first, second), pageable, 2))
         `when`(festivalEditorialRepository.findByFestivalIdIn(listOf(FESTIVAL_ID, 102L)))
@@ -57,13 +59,15 @@ class FestivalEditorialAdminServiceTest {
 
         assertThat(response.content.map { it.id }).containsExactly(FESTIVAL_ID, 102L)
         assertThat(response.content.map { it.hasEditorial }).containsExactly(true, false)
-        assertThat(response.content.first().editorialStatus).isEqualTo(FestivalEditorialStatus.DRAFT)
+        assertThat(response.content.first().editorialStatus).isEqualTo(FestivalEditorialStatus.PUBLISHED)
+        assertThat(response.content.map { it.pinnedAt }).containsExactly(pinnedAt, null)
         verify(festivalEditorialRepository, times(1)).findByFestivalIdIn(listOf(FESTIVAL_ID, 102L))
     }
 
     @Test
     fun `관리자 에디토리얼 조회는 원본 키와 미리보기 URL을 함께 반환한다`() {
-        val persisted = editorial(EDITORIAL_ID, FestivalEditorialStatus.PUBLISHED, heroImageKey = "curations/hero.webp")
+        val pinnedAt = Instant.parse("2026-10-27T01:00:00Z")
+        val persisted = editorial(EDITORIAL_ID, FestivalEditorialStatus.PUBLISHED, heroImageKey = "curations/hero.webp", pinnedAt = pinnedAt)
         `when`(festivalEditorialRepository.findByFestivalId(FESTIVAL_ID)).thenReturn(persisted)
         `when`(festivalHighlightRepository.findByFestivalEditorialIdOrderBySortOrderAsc(EDITORIAL_ID))
             .thenReturn(listOf(highlight(1, "꽃밭 트레킹 코스")))
@@ -71,6 +75,7 @@ class FestivalEditorialAdminServiceTest {
 
         val response = service.editorial(FESTIVAL_ID)
 
+        assertThat(response.pinnedAt).isEqualTo(pinnedAt)
         assertThat(response.heroImageKey).isEqualTo("curations/hero.webp")
         assertThat(response.heroImagePreviewUrl).isEqualTo("https://signed/hero.webp")
         assertThat(response.highlights.map { it.title }).containsExactly("꽃밭 트레킹 코스")
@@ -194,6 +199,52 @@ class FestivalEditorialAdminServiceTest {
         order.verify(festivalEditorialRepository).delete(persisted)
     }
 
+    @Test
+    fun `발행된 에디토리얼을 고정하고 해제한다`() {
+        val persisted = editorial(EDITORIAL_ID, FestivalEditorialStatus.PUBLISHED)
+        `when`(festivalEditorialRepository.findByFestivalId(FESTIVAL_ID)).thenReturn(persisted)
+
+        service.pin(ADMIN_ID, FESTIVAL_ID)
+        assertThat(persisted.pinnedAt).isNotNull()
+
+        service.unpin(ADMIN_ID, FESTIVAL_ID)
+        assertThat(persisted.pinnedAt).isNull()
+    }
+
+    @Test
+    fun `이미 고정된 에디토리얼을 다시 고정해도 고정 시각은 유지한다`() {
+        val pinnedAt = Instant.parse("2026-07-25T00:00:00Z")
+        val persisted = editorial(EDITORIAL_ID, FestivalEditorialStatus.PUBLISHED, pinnedAt = pinnedAt)
+        `when`(festivalEditorialRepository.findByFestivalId(FESTIVAL_ID)).thenReturn(persisted)
+
+        service.pin(ADMIN_ID, FESTIVAL_ID)
+
+        assertThat(persisted.pinnedAt).isEqualTo(pinnedAt)
+    }
+
+    @Test
+    fun `고정된 에디토리얼을 DRAFT로 내리면 고정을 해제한다`() {
+        val persisted = editorial(
+            EDITORIAL_ID,
+            FestivalEditorialStatus.PUBLISHED,
+            pinnedAt = Instant.parse("2026-07-25T00:00:00Z"),
+        )
+        stubExisting(persisted)
+
+        service.upsert(ADMIN_ID, FESTIVAL_ID, command(status = FestivalEditorialStatus.DRAFT))
+
+        assertThat(persisted.pinnedAt).isNull()
+    }
+
+    @Test
+    fun `발행되지 않은 에디토리얼은 고정할 수 없다`() {
+        val persisted = editorial(EDITORIAL_ID, FestivalEditorialStatus.DRAFT)
+        `when`(festivalEditorialRepository.findByFestivalId(FESTIVAL_ID)).thenReturn(persisted)
+
+        assertThatThrownBy { service.pin(ADMIN_ID, FESTIVAL_ID) }
+            .isInstanceOf(FestivalEditorialNotPublishedException::class.java)
+    }
+
     private fun stubExisting(editorial: FestivalEditorial) {
         `when`(festivalRepository.existsById(FESTIVAL_ID)).thenReturn(true)
         `when`(festivalEditorialRepository.findByFestivalId(FESTIVAL_ID)).thenReturn(editorial)
@@ -232,6 +283,7 @@ class FestivalEditorialAdminServiceTest {
         hook: String = "훅",
         heroImageKey: String? = null,
         publishedAt: Instant? = null,
+        pinnedAt: Instant? = null,
     ): FestivalEditorial {
         val editorial = FestivalEditorial(
             festivalId = FESTIVAL_ID,
@@ -239,6 +291,7 @@ class FestivalEditorialAdminServiceTest {
             heroImageUrl = heroImageKey,
             status = status,
             publishedAt = publishedAt,
+            pinnedAt = pinnedAt,
         )
         ReflectionTestUtils.setField(editorial, "id", id)
         return editorial

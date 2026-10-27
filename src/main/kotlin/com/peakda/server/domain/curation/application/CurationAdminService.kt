@@ -108,6 +108,34 @@ class CurationAdminService(
         )
     }
 
+    @Transactional
+    fun pin(adminId: Long, id: Long) {
+        val curation = curationRepository.findById(id).orElseThrow { CurationNotFoundException() }
+        if (curation.pinnedAt == null) curation.pinnedAt = Instant.now()
+        adminAuditRecorder.record(
+            RecordAdminAuditCommand(
+                adminId = adminId,
+                action = AdminAuditAction.CURATION_PIN,
+                targetType = AdminAuditTargetType.CURATION,
+                targetId = id,
+            ),
+        )
+    }
+
+    @Transactional
+    fun unpin(adminId: Long, id: Long) {
+        val curation = curationRepository.findById(id).orElseThrow { CurationNotFoundException() }
+        curation.pinnedAt = null
+        adminAuditRecorder.record(
+            RecordAdminAuditCommand(
+                adminId = adminId,
+                action = AdminAuditAction.CURATION_UNPIN,
+                targetType = AdminAuditTargetType.CURATION,
+                targetId = id,
+            ),
+        )
+    }
+
     private fun childCountsByCurationId(curationIds: List<Long>): Map<Long, CurationChildCounts> {
         if (curationIds.isEmpty()) return emptyMap()
         return curationRepository.countChildrenByCurationIdIn(curationIds)
@@ -125,6 +153,7 @@ class CurationAdminService(
         title = title,
         status = status,
         publishedAt = publishedAt,
+        pinnedAt = pinnedAt,
         chapterCount = chapterCount,
         recommendationCount = recommendationCount,
     )
@@ -146,6 +175,7 @@ class CurationAdminService(
         nextTeaserOverline = nextTeaserOverline,
         nextTeaserBody = nextTeaserBody,
         publishedAt = publishedAt,
+        pinnedAt = pinnedAt,
         chapters = chapters.map { it.toAdminResponse() },
         recommendations = recommendations.map { it.toAdminResponse() },
     )

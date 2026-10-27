@@ -16,6 +16,7 @@ import com.peakda.server.domain.curation.repository.CurationRepository
 import com.peakda.server.domain.spot.application.SpotPreviewService
 import com.peakda.server.domain.spot.presentation.response.SpotPreviewResponse.SpotPreviewItem
 import org.springframework.data.domain.Page
+import org.springframework.data.domain.PageImpl
 import org.springframework.data.domain.Pageable
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
@@ -29,11 +30,21 @@ class CurationQueryService(
     private val objectKeyUrlResolver: ObjectKeyUrlResolver,
 ) {
 
-    /** 발행된 큐레이션 카드 목록 (최신 주차순). */
+    /** 발행된 큐레이션을 최근 고정순, 최신 주차순으로 정렬한 뒤 페이지를 나눈다. */
     @Transactional(readOnly = true)
-    fun cards(pageable: Pageable): Page<CurationCardResponse> =
-        curationRepository.findByStatusOrderByWeekStartDateDesc(CurationStatus.PUBLISHED, pageable)
-            .map { it.toCardResponse() }
+    fun cards(pageable: Pageable): Page<CurationCardResponse> {
+        val sorted = curationRepository.findByStatus(CurationStatus.PUBLISHED).sortedWith(
+            compareByDescending<Curation> { it.pinnedAt }
+                .thenByDescending { it.weekStartDate },
+        )
+        val content = if (pageable.isUnpaged) {
+            sorted
+        } else {
+            val from = pageable.offset.coerceAtMost(sorted.size.toLong()).toInt()
+            sorted.drop(from).take(pageable.pageSize)
+        }
+        return PageImpl(content.map { it.toCardResponse() }, pageable, sorted.size.toLong())
+    }
 
     /** 발행된 큐레이션 상세. 없거나 DRAFT 면 [CurationNotFoundException]. */
     @Transactional(readOnly = true)

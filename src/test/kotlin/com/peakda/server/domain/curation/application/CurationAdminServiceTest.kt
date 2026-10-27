@@ -48,7 +48,8 @@ class CurationAdminServiceTest {
     fun `관리자 목록은 상태 필터 없이 최신 주차순 페이지를 조회하고 페이지 id만 하위 건수를 일괄 집계한다`() {
         val pageable = PageRequest.of(0, 20)
         val first = curation(101L, CurationStatus.DRAFT, title = "임시저장")
-        val second = curation(102L, CurationStatus.PUBLISHED, title = "발행")
+        val pinnedAt = Instant.parse("2026-10-27T01:00:00Z")
+        val second = curation(102L, CurationStatus.PUBLISHED, title = "발행", pinnedAt = pinnedAt)
         `when`(curationRepository.findAllByOrderByWeekStartDateDesc(pageable))
             .thenReturn(PageImpl(listOf(first, second), pageable, 2))
         `when`(curationRepository.countChildrenByCurationIdIn(listOf(101L, 102L))).thenReturn(
@@ -61,6 +62,7 @@ class CurationAdminServiceTest {
         val response = service.list(status = null, pageable = pageable)
 
         assertThat(response.content.map { it.id }).containsExactly(101L, 102L)
+        assertThat(response.content.map { it.pinnedAt }).containsExactly(null, pinnedAt)
         assertThat(response.content.map { it.chapterCount }).containsExactly(3L, 0L)
         assertThat(response.content.map { it.recommendationCount }).containsExactly(0L, 2L)
         verify(curationRepository).findAllByOrderByWeekStartDateDesc(pageable)
@@ -81,7 +83,8 @@ class CurationAdminServiceTest {
 
     @Test
     fun `관리자 상세은 임시저장도 조회하고 저장 key와 preview URL을 함께 반환한다`() {
-        val persisted = curation(CURATION_ID, CurationStatus.DRAFT)
+        val pinnedAt = Instant.parse("2026-10-27T01:00:00Z")
+        val persisted = curation(CURATION_ID, CurationStatus.DRAFT, pinnedAt = pinnedAt)
         `when`(curationRepository.findCurationById(CURATION_ID)).thenReturn(persisted)
         `when`(curationChapterRepository.findByCurationIdOrderBySortOrderAsc(CURATION_ID)).thenReturn(
             listOf(chapterEntity("챕터")),
@@ -96,6 +99,7 @@ class CurationAdminServiceTest {
         val response = service.detail(CURATION_ID)
 
         assertThat(response.status).isEqualTo(CurationStatus.DRAFT)
+        assertThat(response.pinnedAt).isEqualTo(pinnedAt)
         assertThat(response.heroImageKey).isEqualTo("https://img/hero.jpg")
         assertThat(response.heroImagePreviewUrl).isEqualTo("preview:https://img/hero.jpg")
         assertThat(response.chapters.map { it.sortOrder }).containsExactly(1)
@@ -180,6 +184,20 @@ class CurationAdminServiceTest {
         service.upsert(ADMIN_ID, command(status = CurationStatus.DRAFT))
 
         assertThat(persisted.publishedAt).isNull()
+    }
+
+    @Test
+    fun `큐레이션을 고정하고 해제한다`() {
+        val persisted = curation(CURATION_ID, CurationStatus.PUBLISHED)
+        `when`(curationRepository.findById(CURATION_ID)).thenReturn(Optional.of(persisted))
+
+        service.pin(ADMIN_ID, CURATION_ID)
+        assertThat(persisted.pinnedAt).isNotNull()
+        val pinnedAt = persisted.pinnedAt
+        service.pin(ADMIN_ID, CURATION_ID)
+        assertThat(persisted.pinnedAt).isEqualTo(pinnedAt)
+        service.unpin(ADMIN_ID, CURATION_ID)
+        assertThat(persisted.pinnedAt).isNull()
     }
 
     @Test
@@ -275,6 +293,7 @@ class CurationAdminServiceTest {
         status: CurationStatus,
         title: String = "제목",
         publishedAt: Instant? = null,
+        pinnedAt: Instant? = null,
     ): Curation {
         val curation = Curation(
             weekStartDate = WEEK_START,
@@ -288,6 +307,7 @@ class CurationAdminServiceTest {
             nextTeaserBody = "예고 본문",
             status = status,
             publishedAt = publishedAt,
+            pinnedAt = pinnedAt,
         )
         ReflectionTestUtils.setField(curation, "id", id)
         return curation

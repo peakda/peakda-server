@@ -15,6 +15,8 @@ interface FestivalEditorialRepository : JpaRepository<FestivalEditorial, Long> {
         status: FestivalEditorialStatus,
     ): List<FestivalEditorial>
 
+    fun findByStatusAndPinnedAtIsNotNull(status: FestivalEditorialStatus): List<FestivalEditorial>
+
     /** [status] 에디토리얼의 축제 id·수정 시각 (sitemap). */
     fun findByStatus(status: FestivalEditorialStatus): List<FestivalEditorialLastModifiedAt>
 

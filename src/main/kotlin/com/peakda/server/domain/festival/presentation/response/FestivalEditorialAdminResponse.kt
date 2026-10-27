@@ -60,6 +60,9 @@ data class FestivalEditorialAdminResponse(
     @field:Schema(description = "발행 시각. DRAFT면 null")
     val publishedAt: Instant?,
 
+    @field:Schema(description = "고정 시각. 고정하지 않았으면 null", example = "2026-10-27T01:00:00Z")
+    val pinnedAt: Instant?,
+
     @field:Schema(description = "정렬된 주요 볼거리")
     val highlights: List<FestivalHighlightAdminResponse>,
 ) {

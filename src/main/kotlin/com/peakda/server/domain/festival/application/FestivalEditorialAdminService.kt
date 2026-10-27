@@ -10,6 +10,7 @@ import com.peakda.server.domain.festival.entity.FestivalEditorial
 import com.peakda.server.domain.festival.entity.FestivalEditorialStatus
 import com.peakda.server.domain.festival.entity.FestivalHighlight
 import com.peakda.server.domain.festival.exception.FestivalEditorialNotFoundException
+import com.peakda.server.domain.festival.exception.FestivalEditorialNotPublishedException
 import com.peakda.server.domain.festival.exception.FestivalNotFoundException
 import com.peakda.server.domain.festival.presentation.response.FestivalAdminSummaryResponse
 import com.peakda.server.domain.festival.presentation.response.FestivalEditorialAdminResponse
@@ -111,6 +112,39 @@ class FestivalEditorialAdminService(
         )
     }
 
+    @Transactional
+    fun pin(adminId: Long, festivalId: Long) {
+        val editorial = festivalEditorialRepository.findByFestivalId(festivalId)
+            ?: throw FestivalEditorialNotFoundException()
+        if (editorial.status != FestivalEditorialStatus.PUBLISHED) {
+            throw FestivalEditorialNotPublishedException()
+        }
+        if (editorial.pinnedAt == null) editorial.pinnedAt = Instant.now()
+        adminAuditRecorder.record(
+            RecordAdminAuditCommand(
+                adminId = adminId,
+                action = AdminAuditAction.FESTIVAL_EDITORIAL_PIN,
+                targetType = AdminAuditTargetType.FESTIVAL,
+                targetId = festivalId,
+            ),
+        )
+    }
+
+    @Transactional
+    fun unpin(adminId: Long, festivalId: Long) {
+        val editorial = festivalEditorialRepository.findByFestivalId(festivalId)
+            ?: throw FestivalEditorialNotFoundException()
+        editorial.pinnedAt = null
+        adminAuditRecorder.record(
+            RecordAdminAuditCommand(
+                adminId = adminId,
+                action = AdminAuditAction.FESTIVAL_EDITORIAL_UNPIN,
+                targetType = AdminAuditTargetType.FESTIVAL,
+                targetId = festivalId,
+            ),
+        )
+    }
+
     private fun UpsertFestivalEditorialCommand.toEntity(festivalId: Long): FestivalEditorial =
         FestivalEditorial(
             festivalId = festivalId,
@@ -148,6 +182,7 @@ class FestivalEditorialAdminService(
             status == FestivalEditorialStatus.PUBLISHED -> publishedAt
             else -> Instant.now()
         }
+        if (command.status == FestivalEditorialStatus.DRAFT) pinnedAt = null
         status = command.status
         // 하위 목록만 바뀐 저장도 공개 화면 수정일(sitemap lastmod)에 반영한다.
         markModified()
@@ -172,6 +207,7 @@ class FestivalEditorialAdminService(
         endsOn = endsOn,
         hasEditorial = editorial != null,
         editorialStatus = editorial?.status,
+        pinnedAt = editorial?.pinnedAt,
     )
 
     private fun FestivalEditorial.toAdminResponse(
@@ -194,6 +230,7 @@ class FestivalEditorialAdminService(
         heroImagePreviewUrl = objectKeyUrlResolver.resolve(heroImageUrl),
         status = status,
         publishedAt = publishedAt,
+        pinnedAt = pinnedAt,
         highlights = highlights.map { highlight ->
             FestivalHighlightAdminResponse(
                 sortOrder = highlight.sortOrder,

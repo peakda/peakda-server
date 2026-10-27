@@ -100,4 +100,42 @@ interface FestivalEditorialAdminControllerDocs {
         @Parameter(description = "축제 id", example = "101")
         @PathVariable("festivalId") festivalId: Long,
     ): ResponseEntity<ApiResponse<Unit>>
+
+    @Operation(
+        summary = "축제 에디토리얼 고정",
+        description = "발행된 축제 에디토리얼을 탐색 목록 상단에 고정한다.",
+        security = [SecurityRequirement(name = "accessTokenCookie")],
+    )
+    @ApiErrorResponses(
+        ErrorCode.INVALID_REQUEST,
+        ErrorCode.UNAUTHORIZED,
+        ErrorCode.FORBIDDEN,
+        ErrorCode.FESTIVAL_EDITORIAL_NOT_FOUND,
+        ErrorCode.FESTIVAL_EDITORIAL_NOT_PUBLISHED,
+    )
+    @PutMapping("/{festivalId}/pin")
+    fun pin(
+        @Parameter(hidden = true)
+        @AuthenticationPrincipal principal: PrincipalDetails,
+        @Parameter(description = "축제 id", example = "101")
+        @PathVariable("festivalId") festivalId: Long,
+    ): ResponseEntity<ApiResponse<Unit>>
+
+    @Operation(
+        summary = "축제 에디토리얼 고정 해제",
+        security = [SecurityRequirement(name = "accessTokenCookie")],
+    )
+    @ApiErrorResponses(
+        ErrorCode.INVALID_REQUEST,
+        ErrorCode.UNAUTHORIZED,
+        ErrorCode.FORBIDDEN,
+        ErrorCode.FESTIVAL_EDITORIAL_NOT_FOUND,
+    )
+    @DeleteMapping("/{festivalId}/pin")
+    fun unpin(
+        @Parameter(hidden = true)
+        @AuthenticationPrincipal principal: PrincipalDetails,
+        @Parameter(description = "축제 id", example = "101")
+        @PathVariable("festivalId") festivalId: Long,
+    ): ResponseEntity<ApiResponse<Unit>>
 }

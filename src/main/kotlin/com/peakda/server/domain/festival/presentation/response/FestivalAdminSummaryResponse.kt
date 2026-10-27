@@ -3,6 +3,7 @@ package com.peakda.server.domain.festival.presentation.response
 import com.peakda.server.domain.festival.entity.FestivalEditorialStatus
 import io.swagger.v3.oas.annotations.media.Schema
 import java.time.LocalDate
+import java.time.Instant
 
 @Schema(description = "관리자 축제 목록 요약")
 data class FestivalAdminSummaryResponse(
@@ -26,4 +27,7 @@ data class FestivalAdminSummaryResponse(
 
     @field:Schema(description = "에디토리얼 상태. 에디토리얼이 없으면 null", example = "DRAFT")
     val editorialStatus: FestivalEditorialStatus?,
+
+    @field:Schema(description = "에디토리얼 고정 시각. 고정하지 않았으면 null", example = "2026-10-27T01:00:00Z")
+    val pinnedAt: Instant?,
 )
