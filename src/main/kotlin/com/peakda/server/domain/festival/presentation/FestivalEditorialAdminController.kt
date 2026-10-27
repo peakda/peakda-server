@@ -54,4 +54,14 @@ class FestivalEditorialAdminController(
         festivalEditorialAdminService.delete(adminId, festivalId)
         return ResponseEntity.ok(ApiResponse.success(HttpStatus.OK))
     }
+
+    override fun pin(principal: PrincipalDetails, festivalId: Long): ResponseEntity<ApiResponse<Unit>> {
+        festivalEditorialAdminService.pin(requireNotNull(principal.getUser().id), festivalId)
+        return ResponseEntity.ok(ApiResponse.success(HttpStatus.OK))
+    }
+
+    override fun unpin(principal: PrincipalDetails, festivalId: Long): ResponseEntity<ApiResponse<Unit>> {
+        festivalEditorialAdminService.unpin(requireNotNull(principal.getUser().id), festivalId)
+        return ResponseEntity.ok(ApiResponse.success(HttpStatus.OK))
+    }
 }

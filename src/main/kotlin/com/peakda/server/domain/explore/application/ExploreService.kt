@@ -200,7 +200,14 @@ class ExploreService(
 
     private fun festivalItems(category: BloomCategory?, today: LocalDate): List<ExploreFestivalItem> {
         val pageable = SpringPageRequest.of(0, properties.festivalCandidateSize)
-        val festivals = festivalRepository.findOngoing(today, pageable)
+        val candidates = festivalRepository.findOngoing(today, pageable)
+        val pinnedEditorials = festivalEditorialRepository.findByStatusAndPinnedAtIsNotNull(
+            FestivalEditorialStatus.PUBLISHED,
+        )
+        val candidateIds = candidates.mapNotNull(Festival::id).toSet()
+        val extraPinnedIds = pinnedEditorials.map { it.festivalId }.filterNot(candidateIds::contains)
+        val pinnedFestivals = if (extraPinnedIds.isEmpty()) emptyList() else festivalRepository.findAllById(extraPinnedIds)
+        val festivals = (candidates + pinnedFestivals).distinctBy(Festival::id)
         val festivalIds = festivals.mapNotNull(Festival::id)
         val editorialsByFestivalId = if (festivalIds.isEmpty()) {
             emptyMap()
@@ -210,35 +217,45 @@ class ExploreService(
                 FestivalEditorialStatus.PUBLISHED,
             ).associateBy { it.festivalId }
         }
-        return festivals.mapNotNull { festival ->
-            val matchedCategory = BloomCategory.ofFestivalName(festival.name) ?: return@mapNotNull null
-            if (category != null && matchedCategory != category) return@mapNotNull null
-            val startsOn = festival.startsOn ?: return@mapNotNull null
-            val editorial = editorialsByFestivalId[festival.id]
-            ExploreFestivalItem(
-                festivalId = requireNotNull(festival.id),
-                name = festival.name,
-                venue = festival.venue,
-                region = festival.region(),
-                startsOn = startsOn,
-                endsOn = festival.endsOn,
-                endsInDays = festival.endsOn?.let { ChronoUnit.DAYS.between(today, it) },
-                category = matchedCategory,
-                displayName = matchedCategory.displayName,
-                latitude = festival.latitude,
-                longitude = festival.longitude,
-                homepageUrl = festival.homepageUrl,
-                thumbnailUrl = editorial?.heroImageUrl?.let(objectKeyUrlResolver::resolve),
-                phase = requireNotNull(
-                    FestivalPhaseResolver.resolve(
-                        startsOn = startsOn,
-                        endsOn = festival.endsOn,
-                        today = today,
-                        endingSoonDays = festivalDetailProperties.endingSoonDays,
-                    ),
-                ),
+        return festivals.asSequence()
+            .filter { festival ->
+                val startsOn = festival.startsOn ?: return@filter false
+                startsOn <= today && (festival.endsOn ?: startsOn) >= today
+            }
+            .sortedWith(
+                compareByDescending<Festival> { editorialsByFestivalId[it.id]?.pinnedAt }
+                    .thenBy { it.endsOn ?: it.startsOn }
+                    .thenBy { it.id },
             )
-        }
+            .mapNotNull { festival ->
+                val matchedCategory = BloomCategory.ofFestivalName(festival.name) ?: return@mapNotNull null
+                if (category != null && matchedCategory != category) return@mapNotNull null
+                val startsOn = festival.startsOn ?: return@mapNotNull null
+                val editorial = editorialsByFestivalId[festival.id]
+                ExploreFestivalItem(
+                    festivalId = requireNotNull(festival.id),
+                    name = festival.name,
+                    venue = festival.venue,
+                    region = festival.region(),
+                    startsOn = startsOn,
+                    endsOn = festival.endsOn,
+                    endsInDays = festival.endsOn?.let { ChronoUnit.DAYS.between(today, it) },
+                    category = matchedCategory,
+                    displayName = matchedCategory.displayName,
+                    latitude = festival.latitude,
+                    longitude = festival.longitude,
+                    homepageUrl = festival.homepageUrl,
+                    thumbnailUrl = editorial?.heroImageUrl?.let(objectKeyUrlResolver::resolve),
+                    phase = requireNotNull(
+                        FestivalPhaseResolver.resolve(
+                            startsOn = startsOn,
+                            endsOn = festival.endsOn,
+                            today = today,
+                            endingSoonDays = festivalDetailProperties.endingSoonDays,
+                        ),
+                    ),
+                )
+            }.toList()
     }
 
     /** Figma 카드의 지역 표시는 도로명 주소를 우선해 공백 기준 앞 두 토큰만 사용한다. */

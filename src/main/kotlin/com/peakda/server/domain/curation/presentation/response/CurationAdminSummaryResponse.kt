@@ -28,6 +28,9 @@ data class CurationAdminSummaryResponse(
     @field:Schema(description = "발행 시각. 임시저장이면 null")
     val publishedAt: Instant?,
 
+    @field:Schema(description = "상단 고정 시각. 고정하지 않았으면 null", example = "2026-10-27T01:00:00Z")
+    val pinnedAt: Instant?,
+
     @field:Schema(description = "챕터 수", example = "3")
     val chapterCount: Long,
 

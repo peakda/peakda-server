@@ -35,6 +35,7 @@ import org.mockito.Mockito.doReturn
 import org.springframework.data.domain.PageImpl
 import org.springframework.data.domain.PageRequest as SpringPageRequest
 import org.springframework.test.util.ReflectionTestUtils
+import java.time.Instant
 import java.time.LocalDate
 
 class ExploreServiceTest {
@@ -331,9 +332,40 @@ class ExploreServiceTest {
 
         val response = service.festivals(category = null, today = TODAY)
 
-        assertThat(response.items.map { it.festivalId }).containsExactly(701L, 703L)
-        assertThat(response.items.map { it.endsInDays }).containsExactly(4L, null)
-        assertThat(response.items.map { it.region }).containsExactly("경상남도 창원시", "전라남도 광양시")
+        assertThat(response.items.map { it.festivalId }).containsExactly(703L, 701L)
+        assertThat(response.items.map { it.endsInDays }).containsExactly(null, 4L)
+        assertThat(response.items.map { it.region }).containsExactly("전라남도 광양시", "경상남도 창원시")
+    }
+
+    @Test
+    fun `고정은 최신 고정순이고 고정 시각 동률과 미고정은 종료일과 id 순이다`() {
+        val festivals = listOf(
+            festival(706L, "벚꽃 축제 6", TODAY.minusDays(1), TODAY.plusDays(2)),
+            festival(705L, "벚꽃 축제 5", TODAY.minusDays(1), TODAY.plusDays(1)),
+            festival(704L, "벚꽃 축제 4", TODAY.minusDays(1), TODAY.plusDays(1)),
+            festival(703L, "벚꽃 축제 3", TODAY.minusDays(1), TODAY.plusDays(4)),
+            festival(702L, "벚꽃 축제 2", TODAY.minusDays(1), TODAY.plusDays(3)),
+            festival(701L, "벚꽃 축제 1", TODAY.minusDays(1), TODAY.plusDays(5)),
+        )
+        val olderPin = Instant.parse("2026-04-01T01:00:00Z")
+        val newestPin = olderPin.plusSeconds(60)
+        val editorials = listOf(
+            FestivalEditorial(festivalId = 701L, status = FestivalEditorialStatus.PUBLISHED, pinnedAt = newestPin),
+            FestivalEditorial(festivalId = 702L, status = FestivalEditorialStatus.PUBLISHED, pinnedAt = olderPin),
+            FestivalEditorial(festivalId = 703L, status = FestivalEditorialStatus.PUBLISHED, pinnedAt = olderPin),
+        )
+        `when`(festivalRepository.findOngoing(TODAY, festivalPageable)).thenReturn(festivals)
+        `when`(festivalEditorialRepository.findByStatusAndPinnedAtIsNotNull(FestivalEditorialStatus.PUBLISHED))
+            .thenReturn(editorials)
+        `when`(festivalEditorialRepository.findByFestivalIdInAndStatus(
+            festivals.mapNotNull { it.id }, FestivalEditorialStatus.PUBLISHED,
+        )).thenReturn(editorials)
+        `when`(curationQueryService.cards(curationPageable)).thenReturn(PageImpl(emptyList()))
+
+        assertThat(service.festivals(null, TODAY).items.map { it.festivalId })
+            .containsExactly(701L, 702L, 703L, 704L, 705L, 706L)
+        assertThat(service.explore(null, null, TODAY).festivals.map { it.festivalId })
+            .containsExactly(701L, 702L, 703L)
     }
 
     @Test
