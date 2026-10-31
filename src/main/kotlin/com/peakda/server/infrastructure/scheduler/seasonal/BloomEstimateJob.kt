@@ -2,6 +2,7 @@ package com.peakda.server.infrastructure.scheduler.seasonal
 
 import com.peakda.server.domain.attraction.entity.Attraction
 import com.peakda.server.domain.attraction.repository.AttractionRepository
+import com.peakda.server.domain.festival.entity.FestivalKind
 import com.peakda.server.domain.festival.repository.FestivalRepository
 import com.peakda.server.domain.seasonal.application.BloomEstimateService
 import com.peakda.server.domain.seasonal.application.AttractionStationMappingService
@@ -65,7 +66,7 @@ class BloomEstimateJob(
 
     private fun execute(): Map<String, Any?> {
         val today = LocalDate.now(KST)
-        val festivals = festivalRepository.findByLatitudeIsNotNullAndLongitudeIsNotNull()
+        val festivals = festivalRepository.findByKindAndLatitudeIsNotNullAndLongitudeIsNotNull(FestivalKind.FESTIVAL)
         val stationByAttraction = mappingService.findStationByAttraction()
         // 관측은 13개 안팎이지만 배치 전역에서 한 번만 읽어 페이지별 조회를 막는다.
         val observationsByStation = observationSnapshotService.findByStationAndCategory(today.year)

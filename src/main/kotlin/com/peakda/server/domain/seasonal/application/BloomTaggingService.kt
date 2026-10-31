@@ -4,6 +4,7 @@ import com.peakda.server.domain.attraction.application.AttractionEligibilityProp
 import com.peakda.server.domain.attraction.entity.Attraction
 import com.peakda.server.domain.attraction.repository.AttractionRepository
 import com.peakda.server.domain.festival.entity.Festival
+import com.peakda.server.domain.festival.entity.FestivalKind
 import com.peakda.server.domain.festival.repository.FestivalRepository
 import com.peakda.server.domain.seasonal.entity.BloomCategory
 import com.peakda.server.domain.seasonal.entity.TagSource
@@ -76,7 +77,7 @@ class BloomTaggingService(
     fun tagFestivals(today: LocalDate): Int {
         var count = 0
         val radiusMeters = properties.festivalCandidateRadiusKm * METERS_PER_KM
-        for (festival in festivalRepository.findByLatitudeIsNotNullAndLongitudeIsNotNull()) {
+        for (festival in festivalRepository.findByKindAndLatitudeIsNotNullAndLongitudeIsNotNull(FestivalKind.FESTIVAL)) {
             if (!isWithinRetention(festival, today)) continue
             val lat = festival.latitude ?: continue
             val lng = festival.longitude ?: continue

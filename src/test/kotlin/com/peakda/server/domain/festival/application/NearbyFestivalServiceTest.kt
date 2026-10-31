@@ -1,11 +1,13 @@
 package com.peakda.server.domain.festival.application
 
 import com.peakda.server.domain.festival.entity.Festival
+import com.peakda.server.domain.festival.entity.FestivalKind
 import com.peakda.server.domain.festival.repository.FestivalRepository
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Test
 import org.mockito.ArgumentMatchers.any
 import org.mockito.ArgumentMatchers.anyDouble
+import org.mockito.ArgumentMatchers.eq
 import org.mockito.Mockito.mock
 import org.mockito.Mockito.`when`
 import org.springframework.test.util.ReflectionTestUtils
@@ -20,6 +22,7 @@ class NearbyFestivalServiceTest {
     fun `반경 밖과 끝난 축제는 빼고 진행 중을 먼저, 가까운 순으로 상한만큼 돌려준다`() {
         `when`(
             repository.findInBoundingBoxOverlapping(
+                eq(FestivalKind.FESTIVAL) ?: FestivalKind.FESTIVAL,
                 anyDouble(), anyDouble(), anyDouble(), anyDouble(), anyDate(), anyDate(),
             ),
         ).thenReturn(

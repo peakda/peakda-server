@@ -1,5 +1,6 @@
 package com.peakda.server.domain.festival.application
 
+import com.peakda.server.domain.festival.entity.FestivalKind
 import com.peakda.server.domain.festival.repository.FestivalRepository
 import org.springframework.stereotype.Service
 import java.time.LocalDate
@@ -30,6 +31,7 @@ class NearbyFestivalService(
         val lngDelta = latDelta / cos(Math.toRadians(latitude)).coerceAtLeast(MIN_COS)
         return festivalRepository
             .findInBoundingBoxOverlapping(
+                kind = FestivalKind.FESTIVAL,
                 minLat = latitude - latDelta,
                 maxLat = latitude + latDelta,
                 minLng = longitude - lngDelta,

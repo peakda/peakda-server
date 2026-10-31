@@ -1,6 +1,7 @@
 package com.peakda.server.domain.seasonal.application
 
 import com.peakda.server.domain.attraction.repository.AttractionRepository
+import com.peakda.server.domain.festival.entity.FestivalKind
 import com.peakda.server.domain.festival.repository.FestivalRepository
 import com.peakda.server.domain.seasonal.application.estimator.GddEstimatorProperties
 import com.peakda.server.domain.seasonal.entity.BloomCategory
@@ -34,7 +35,7 @@ class BloomCalendarService(
     fun getCalendar(attractionId: Long, category: BloomCategory): BloomCalendarResponse {
         val attraction = attractionRepository.findById(attractionId)
             .orElseThrow { AttractionNotFoundException() }
-        val festivals = festivalRepository.findByLatitudeIsNotNullAndLongitudeIsNotNull()
+        val festivals = festivalRepository.findByKindAndLatitudeIsNotNullAndLongitudeIsNotNull(FestivalKind.FESTIVAL)
         val today = LocalDate.now(KST)
         val dates = (0 until properties.calendarHorizonDays).map { offset -> today.plusDays(offset) }
         val mappedStationId = mappingService.findStationId(attractionId)

@@ -4,6 +4,7 @@ import com.peakda.server.common.storage.ObjectKeyUrlResolver
 import com.peakda.server.domain.festival.entity.FestivalEditorial
 import com.peakda.server.domain.festival.entity.FestivalEditorialStatus
 import com.peakda.server.domain.festival.entity.FestivalHighlight
+import com.peakda.server.domain.festival.entity.FestivalKind
 import com.peakda.server.domain.festival.exception.FestivalNotFoundException
 import com.peakda.server.domain.festival.presentation.response.FestivalDetailResponse
 import com.peakda.server.domain.festival.presentation.response.FestivalDetailResponse.FestivalEditorialResponse
@@ -28,7 +29,8 @@ class FestivalDetailService(
 
     @Transactional(readOnly = true)
     fun detail(festivalId: Long, today: LocalDate): FestivalDetailResponse {
-        val festival = festivalRepository.findById(festivalId).orElseThrow { FestivalNotFoundException() }
+        val festival = festivalRepository.findByIdAndKind(festivalId, FestivalKind.FESTIVAL)
+            ?: throw FestivalNotFoundException()
         val editorial = festivalEditorialRepository.findByFestivalIdAndStatus(
             festivalId,
             FestivalEditorialStatus.PUBLISHED,
