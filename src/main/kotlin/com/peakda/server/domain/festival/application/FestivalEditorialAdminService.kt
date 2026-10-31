@@ -9,6 +9,7 @@ import com.peakda.server.domain.festival.entity.Festival
 import com.peakda.server.domain.festival.entity.FestivalEditorial
 import com.peakda.server.domain.festival.entity.FestivalEditorialStatus
 import com.peakda.server.domain.festival.entity.FestivalHighlight
+import com.peakda.server.domain.festival.entity.FestivalKind
 import com.peakda.server.domain.festival.exception.FestivalEditorialNotFoundException
 import com.peakda.server.domain.festival.exception.FestivalEditorialNotPublishedException
 import com.peakda.server.domain.festival.exception.FestivalNotFoundException
@@ -23,6 +24,7 @@ import org.springframework.data.domain.Pageable
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 import java.time.Instant
+import java.time.LocalDate
 
 @Service
 class FestivalEditorialAdminService(
@@ -31,15 +33,22 @@ class FestivalEditorialAdminService(
     private val festivalHighlightRepository: FestivalHighlightRepository,
     private val adminAuditRecorder: AdminAuditRecorder,
     private val objectKeyUrlResolver: ObjectKeyUrlResolver,
+    private val festivalDetailProperties: FestivalDetailProperties,
 ) {
 
     @Transactional(readOnly = true)
-    fun list(query: String?, pageable: Pageable): Page<FestivalAdminSummaryResponse> {
+    fun list(
+        query: String?,
+        kind: FestivalKind?,
+        today: LocalDate,
+        pageable: Pageable,
+    ): Page<FestivalAdminSummaryResponse> {
         val normalizedQuery = query?.trim().orEmpty()
-        val festivals = if (normalizedQuery.isBlank()) {
-            festivalRepository.findAllByOrderByIdDesc(pageable)
-        } else {
-            festivalRepository.findByNameContainingIgnoreCaseOrderByIdDesc(normalizedQuery, pageable)
+        val festivals = when {
+            kind == null && normalizedQuery.isBlank() -> festivalRepository.findAllByOrderByIdDesc(pageable)
+            kind == null -> festivalRepository.findByNameContainingIgnoreCaseOrderByIdDesc(normalizedQuery, pageable)
+            normalizedQuery.isBlank() -> festivalRepository.findByKindOrderByIdDesc(kind, pageable)
+            else -> festivalRepository.findByKindAndNameContainingIgnoreCaseOrderByIdDesc(kind, normalizedQuery, pageable)
         }
         val festivalIds = festivals.content.map { requireNotNull(it.id) }
         val editorialsByFestivalId = if (festivalIds.isEmpty()) {
@@ -53,6 +62,7 @@ class FestivalEditorialAdminService(
         return festivals.map { festival ->
             festival.toAdminSummary(
                 editorial = editorialsByFestivalId[requireNotNull(festival.id)],
+                today = today,
             )
         }
     }
@@ -199,12 +209,18 @@ class FestivalEditorialAdminService(
         body = body,
     )
 
-    private fun Festival.toAdminSummary(editorial: FestivalEditorial?): FestivalAdminSummaryResponse = FestivalAdminSummaryResponse(
+    private fun Festival.toAdminSummary(
+        editorial: FestivalEditorial?,
+        today: LocalDate,
+    ): FestivalAdminSummaryResponse = FestivalAdminSummaryResponse(
         id = requireNotNull(id),
+        source = source,
+        kind = kind,
         name = name,
         venue = venue,
         startsOn = startsOn,
         endsOn = endsOn,
+        phase = FestivalPhaseResolver.resolve(startsOn, endsOn, today, festivalDetailProperties.endingSoonDays),
         hasEditorial = editorial != null,
         editorialStatus = editorial?.status,
         pinnedAt = editorial?.pinnedAt,

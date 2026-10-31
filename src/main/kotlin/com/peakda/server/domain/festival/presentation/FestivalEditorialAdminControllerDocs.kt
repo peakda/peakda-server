@@ -6,6 +6,7 @@ import com.peakda.server.common.page.PageRequest
 import com.peakda.server.common.page.PageResponse
 import com.peakda.server.common.response.ApiResponse
 import com.peakda.server.common.security.principal.PrincipalDetails
+import com.peakda.server.domain.festival.entity.FestivalKind
 import com.peakda.server.domain.festival.presentation.request.UpsertFestivalEditorialRequest
 import com.peakda.server.domain.festival.presentation.response.FestivalAdminSummaryResponse
 import com.peakda.server.domain.festival.presentation.response.FestivalEditorialAdminResponse
@@ -25,12 +26,13 @@ import org.springframework.web.bind.annotation.PutMapping
 import org.springframework.web.bind.annotation.RequestBody
 import org.springframework.web.bind.annotation.RequestParam
 
-@Tag(name = "Festival Admin", description = "축제 에디토리얼 관리자 API")
+@Tag(name = "Festival Admin", description = "축제·트리 명소와 에디토리얼 관리자 API")
 interface FestivalEditorialAdminControllerDocs {
 
     @Operation(
         summary = "관리자 축제 목록 조회",
-        description = "축제명 부분 검색(q)은 대소문자를 구분하지 않는다. q가 없으면 전체 축제를 최신 id 순으로 조회한다.",
+        description = "축제명 부분 검색(q)은 대소문자를 구분하지 않는다. q가 없으면 전체 축제를 최신 id 순으로 조회한다. " +
+            "kind를 주면 해당 종류만 조회한다.",
         security = [SecurityRequirement(name = "accessTokenCookie")],
     )
     @ApiErrorResponses(
@@ -42,6 +44,8 @@ interface FestivalEditorialAdminControllerDocs {
     fun list(
         @Parameter(description = "축제명 부분 검색어", example = "해바라기")
         @RequestParam(name = "q", required = false) query: String?,
+        @Parameter(description = "축제 종류 필터. 없으면 전체", example = "TREE")
+        @RequestParam(name = "kind", required = false) kind: FestivalKind?,
         @Valid @ModelAttribute pageRequest: PageRequest,
     ): ResponseEntity<ApiResponse<PageResponse<FestivalAdminSummaryResponse>>>
 
