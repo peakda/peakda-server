@@ -5,7 +5,7 @@ const NAV_ITEMS = [
     ['reports', '/admin/reports.html', '신고 심사'],
     ['plants', '/admin/plants.html', '식물 검수'],
     ['curations', '/admin/curations.html', '큐레이션'],
-    ['festivals', '/admin/festivals.html', '축제 에디토리얼'],
+    ['festivals', '/admin/festivals.html', '축제·트리 명소'],
     ['notices', '/admin/notices.html', '공지 발송'],
     ['users', '/admin/users.html', '사용자'],
     ['jobs', '/admin/jobs.html', '스케줄러 잡'],
