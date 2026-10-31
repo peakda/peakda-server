@@ -3,6 +3,8 @@ package com.peakda.server.domain.festival.entity
 import com.peakda.server.common.persistence.BaseTimeEntity
 import jakarta.persistence.Column
 import jakarta.persistence.Entity
+import jakarta.persistence.EnumType
+import jakarta.persistence.Enumerated
 import jakarta.persistence.GeneratedValue
 import jakarta.persistence.GenerationType
 import jakarta.persistence.Id
@@ -11,11 +13,11 @@ import jakarta.persistence.UniqueConstraint
 import java.time.LocalDate
 
 /**
- * 공공데이터 원천 축제.
+ * 공공데이터 원천 축제와 관리자가 직접 등록한 축제·트리 명소.
  *
  * 원천 문자열 [startDate]·[endDate]는 포맷이 혼재하므로 보존만 한다.
  * 날짜 질의·판정은 동기화 시점에 파싱해 채운 [startsOn]·[endsOn]을 사용한다.
- * 파싱할 수 없는 값은 null이다.
+ * 파싱할 수 없는 값은 null이다. 직접 등록 행([FestivalSource.MANUAL])은 ISO 날짜를 그대로 둔다.
  */
 @Entity
 @Table(
@@ -29,13 +31,13 @@ import java.time.LocalDate
 )
 class Festival(
     @Column(name = "name", nullable = false, columnDefinition = "TEXT")
-    val name: String,
+    var name: String,
 
     @Column(name = "venue", nullable = false, columnDefinition = "TEXT")
-    val venue: String,
+    var venue: String,
 
     @Column(name = "start_date", nullable = false, columnDefinition = "TEXT")
-    val startDate: String,
+    var startDate: String,
 
     @Column(name = "end_date", columnDefinition = "TEXT")
     var endDate: String? = null,
@@ -81,6 +83,14 @@ class Festival(
 
     @Column(name = "provider_institution_name", columnDefinition = "TEXT")
     var providerInstitutionName: String? = null,
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "source", nullable = false, columnDefinition = "TEXT")
+    val source: FestivalSource = FestivalSource.PUBLIC_DATA,
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "kind", nullable = false, columnDefinition = "TEXT")
+    var kind: FestivalKind = FestivalKind.FESTIVAL,
 ) : BaseTimeEntity() {
 
     @Id
