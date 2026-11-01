@@ -14,6 +14,7 @@ import com.peakda.server.domain.festival.entity.Festival
 import com.peakda.server.domain.festival.application.FestivalDetailProperties
 import com.peakda.server.domain.festival.application.FestivalPhaseResolver
 import com.peakda.server.domain.festival.entity.FestivalEditorialStatus
+import com.peakda.server.domain.festival.entity.FestivalKind
 import com.peakda.server.domain.festival.repository.FestivalEditorialRepository
 import com.peakda.server.domain.festival.repository.FestivalRepository
 import com.peakda.server.domain.seasonal.application.BloomBaseDateResolver
@@ -200,13 +201,17 @@ class ExploreService(
 
     private fun festivalItems(category: BloomCategory?, today: LocalDate): List<ExploreFestivalItem> {
         val pageable = SpringPageRequest.of(0, properties.festivalCandidateSize)
-        val candidates = festivalRepository.findOngoing(today, pageable)
+        val candidates = festivalRepository.findOngoing(FestivalKind.FESTIVAL, today, pageable)
         val pinnedEditorials = festivalEditorialRepository.findByStatusAndPinnedAtIsNotNull(
             FestivalEditorialStatus.PUBLISHED,
         )
         val candidateIds = candidates.mapNotNull(Festival::id).toSet()
         val extraPinnedIds = pinnedEditorials.map { it.festivalId }.filterNot(candidateIds::contains)
-        val pinnedFestivals = if (extraPinnedIds.isEmpty()) emptyList() else festivalRepository.findAllById(extraPinnedIds)
+        val pinnedFestivals = if (extraPinnedIds.isEmpty()) {
+            emptyList()
+        } else {
+            festivalRepository.findByIdInAndKind(extraPinnedIds, FestivalKind.FESTIVAL)
+        }
         val festivals = (candidates + pinnedFestivals).distinctBy(Festival::id)
         val festivalIds = festivals.mapNotNull(Festival::id)
         val editorialsByFestivalId = if (festivalIds.isEmpty()) {

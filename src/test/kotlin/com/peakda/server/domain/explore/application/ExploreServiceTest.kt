@@ -11,6 +11,7 @@ import com.peakda.server.domain.festival.application.FestivalDetailProperties
 import com.peakda.server.domain.festival.application.FestivalPhase
 import com.peakda.server.domain.festival.entity.FestivalEditorial
 import com.peakda.server.domain.festival.entity.FestivalEditorialStatus
+import com.peakda.server.domain.festival.entity.FestivalKind
 import com.peakda.server.domain.festival.repository.FestivalEditorialRepository
 import com.peakda.server.domain.festival.repository.FestivalRepository
 import com.peakda.server.domain.seasonal.application.BloomBaseDateResolver
@@ -79,7 +80,7 @@ class ExploreServiceTest {
         val festival = festival(701L, "진해 군항제", TODAY.minusDays(1), TODAY.plusDays(4))
         val curation = curationCard()
         `when`(bloomBaseDateResolver.currentBaseDate()).thenReturn(null)
-        `when`(festivalRepository.findOngoing(TODAY, festivalPageable)).thenReturn(listOf(festival))
+        `when`(festivalRepository.findOngoing(FestivalKind.FESTIVAL, TODAY, festivalPageable)).thenReturn(listOf(festival))
         `when`(curationQueryService.cards(curationPageable)).thenReturn(PageImpl(listOf(curation)))
 
         val response = service.explore(USER_ID, category = null, today = TODAY)
@@ -328,7 +329,7 @@ class ExploreServiceTest {
                 landLotAddress = "전라남도 광양시 다압면",
             ),
         )
-        `when`(festivalRepository.findOngoing(TODAY, festivalPageable)).thenReturn(festivals)
+        `when`(festivalRepository.findOngoing(FestivalKind.FESTIVAL, TODAY, festivalPageable)).thenReturn(festivals)
 
         val response = service.festivals(category = null, today = TODAY)
 
@@ -354,7 +355,7 @@ class ExploreServiceTest {
             FestivalEditorial(festivalId = 702L, status = FestivalEditorialStatus.PUBLISHED, pinnedAt = olderPin),
             FestivalEditorial(festivalId = 703L, status = FestivalEditorialStatus.PUBLISHED, pinnedAt = olderPin),
         )
-        `when`(festivalRepository.findOngoing(TODAY, festivalPageable)).thenReturn(festivals)
+        `when`(festivalRepository.findOngoing(FestivalKind.FESTIVAL, TODAY, festivalPageable)).thenReturn(festivals)
         `when`(festivalEditorialRepository.findByStatusAndPinnedAtIsNotNull(FestivalEditorialStatus.PUBLISHED))
             .thenReturn(editorials)
         `when`(festivalEditorialRepository.findByFestivalIdInAndStatus(
@@ -366,6 +367,25 @@ class ExploreServiceTest {
             .containsExactly(701L, 702L, 703L, 704L, 705L, 706L)
         assertThat(service.explore(null, null, TODAY).festivals.map { it.festivalId })
             .containsExactly(701L, 702L, 703L)
+    }
+
+    @Test
+    fun `고정 축제는 축제 종류로만 다시 조회해 고정된 트리 명소를 올리지 않는다`() {
+        val pinnedFestival = festival(801L, "벚꽃 축제", TODAY.minusDays(1), TODAY.plusDays(2))
+        val pinAt = Instant.parse("2026-04-01T01:00:00Z")
+        val editorials = listOf(
+            FestivalEditorial(festivalId = 801L, status = FestivalEditorialStatus.PUBLISHED, pinnedAt = pinAt),
+            FestivalEditorial(festivalId = 802L, status = FestivalEditorialStatus.PUBLISHED, pinnedAt = pinAt),
+        )
+        `when`(festivalRepository.findOngoing(FestivalKind.FESTIVAL, TODAY, festivalPageable)).thenReturn(emptyList())
+        `when`(festivalEditorialRepository.findByStatusAndPinnedAtIsNotNull(FestivalEditorialStatus.PUBLISHED))
+            .thenReturn(editorials)
+        `when`(festivalRepository.findByIdInAndKind(listOf(801L, 802L), FestivalKind.FESTIVAL))
+            .thenReturn(listOf(pinnedFestival))
+        `when`(festivalEditorialRepository.findByFestivalIdInAndStatus(listOf(801L), FestivalEditorialStatus.PUBLISHED))
+            .thenReturn(editorials.take(1))
+
+        assertThat(service.festivals(null, TODAY).items.map { it.festivalId }).containsExactly(801L)
     }
 
     @Test
@@ -382,7 +402,7 @@ class ExploreServiceTest {
             heroImageUrl = "https://img/hero.jpg",
             status = FestivalEditorialStatus.PUBLISHED,
         )
-        `when`(festivalRepository.findOngoing(TODAY, festivalPageable)).thenReturn(listOf(festival))
+        `when`(festivalRepository.findOngoing(FestivalKind.FESTIVAL, TODAY, festivalPageable)).thenReturn(listOf(festival))
         `when`(
             festivalEditorialRepository.findByFestivalIdInAndStatus(
                 listOf(701L),
@@ -480,7 +500,7 @@ class ExploreServiceTest {
     }
 
     private fun stubFestivalAndCuration(festivals: List<Festival> = emptyList()) {
-        `when`(festivalRepository.findOngoing(TODAY, festivalPageable)).thenReturn(festivals)
+        `when`(festivalRepository.findOngoing(FestivalKind.FESTIVAL, TODAY, festivalPageable)).thenReturn(festivals)
         `when`(curationQueryService.cards(curationPageable)).thenReturn(PageImpl(emptyList()))
     }
 

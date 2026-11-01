@@ -3,7 +3,7 @@
   <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>축제 에디토리얼 관리 - PEAKDA</title>
+    <title>축제·트리 명소 관리 - PEAKDA</title>
     <link rel="icon" href="/favicon.ico">
     <link rel="stylesheet" href="/admin/css/app.css">
   </head>
@@ -17,15 +17,24 @@
             <div class="panel-header">
               <div>
                 <p class="eyebrow">Festival</p>
-                <h1>축제 에디토리얼 관리</h1>
-                <p>축제명으로 검색하고 결과를 선택해 발행용 에디토리얼 필드를 저장합니다.</p>
+                <h1>축제·트리 명소 관리</h1>
+                <p>공공데이터에 없는 축제·트리 명소는 직접 등록하고, 결과를 선택해 발행용 에디토리얼을 저장합니다.</p>
               </div>
+              <button id="create-button" class="button button-primary" type="button">직접 등록</button>
             </div>
 
             <form id="search-form" class="toolbar">
               <label class="field field-inline">
                 <span>축제명</span>
                 <input id="festival-query" class="field__control" maxlength="100" placeholder="예: 해바라기">
+              </label>
+              <label class="field field-inline">
+                <span>종류</span>
+                <select id="festival-kind" class="field__control">
+                  <option value="">전체</option>
+                  <option value="FESTIVAL">축제·행사</option>
+                  <option value="TREE">트리 명소</option>
+                </select>
               </label>
               <button id="search-button" class="button button-primary" type="submit">검색</button>
             </form>
@@ -37,6 +46,7 @@
                   <tr>
                     <th scope="col">축제</th>
                     <th scope="col">기간</th>
+                    <th scope="col">단계</th>
                     <th scope="col">에디토리얼</th>
                     <th scope="col">고정</th>
                   </tr>
@@ -49,12 +59,81 @@
 
           <article id="festival-summary" class="panel" hidden></article>
 
+          <form id="base-form" class="editor-form" hidden>
+            <section class="panel">
+              <div class="panel-header">
+                <div>
+                  <h2 id="base-form-title">기본 정보</h2>
+                  <p>직접 등록한 축제·트리 명소만 수정할 수 있습니다. 공공데이터 동기화는 이 정보를 덮어쓰지 않습니다.</p>
+                </div>
+                <div class="inline-actions">
+                  <button id="base-delete-button" class="button button-danger" type="button">축제 삭제</button>
+                  <button id="base-save-button" class="button button-primary" type="submit">기본 정보 저장</button>
+                </div>
+              </div>
+
+              <div class="panel-body form-grid">
+                <label class="field">
+                  <span class="field__label">종류</span>
+                  <select id="base-kind" class="field__control" required>
+                    <option value="TREE">트리 명소</option>
+                    <option value="FESTIVAL">축제·행사</option>
+                  </select>
+                </label>
+                <label class="field">
+                  <span class="field__label">이름</span>
+                  <input id="base-name" class="field__control" maxlength="200" required>
+                </label>
+                <label class="field">
+                  <span class="field__label">장소명</span>
+                  <input id="base-venue" class="field__control" maxlength="200" required>
+                </label>
+                <label class="field">
+                  <span class="field__label">시작일</span>
+                  <input id="base-starts-on" class="field__control" type="date" required>
+                </label>
+                <label class="field">
+                  <span class="field__label">종료일 (하루짜리면 비움)</span>
+                  <input id="base-ends-on" class="field__control" type="date">
+                </label>
+                <label class="field">
+                  <span class="field__label">도로명 주소</span>
+                  <input id="base-road-address" class="field__control" maxlength="500">
+                </label>
+                <label class="field">
+                  <span class="field__label">위도</span>
+                  <input id="base-latitude" class="field__control" type="number" step="any" min="-90" max="90">
+                </label>
+                <label class="field">
+                  <span class="field__label">경도</span>
+                  <input id="base-longitude" class="field__control" type="number" step="any" min="-180" max="180">
+                </label>
+                <label class="field">
+                  <span class="field__label">홈페이지 URL</span>
+                  <input id="base-homepage-url" class="field__control" type="url" maxlength="2000">
+                </label>
+                <label class="field">
+                  <span class="field__label">문의 전화번호</span>
+                  <input id="base-phone-number" class="field__control" maxlength="100">
+                </label>
+                <label class="field">
+                  <span class="field__label">주최</span>
+                  <input id="base-host-organization" class="field__control" maxlength="200">
+                </label>
+                <label class="field">
+                  <span class="field__label">주관</span>
+                  <input id="base-organizing-institution" class="field__control" maxlength="200">
+                </label>
+              </div>
+            </section>
+          </form>
+
           <form id="festival-form" class="editor-form" hidden>
             <section class="panel">
               <div class="panel-header">
                 <div>
                   <h2>에디토리얼</h2>
-                  <p>축제 원천 기간과 상태는 서버 상세값을 그대로 확인만 합니다.</p>
+                  <p>운영 시간·입장료·오시는 길·대표 이미지·볼거리 등 상세 화면 정보를 저장합니다.</p>
                 </div>
                 <div class="inline-actions">
                   <button id="delete-button" class="button button-danger" type="button">삭제</button>
