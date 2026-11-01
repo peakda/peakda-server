@@ -5,6 +5,7 @@ import com.peakda.server.domain.festival.entity.Festival
 import com.peakda.server.domain.festival.entity.FestivalEditorial
 import com.peakda.server.domain.festival.entity.FestivalEditorialStatus
 import com.peakda.server.domain.festival.entity.FestivalHighlight
+import com.peakda.server.domain.festival.entity.FestivalKind
 import com.peakda.server.domain.festival.exception.FestivalNotFoundException
 import com.peakda.server.domain.festival.repository.FestivalEditorialRepository
 import com.peakda.server.domain.festival.repository.FestivalHighlightRepository
@@ -19,7 +20,6 @@ import org.mockito.Mockito.verify
 import org.mockito.Mockito.`when`
 import org.springframework.test.util.ReflectionTestUtils
 import java.time.LocalDate
-import java.util.Optional
 
 class FestivalDetailServiceTest {
 
@@ -37,7 +37,7 @@ class FestivalDetailServiceTest {
 
     @Test
     fun `축제가 없으면 찾을 수 없음 예외다`() {
-        `when`(festivalRepository.findById(FESTIVAL_ID)).thenReturn(Optional.empty<Festival>())
+        `when`(festivalRepository.findByIdAndKind(FESTIVAL_ID, FestivalKind.FESTIVAL)).thenReturn(null)
 
         assertThatThrownBy { service.detail(FESTIVAL_ID, STARTS_ON) }
             .isInstanceOf(FestivalNotFoundException::class.java)
@@ -171,7 +171,7 @@ class FestivalDetailServiceTest {
     }
 
     private fun stubFestival(festival: Festival) {
-        `when`(festivalRepository.findById(FESTIVAL_ID)).thenReturn(Optional.of(festival))
+        `when`(festivalRepository.findByIdAndKind(FESTIVAL_ID, FestivalKind.FESTIVAL)).thenReturn(festival)
     }
 
     private fun stubNoEditorial() {

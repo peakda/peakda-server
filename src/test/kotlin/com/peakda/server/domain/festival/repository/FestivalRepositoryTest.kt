@@ -2,6 +2,8 @@ package com.peakda.server.domain.festival.repository
 
 import com.peakda.server.common.test.IntegrationTestSupport
 import com.peakda.server.domain.festival.entity.Festival
+import com.peakda.server.domain.festival.entity.FestivalKind
+import com.peakda.server.domain.festival.entity.FestivalSource
 import jakarta.persistence.EntityManager
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.BeforeEach
@@ -39,6 +41,7 @@ class FestivalRepositoryTest : IntegrationTestSupport() {
         )
 
         val result = repository.findOngoing(
+            FestivalKind.FESTIVAL,
             LocalDate.of(2026, 4, 1),
             PageRequest.of(0, 10),
         )
@@ -57,6 +60,7 @@ class FestivalRepositoryTest : IntegrationTestSupport() {
         )
 
         val result = repository.findOngoing(
+            FestivalKind.FESTIVAL,
             LocalDate.of(2026, 4, 1),
             PageRequest.of(0, 2),
         )
@@ -94,6 +98,72 @@ class FestivalRepositoryTest : IntegrationTestSupport() {
     }
 
     @Test
+    fun `진행 중 축제 조회는 요청한 종류만 돌려준다`() {
+        repository.saveAllAndFlush(
+            listOf(
+                festival("봄꽃 축제", LocalDate.of(2026, 3, 30), LocalDate.of(2026, 4, 5)),
+                festival("크리스마스 트리", LocalDate.of(2026, 3, 30), LocalDate.of(2026, 4, 5), FestivalKind.TREE),
+            ),
+        )
+
+        val festivals = repository.findOngoing(FestivalKind.FESTIVAL, LocalDate.of(2026, 4, 1), PageRequest.of(0, 10))
+        val trees = repository.findOngoing(FestivalKind.TREE, LocalDate.of(2026, 4, 1), PageRequest.of(0, 10))
+
+        assertThat(festivals.map { it.name }).containsExactly("봄꽃 축제")
+        assertThat(trees.map { it.name }).containsExactly("크리스마스 트리")
+    }
+
+    @Test
+    fun `id 목록 조회는 요청한 종류만 돌려준다`() {
+        val saved = repository.saveAllAndFlush(
+            listOf(
+                festival("봄꽃 축제", LocalDate.of(2026, 3, 30), LocalDate.of(2026, 4, 5)),
+                festival("크리스마스 트리", LocalDate.of(2026, 3, 30), LocalDate.of(2026, 4, 5), FestivalKind.TREE),
+            ),
+        )
+
+        val result = repository.findByIdInAndKind(saved.map { requireNotNull(it.id) }, FestivalKind.FESTIVAL)
+
+        assertThat(result.map { it.name }).containsExactly("봄꽃 축제")
+    }
+
+    @Test
+    fun `upsert는 같은 키의 직접 등록 행을 덮어쓰지 않는다`() {
+        repository.saveAndFlush(
+            Festival(
+                name = NAME,
+                venue = VENUE,
+                startDate = START_DATE,
+                endDate = "2026-05-03",
+                startsOn = LocalDate.of(2026, 5, 1),
+                endsOn = LocalDate.of(2026, 5, 3),
+                source = FestivalSource.MANUAL,
+            ),
+        )
+        entityManager.clear()
+
+        val written = repository.upsert(command(startsOn = LocalDate.of(2026, 5, 1), endsOn = LocalDate.of(2026, 5, 9)))
+        entityManager.flush()
+        entityManager.clear()
+
+        val manual = repository.findByNameAndVenueAndStartDate(NAME, VENUE, START_DATE)
+        assertThat(written).isZero()
+        assertThat(manual?.source).isEqualTo(FestivalSource.MANUAL)
+        assertThat(manual?.endsOn).isEqualTo(LocalDate.of(2026, 5, 3))
+    }
+
+    @Test
+    fun `upsert로 들어온 행은 공공데이터 출처의 축제 종류다`() {
+        repository.upsert(command(startsOn = LocalDate.of(2026, 5, 1), endsOn = LocalDate.of(2026, 5, 5)))
+        entityManager.flush()
+        entityManager.clear()
+
+        val inserted = repository.findByNameAndVenueAndStartDate(NAME, VENUE, START_DATE)
+        assertThat(inserted?.source).isEqualTo(FestivalSource.PUBLIC_DATA)
+        assertThat(inserted?.kind).isEqualTo(FestivalKind.FESTIVAL)
+    }
+
+    @Test
     fun `upsert는 원천 값이 그대로인 재적재에서 행을 쓰지 않는다`() {
         val first = command(startsOn = LocalDate.of(2026, 5, 1), endsOn = LocalDate.of(2026, 5, 5))
 
@@ -104,7 +174,7 @@ class FestivalRepositoryTest : IntegrationTestSupport() {
     }
 
     @Test
-    fun `sitemap 용 조회는 전체 축제의 id와 수정 시각을 id 오름차순으로 돌려준다`() {
+    fun `sitemap 용 조회는 해당 종류 축제의 id와 수정 시각을 id 오름차순으로 돌려준다`() {
         val saved = repository.saveAllAndFlush(
             listOf(
                 festival("첫째", LocalDate.of(2026, 3, 1), LocalDate.of(2026, 3, 2)),
@@ -112,19 +182,25 @@ class FestivalRepositoryTest : IntegrationTestSupport() {
             ),
         )
 
-        val rows = repository.findAllByOrderByIdAsc()
+        val rows = repository.findByKindOrderByIdAsc(FestivalKind.FESTIVAL)
 
         assertThat(rows.map { it.id }).containsExactlyElementsOf(saved.map { requireNotNull(it.id) }.sorted())
         assertThat(rows.map { it.updatedAt }).doesNotContainNull()
     }
 
-    private fun festival(name: String, startsOn: LocalDate?, endsOn: LocalDate?): Festival = Festival(
+    private fun festival(
+        name: String,
+        startsOn: LocalDate?,
+        endsOn: LocalDate?,
+        kind: FestivalKind = FestivalKind.FESTIVAL,
+    ): Festival = Festival(
         name = name,
         venue = "$name 장소",
         startDate = startsOn?.toString() ?: "파싱불가",
         endDate = endsOn?.toString(),
         startsOn = startsOn,
         endsOn = endsOn,
+        kind = kind,
     )
 
     private fun command(startsOn: LocalDate, endsOn: LocalDate): FestivalUpsertCommand = FestivalUpsertCommand(

@@ -4,6 +4,7 @@ import com.peakda.server.common.persistence.LastModifiedRow
 import com.peakda.server.domain.curation.entity.CurationStatus
 import com.peakda.server.domain.curation.repository.CurationRepository
 import com.peakda.server.domain.festival.entity.FestivalEditorialStatus
+import com.peakda.server.domain.festival.entity.FestivalKind
 import com.peakda.server.domain.festival.repository.FestivalEditorialRepository
 import com.peakda.server.domain.festival.repository.FestivalRepository
 import com.peakda.server.domain.sitemap.presentation.response.SitemapResponse
@@ -54,7 +55,7 @@ class SitemapService(
         val editorialModifiedAtByFestivalId = festivalEditorialRepository
             .findByStatus(FestivalEditorialStatus.PUBLISHED)
             .associate { it.festivalId to it.updatedAt }
-        return festivalRepository.findAllByOrderByIdAsc()
+        return festivalRepository.findByKindOrderByIdAsc(FestivalKind.FESTIVAL)
             .map { it.toEntry(editorialModifiedAtByFestivalId[it.id]) }
     }
 

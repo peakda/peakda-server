@@ -28,7 +28,7 @@ class BloomTaggingServiceTest {
         if (invocation.method.name == "findVisibleInBoundingBoxByContentTypes") nearbyAttractions else null
     }
     private val festivalRepository = mock(FestivalRepository::class.java) { invocation ->
-        if (invocation.method.name == "findByLatitudeIsNotNullAndLongitudeIsNotNull") festivals else null
+        if (invocation.method.name == "findByKindAndLatitudeIsNotNullAndLongitudeIsNotNull") festivals else null
     }
     private val attractionBloomRepository = mock(AttractionBloomRepository::class.java)
     private val mapleMountainMatcher = MapleMountainMatcher(

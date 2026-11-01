@@ -2,6 +2,7 @@ package com.peakda.server.domain.festival.repository
 
 import com.peakda.server.common.persistence.LastModifiedRow
 import com.peakda.server.domain.festival.entity.Festival
+import com.peakda.server.domain.festival.entity.FestivalKind
 import org.springframework.data.domain.Page
 import org.springframework.data.domain.Pageable
 import org.springframework.data.jpa.repository.JpaRepository
@@ -42,7 +43,8 @@ private const val FESTIVAL_UPSERT_SQL = """
         provider_institution_code = COALESCE(EXCLUDED.provider_institution_code, festivals.provider_institution_code),
         provider_institution_name = COALESCE(EXCLUDED.provider_institution_name, festivals.provider_institution_name),
         updated_at = now()
-    WHERE (
+    WHERE festivals.source = 'PUBLIC_DATA'
+      AND (
         festivals.end_date,
         festivals.starts_on,
         festivals.ends_on,
@@ -58,7 +60,7 @@ private const val FESTIVAL_UPSERT_SQL = """
         festivals.reference_date,
         festivals.provider_institution_code,
         festivals.provider_institution_name
-    ) IS DISTINCT FROM (
+      ) IS DISTINCT FROM (
         COALESCE(EXCLUDED.end_date, festivals.end_date),
         COALESCE(EXCLUDED.starts_on, festivals.starts_on),
         COALESCE(EXCLUDED.ends_on, festivals.ends_on),
@@ -74,51 +76,70 @@ private const val FESTIVAL_UPSERT_SQL = """
         COALESCE(EXCLUDED.reference_date, festivals.reference_date),
         COALESCE(EXCLUDED.provider_institution_code, festivals.provider_institution_code),
         COALESCE(EXCLUDED.provider_institution_name, festivals.provider_institution_name)
-    )
+      )
 """
 
 interface FestivalRepository : JpaRepository<Festival, Long> {
     fun findByNameAndVenueAndStartDate(name: String, venue: String, startDate: String): Festival?
 
+    fun findByIdAndKind(id: Long, kind: FestivalKind): Festival?
+
+    fun findByIdInAndKind(ids: Collection<Long>, kind: FestivalKind): List<Festival>
+
     fun findAllByOrderByIdDesc(pageable: Pageable): Page<Festival>
 
-    /** 전체 축제의 id·수정 시각을 id 오름차순으로 (sitemap). */
-    fun findAllByOrderByIdAsc(): List<LastModifiedRow>
+    fun findByKindOrderByIdDesc(kind: FestivalKind, pageable: Pageable): Page<Festival>
+
+    /** [kind] 축제의 id·수정 시각을 id 오름차순으로 (sitemap). */
+    fun findByKindOrderByIdAsc(kind: FestivalKind): List<LastModifiedRow>
 
     fun findByNameContainingIgnoreCaseOrderByIdDesc(name: String, pageable: Pageable): Page<Festival>
 
-    /** 좌표가 있는 축제 (꽃 태깅 매칭 대상). */
-    fun findByLatitudeIsNotNullAndLongitudeIsNotNull(): List<Festival>
+    fun findByKindAndNameContainingIgnoreCaseOrderByIdDesc(
+        kind: FestivalKind,
+        name: String,
+        pageable: Pageable,
+    ): Page<Festival>
+
+    /** 좌표가 있는 [kind] 축제 (꽃 태깅 매칭 대상). */
+    fun findByKindAndLatitudeIsNotNullAndLongitudeIsNotNull(kind: FestivalKind): List<Festival>
 
     /**
-     * [today] 에 진행 중인 축제를 종료가 임박한 순으로. 종료일이 없으면 시작일을 종료일로 본다.
+     * [today] 에 진행 중인 [kind] 축제를 종료가 임박한 순으로. 종료일이 없으면 시작일을 종료일로 본다.
      * "꽃축제인지" 판정은 호출측(application)이 축제명 매칭으로 수행한다.
      * 정규화가 불가했던 행(`starts_on IS NULL`)은 비교에서 자연히 제외된다.
      */
     @Query(
         """
             SELECT f FROM Festival f
-            WHERE f.startsOn <= :today
+            WHERE f.kind = :kind
+              AND f.startsOn <= :today
               AND COALESCE(f.endsOn, f.startsOn) >= :today
             ORDER BY COALESCE(f.endsOn, f.startsOn) ASC, f.id ASC
         """,
     )
-    fun findOngoing(@Param("today") today: LocalDate, pageable: Pageable): List<Festival>
+    fun findOngoing(
+        @Param("kind") kind: FestivalKind,
+        @Param("today") today: LocalDate,
+        pageable: Pageable,
+    ): List<Festival>
 
     /**
-     * 좌표 범위(bbox) 안에서 [from]~[to] 기간과 하루라도 겹치는 축제. 종료일이 없으면 시작일을 종료일로 본다.
+     * 좌표 범위(bbox) 안에서 [from]~[to] 기간과 하루라도 겹치는 [kind] 축제. 종료일이 없으면 시작일을 종료일로 본다.
      * 정확한 반경 판정과 정렬은 호출측(application)이 거리 계산으로 한다.
      */
     @Query(
         """
             SELECT f FROM Festival f
-            WHERE f.latitude BETWEEN :minLat AND :maxLat
+            WHERE f.kind = :kind
+              AND f.latitude BETWEEN :minLat AND :maxLat
               AND f.longitude BETWEEN :minLng AND :maxLng
               AND f.startsOn <= :to
               AND COALESCE(f.endsOn, f.startsOn) >= :from
         """,
     )
     fun findInBoundingBoxOverlapping(
+        @Param("kind") kind: FestivalKind,
         @Param("minLat") minLat: Double,
         @Param("maxLat") maxLat: Double,
         @Param("minLng") minLng: Double,
@@ -129,7 +150,8 @@ interface FestivalRepository : JpaRepository<Festival, Long> {
 
     /**
      * 원천 축제를 등록하거나 갱신한다. 원천 값이 그대로인 행은 건드리지 않아 `updated_at` 이 실제 변경 시각으로 남는다
-     * (sitemap lastmod 로 쓰인다). 반환값은 실제로 쓰인 행 수라 변경이 없으면 0 이다.
+     * (sitemap lastmod 로 쓰인다). 같은 키의 관리자 직접 등록 행(`source = 'MANUAL'`)은 덮어쓰지 않는다.
+     * 반환값은 실제로 쓰인 행 수라 변경이 없으면 0 이다.
      */
     @Modifying
     @Query(value = FESTIVAL_UPSERT_SQL, nativeQuery = true)

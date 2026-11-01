@@ -7,6 +7,7 @@ import com.peakda.server.common.response.ApiResponse
 import com.peakda.server.common.security.principal.PrincipalDetails
 import com.peakda.server.domain.festival.application.FestivalEditorialAdminService
 import com.peakda.server.domain.festival.application.toCommand
+import com.peakda.server.domain.festival.entity.FestivalKind
 import com.peakda.server.domain.festival.presentation.request.UpsertFestivalEditorialRequest
 import com.peakda.server.domain.festival.presentation.response.FestivalAdminSummaryResponse
 import com.peakda.server.domain.festival.presentation.response.FestivalEditorialAdminResponse
@@ -15,6 +16,8 @@ import org.springframework.http.HttpStatus
 import org.springframework.http.ResponseEntity
 import org.springframework.web.bind.annotation.RequestMapping
 import org.springframework.web.bind.annotation.RestController
+import java.time.LocalDate
+import java.time.ZoneId
 
 @RestController
 @RequestMapping("/api/admin/festivals")
@@ -24,10 +27,11 @@ class FestivalEditorialAdminController(
 
     override fun list(
         query: String?,
+        kind: FestivalKind?,
         pageRequest: PageRequest,
     ): ResponseEntity<ApiResponse<PageResponse<FestivalAdminSummaryResponse>>> {
         val response = festivalEditorialAdminService
-            .list(query, pageRequest.toPageable())
+            .list(query, kind, LocalDate.now(KST), pageRequest.toPageable())
             .toPageResponse()
         return ResponseEntity.ok(ApiResponse.success(HttpStatus.OK, response))
     }
@@ -63,5 +67,9 @@ class FestivalEditorialAdminController(
     override fun unpin(principal: PrincipalDetails, festivalId: Long): ResponseEntity<ApiResponse<Unit>> {
         festivalEditorialAdminService.unpin(requireNotNull(principal.getUser().id), festivalId)
         return ResponseEntity.ok(ApiResponse.success(HttpStatus.OK))
+    }
+
+    companion object {
+        private val KST = ZoneId.of("Asia/Seoul")
     }
 }

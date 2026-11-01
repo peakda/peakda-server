@@ -6,6 +6,8 @@ import com.peakda.server.domain.festival.entity.Festival
 import com.peakda.server.domain.festival.entity.FestivalEditorial
 import com.peakda.server.domain.festival.entity.FestivalEditorialStatus
 import com.peakda.server.domain.festival.entity.FestivalHighlight
+import com.peakda.server.domain.festival.entity.FestivalKind
+import com.peakda.server.domain.festival.entity.FestivalSource
 import com.peakda.server.domain.festival.exception.FestivalEditorialNotFoundException
 import com.peakda.server.domain.festival.exception.FestivalEditorialNotPublishedException
 import com.peakda.server.domain.festival.exception.FestivalNotFoundException
@@ -41,6 +43,7 @@ class FestivalEditorialAdminServiceTest {
         festivalHighlightRepository,
         adminAuditRecorder,
         objectKeyUrlResolver,
+        FestivalDetailProperties(endingSoonDays = 7),
     )
 
     @Test
@@ -55,13 +58,29 @@ class FestivalEditorialAdminServiceTest {
         `when`(festivalEditorialRepository.findByFestivalIdIn(listOf(FESTIVAL_ID, 102L)))
             .thenReturn(listOf(editorial))
 
-        val response = service.list(" 해바라기 ", pageable)
+        val response = service.list(" 해바라기 ", kind = null, today = STARTS_ON, pageable = pageable)
 
         assertThat(response.content.map { it.id }).containsExactly(FESTIVAL_ID, 102L)
         assertThat(response.content.map { it.hasEditorial }).containsExactly(true, false)
         assertThat(response.content.first().editorialStatus).isEqualTo(FestivalEditorialStatus.PUBLISHED)
         assertThat(response.content.map { it.pinnedAt }).containsExactly(pinnedAt, null)
         verify(festivalEditorialRepository, times(1)).findByFestivalIdIn(listOf(FESTIVAL_ID, 102L))
+    }
+
+    @Test
+    fun `종류를 주면 해당 종류만 조회하고 출처·종류·오늘 기준 단계를 함께 내려준다`() {
+        val tree = festival(FESTIVAL_ID, "크리스마스 트리", source = FestivalSource.MANUAL, kind = FestivalKind.TREE)
+        val pageable = PageRequest.of(0, 10)
+        `when`(festivalRepository.findByKindOrderByIdDesc(FestivalKind.TREE, pageable))
+            .thenReturn(PageImpl(listOf(tree), pageable, 1))
+        `when`(festivalEditorialRepository.findByFestivalIdIn(listOf(FESTIVAL_ID))).thenReturn(emptyList())
+
+        val response = service.list(" ", kind = FestivalKind.TREE, today = ENDS_ON.minusDays(7), pageable = pageable)
+
+        val item = response.content.single()
+        assertThat(item.source).isEqualTo(FestivalSource.MANUAL)
+        assertThat(item.kind).isEqualTo(FestivalKind.TREE)
+        assertThat(item.phase).isEqualTo(FestivalPhase.ENDING_SOON)
     }
 
     @Test
@@ -297,7 +316,12 @@ class FestivalEditorialAdminServiceTest {
         return editorial
     }
 
-    private fun festival(id: Long, name: String): Festival {
+    private fun festival(
+        id: Long,
+        name: String,
+        source: FestivalSource = FestivalSource.PUBLIC_DATA,
+        kind: FestivalKind = FestivalKind.FESTIVAL,
+    ): Festival {
         val festival = Festival(
             name = name,
             venue = "구와우마을",
@@ -305,6 +329,8 @@ class FestivalEditorialAdminServiceTest {
             endDate = "20260817",
             startsOn = STARTS_ON,
             endsOn = ENDS_ON,
+            source = source,
+            kind = kind,
         )
         ReflectionTestUtils.setField(festival, "id", id)
         return festival
