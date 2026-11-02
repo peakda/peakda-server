@@ -21,6 +21,7 @@ enum class ErrorCode(
     DEVICE_SESSION_NOT_FOUND(HttpStatus.NOT_FOUND, "로그인된 기기를 찾을 수 없습니다."),
 
     OAUTH2_PROVIDER_NOT_SUPPORTED(HttpStatus.BAD_REQUEST, "지원하지 않는 소셜 로그인입니다."),
+    APPLE_IDENTITY_TOKEN_INVALID(HttpStatus.UNAUTHORIZED, "애플 로그인 정보가 유효하지 않습니다. 다시 시도해 주세요."),
 
     NICKNAME_DUPLICATED(HttpStatus.CONFLICT, "이미 사용 중인 닉네임입니다."),
     NICKNAME_INVALID(HttpStatus.BAD_REQUEST, "닉네임은 특수문자를 제외하고 2~10자로 입력해 주세요."),

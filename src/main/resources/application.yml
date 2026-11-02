@@ -131,6 +131,15 @@ app:
     app:
       redirect-uri: ${OAUTH2_APP_REDIRECT_URI:peakda://auth/callback}
       code-ttl: 60s
+  # iOS 앱 Sign in with Apple (POST /api/auth/app/apple). 꺼져 있으면 키 없이도 기동한다.
+  # 개인키(.p8)는 운영 .env 에 여러 줄 값을 넣을 수 없어 base64 한 줄로, 로컬은 파일 경로로 넣는다.
+  apple:
+    enabled: ${APPLE_ENABLED:false}
+    team-id: ${APPLE_TEAM_ID:}
+    key-id: ${APPLE_KEY_ID:}
+    bundle-id: ${APPLE_BUNDLE_ID:com.peakda.app}
+    private-key-base64: ${APPLE_PRIVATE_KEY_BASE64:}
+    private-key-location: ${APPLE_PRIVATE_KEY_LOCATION:}
   openapi:
     servers:
       local: http://localhost:8080
