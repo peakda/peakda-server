@@ -330,6 +330,46 @@ EOF
 - 보내는 중에 멈추려면 백오피스 발송 이력의 "멈춤"을 누른다. 지금 보내는 한 통까지만 나가고 남은 신청은 그대로다
 - 발송 잡(`launch-alert-dispatch`)이나 스케줄러가 꺼져 있으면 발송 요청을 받지 않는다
 
+### Sign in with Apple (iOS 앱)
+
+iOS 앱의 Apple 로그인(`POST /api/auth/app/apple`)은 `APPLE_ENABLED=true` 일 때만 받는다. 로그인 자체(identity token
+검증)는 애플 공개키로 하므로 키가 필요 없지만, 회원 탈퇴 때 애플 토큰을 폐기하는 데(애플 필수 요건) Sign in with Apple
+키(`.p8`)가 필요하다. 켜 두고 키를 빠뜨리거나 키가 깨져 있으면 **앱이 기동하지 않는다**.
+
+1. Apple Developer → Certificates, IDs & Profiles
+   - **Identifiers**: App ID `com.peakda.app` 에 Sign in with Apple 이 켜져 있어야 한다
+   - **Keys**: Sign in with Apple 키(Primary App ID `com.peakda.app`). `.p8` 은 만들 때 한 번만 받을 수 있으니 비밀번호 관리자에 보관한다
+   - Team ID 는 Membership details, Key ID 는 Keys 화면에서 본다. 둘은 비밀값이 아니다
+2. `.env` 에 넣고 앱을 다시 띄운다. compose `.env` 는 여러 줄 값을 받지 못하므로 `.p8` 을 base64 한 줄로 넣는다.
+   키 원문이 명령줄·셸 기록에 남지 않도록 로컬에서 표준 입력으로 넘긴다
+
+```sh
+{
+  echo "APPLE_ENABLED=true"
+  echo "APPLE_TEAM_ID=<Team ID>"
+  echo "APPLE_KEY_ID=<Key ID>"
+  echo "APPLE_PRIVATE_KEY_BASE64=$(base64 < AuthKey_<Key ID>.p8 | tr -d '\n')"
+} | ssh ubuntu@$HOST 'cd /opt/peakda && umask 077 && t=$(mktemp .env.XXXXXX) && { grep -v "^APPLE_" .env; cat; } > "$t" && mv "$t" .env'
+# 이미 애플 로그인이 들어간 버전이 돌고 있을 때만 다시 띄운다. 그 전이면 다음 배포가 새 값으로 띄운다
+ssh ubuntu@$HOST 'cd /opt/peakda && docker compose up -d app'
+```
+
+- 넣기 전에 로컬에서 값이 온전한지 본다(키 내용은 출력하지 않는다). `-----BEGIN PRIVATE KEY-----` 가 나와야 한다
+  ```sh
+  base64 < AuthKey_<Key ID>.p8 | tr -d '\n' | base64 -d | head -1
+  ```
+- 키가 깨진 채 켜면 새 버전이 기동에 실패해 `deploy.sh` 가 직전 이미지로 되돌린다. 서비스는 계속 돌지만 배포는 실패한다
+
+- 확인: 아래 요청이 `APPLE_IDENTITY_TOKEN_INVALID`(401)이면 켜진 것이다. `OAUTH2_PROVIDER_NOT_SUPPORTED`(400)이면 아직 꺼져 있다
+  ```sh
+  curl -s -X POST https://api.peakda.com/api/auth/app/apple -H 'Content-Type: application/json' \
+    -d '{"identityToken":"x","authorizationCode":"x","nonce":"x"}'
+  ```
+- 키를 교체(유출 등)할 때는 Keys 에서 새 키를 만들고 `APPLE_KEY_ID`·`APPLE_PRIVATE_KEY_BASE64` 를 바꾼 뒤 옛 키를 Revoke 한다.
+  저장해 둔 애플 리프레시 토큰은 키와 묶여 있지 않아 그대로 폐기할 수 있다
+- 탈퇴 때 애플 폐기 호출이 실패하면 `Apple token revoke failed` 로그가 남고 `apple_tokens` 행이 지워지지 않는다
+- `render-env.sh`(1-4)로 `.env` 를 다시 만들면 `APPLE_*` 가 빠진다. 그 뒤에는 2 를 다시 한다
+
 ### 백업 복원
 
 ```sh

@@ -47,6 +47,7 @@ class SecurityConfig(
             "/api/auth/refresh",
             "/api/auth/app/token",
             "/api/auth/app/token/refresh",
+            "/api/auth/app/apple",
         )
 
         private const val CSP_HEADER = "Content-Security-Policy"
