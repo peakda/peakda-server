@@ -53,6 +53,8 @@ class CustomOAuth2UserService(
         OAuth2LoginType.KAKAO -> KakaoOAuth2UserInfo(attributes)
         OAuth2LoginType.NAVER -> NaverOAuth2UserInfo(attributes)
         OAuth2LoginType.GOOGLE -> GoogleOAuth2UserInfo(attributes)
+        // 애플은 OAuth2 클라이언트로 등록하지 않아 여기로 오지 않는다 (AppleLoginService 참고).
+        OAuth2LoginType.APPLE -> throw OAuth2AuthenticationException("애플 로그인은 앱 전용입니다.")
     }
 
 }

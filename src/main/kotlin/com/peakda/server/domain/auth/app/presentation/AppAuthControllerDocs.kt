@@ -3,6 +3,7 @@ package com.peakda.server.domain.auth.app.presentation
 import com.peakda.server.common.exception.ErrorCode
 import com.peakda.server.common.openapi.ApiErrorResponses
 import com.peakda.server.common.response.ApiResponse
+import com.peakda.server.domain.auth.app.presentation.request.AppleLoginRequest
 import com.peakda.server.domain.auth.app.presentation.request.AppTokenExchangeRequest
 import com.peakda.server.domain.auth.app.presentation.request.AppTokenRefreshRequest
 import com.peakda.server.domain.auth.app.presentation.response.AppTokenResponse
@@ -51,5 +52,24 @@ interface AppAuthControllerDocs {
     @PostMapping("/token/refresh")
     fun refresh(
         @Valid @RequestBody request: AppTokenRefreshRequest,
+    ): ResponseEntity<ApiResponse<AppTokenResponse>>
+
+    @Operation(
+        summary = "Sign in with Apple (iOS)",
+        description = "iOS 앱이 AuthenticationServices 로 받은 identity token 을 검증하고 로그인한다. " +
+            "앱은 nonce 원문을 만들어 그 SHA-256(hex)을 애플 요청에 넣고, 여기에는 원문을 보낸다.\n\n" +
+            "응답은 `/api/auth/app/token` 과 같다. 가입이 끝난 사용자는 `status=AUTHENTICATED`, " +
+            "처음 로그인한 사용자는 `status=SIGNUP_REQUIRED` 와 가입 세션 토큰을 받는다.\n\n" +
+            "서버에 애플 로그인이 꺼져 있으면 `OAUTH2_PROVIDER_NOT_SUPPORTED` 를 돌려준다.",
+    )
+    @ApiErrorResponses(
+        ErrorCode.INVALID_REQUEST,
+        ErrorCode.OAUTH2_PROVIDER_NOT_SUPPORTED,
+        ErrorCode.APPLE_IDENTITY_TOKEN_INVALID,
+        ErrorCode.UNAUTHORIZED,
+    )
+    @PostMapping("/apple")
+    fun apple(
+        @Valid @RequestBody request: AppleLoginRequest,
     ): ResponseEntity<ApiResponse<AppTokenResponse>>
 }

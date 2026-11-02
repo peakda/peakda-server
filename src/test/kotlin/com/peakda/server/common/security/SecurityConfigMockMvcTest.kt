@@ -103,6 +103,11 @@ class SecurityConfigMockMvcTest {
     }
 
     @Test
+    fun `anonymous users can sign in with apple from the ios app`() {
+        mockMvc.post("/api/auth/app/apple").andExpect { status { isOk() } }
+    }
+
+    @Test
     fun `anonymous users can subscribe to launch alerts but cannot manage them`() {
         mockMvc.post("/api/launch-alerts").andExpect { status { isOk() } }
         mockMvc.get("/api/launch-alerts").andExpect { status { isUnauthorized() } }
@@ -200,6 +205,9 @@ class SecurityConfigMockMvcTest {
 
         @PostMapping("/api/launch-alerts")
         fun launchAlert(): ResponseEntity<Unit> = ResponseEntity.ok().build()
+
+        @PostMapping("/api/auth/app/apple")
+        fun appleLogin(): ResponseEntity<Unit> = ResponseEntity.ok().build()
 
         @PostMapping("/api/spots/favorites")
         fun mutate(): ResponseEntity<Unit> = ResponseEntity.ok().build()

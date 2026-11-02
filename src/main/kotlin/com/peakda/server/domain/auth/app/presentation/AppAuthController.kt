@@ -2,7 +2,9 @@ package com.peakda.server.domain.auth.app.presentation
 
 import com.peakda.server.common.response.ApiResponse
 import com.peakda.server.domain.auth.app.application.AppAuthService
+import com.peakda.server.domain.auth.app.presentation.request.AppleLoginRequest
 import com.peakda.server.domain.auth.app.presentation.request.AppTokenExchangeRequest
+import com.peakda.server.domain.auth.apple.application.AppleLoginService
 import com.peakda.server.domain.auth.app.presentation.request.AppTokenRefreshRequest
 import com.peakda.server.domain.auth.app.presentation.response.AppTokenResponse
 import com.peakda.server.domain.auth.session.application.SessionDevice
@@ -15,6 +17,7 @@ import org.springframework.web.bind.annotation.RestController
 @RequestMapping("/api/auth/app")
 class AppAuthController(
     private val appAuthService: AppAuthService,
+    private val appleLoginService: AppleLoginService,
 ) : AppAuthControllerDocs {
 
     override fun exchange(
@@ -32,6 +35,18 @@ class AppAuthController(
     ): ResponseEntity<ApiResponse<AppTokenResponse>> {
         val response = appAuthService.refresh(
             refreshToken = request.refreshToken,
+            device = request.device?.toSessionDevice() ?: SessionDevice.unknownApp(),
+        )
+        return ResponseEntity.ok(ApiResponse.success(HttpStatus.OK, response))
+    }
+
+    override fun apple(
+        request: AppleLoginRequest,
+    ): ResponseEntity<ApiResponse<AppTokenResponse>> {
+        val response = appleLoginService.login(
+            identityToken = request.identityToken,
+            authorizationCode = request.authorizationCode,
+            nonce = request.nonce,
             device = request.device?.toSessionDevice() ?: SessionDevice.unknownApp(),
         )
         return ResponseEntity.ok(ApiResponse.success(HttpStatus.OK, response))

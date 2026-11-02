@@ -2,6 +2,8 @@ package com.peakda.server.domain.user.application
 
 import com.peakda.server.common.security.cookie.CookieProperties
 import com.peakda.server.common.security.cookie.CookieUtils
+import com.peakda.server.domain.auth.apple.application.AppleUserWithdrawnEvent
+import com.peakda.server.domain.auth.oauth.model.OAuth2LoginType
 import com.peakda.server.domain.auth.session.application.AuthSessionService
 import com.peakda.server.domain.notification.application.BloomTimingAlertService
 import com.peakda.server.domain.notification.application.DeviceTokenService
@@ -11,6 +13,7 @@ import com.peakda.server.domain.spot.application.SpotRecordService
 import com.peakda.server.domain.user.exception.UserNotFoundException
 import com.peakda.server.domain.user.repository.UserRepository
 import jakarta.servlet.http.HttpServletResponse
+import org.springframework.context.ApplicationEventPublisher
 import org.springframework.security.core.context.SecurityContextHolder
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
@@ -28,6 +31,7 @@ class UserWithdrawService(
     private val deviceTokenService: DeviceTokenService,
     private val authSessionService: AuthSessionService,
     private val cookieProperties: CookieProperties,
+    private val eventPublisher: ApplicationEventPublisher,
 ) {
 
     /**
@@ -46,6 +50,11 @@ class UserWithdrawService(
         notificationService.deleteAllByUser(userId)
         bloomTimingAlertService.deleteAllByUser(userId)
         deviceTokenService.deleteAllByUser(userId)
+
+        // 애플 토큰 폐기는 커밋 뒤에 한다(AppleTokenRevokeListener). withdraw() 가 providerId 를 익명화하므로 먼저 싣는다.
+        if (user.provider == OAuth2LoginType.APPLE) {
+            eventPublisher.publishEvent(AppleUserWithdrawnEvent(userId, user.providerId))
+        }
 
         user.withdraw()
 
