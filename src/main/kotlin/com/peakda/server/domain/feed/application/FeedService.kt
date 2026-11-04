@@ -7,11 +7,10 @@ import com.peakda.server.common.exception.AuthorizationException
 import com.peakda.server.common.exception.ErrorCode
 import com.peakda.server.domain.feed.entity.FeedFilter
 import com.peakda.server.domain.spot.application.SpotRecordResponseAssembler
+import com.peakda.server.domain.spot.application.SpotRecordView
 import com.peakda.server.domain.spot.entity.SpotRecord
 import com.peakda.server.domain.spot.entity.SpotRecordStatus
 import com.peakda.server.domain.spot.exception.SpotRecordNotFoundException
-import com.peakda.server.domain.spot.presentation.response.SpotRecordResponse
-import com.peakda.server.domain.spot.presentation.response.SpotRecordSummaryResponse
 import com.peakda.server.domain.spot.repository.PlantRepository
 import com.peakda.server.domain.spot.repository.SpotRecordPlantRepository
 import com.peakda.server.domain.spot.repository.SpotRecordRepository
@@ -41,7 +40,7 @@ class FeedService(
 ) {
 
     @Transactional(readOnly = true)
-    fun list(userId: Long?, filter: FeedFilter, pageRequest: PageRequest): PageResponse<SpotRecordSummaryResponse> {
+    fun list(userId: Long?, filter: FeedFilter, pageRequest: PageRequest): PageResponse<SpotRecordView> {
         val pageable = pageRequest.toPageable(Sort.by(Sort.Direction.DESC, "createdAt"))
         if (userId == null && filter != FeedFilter.ALL) throw AuthorizationException(ErrorCode.UNAUTHORIZED)
         val blockedIds = userId?.let { blockRepository.findBlockedIdsByBlockerId(it).toSet() }.orEmpty()
@@ -50,16 +49,16 @@ class FeedService(
             FeedFilter.FOLLOWING -> followingPage(requireNotNull(userId), blockedIds, pageable)
             FeedFilter.INTEREST -> interestPage(requireNotNull(userId), blockedIds, pageable)
         }
-        val summariesById = responseAssembler.assembleSummaries(page.content, userId).associateBy { it.id }
+        val summariesById = responseAssembler.assembleViews(page.content, userId).associateBy { it.id }
         return page.map { record -> summariesById.getValue(requireNotNull(record.id)) }.toPageResponse()
     }
 
     /** 게시된 기록만 노출한다 — DRAFT id 를 추측해 남의 비공개 기록을 보는 것을 막는다. */
     @Transactional(readOnly = true)
-    fun detail(recordId: Long, userId: Long?): SpotRecordResponse {
+    fun detail(recordId: Long, userId: Long?): SpotRecordView {
         val record = spotRecordRepository.findById(recordId).orElseThrow { SpotRecordNotFoundException() }
         if (record.status != SpotRecordStatus.PUBLISHED) throw SpotRecordNotFoundException()
-        return responseAssembler.assemble(record, userId)
+        return responseAssembler.assembleView(record, userId)
     }
 
     private fun allPage(blockedIds: Set<Long>, pageable: Pageable): Page<SpotRecord> {

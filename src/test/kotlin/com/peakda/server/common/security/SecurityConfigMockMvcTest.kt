@@ -39,6 +39,9 @@ import org.springframework.web.cors.CorsConfigurationSource
     JwtAuthenticationFilter::class,
     com.peakda.server.common.exception.GlobalExceptionHandler::class,
     FeedController::class,
+    com.peakda.server.domain.feed.presentation.v2.FeedV2Controller::class,
+    com.peakda.server.domain.feed.presentation.v2.EmojiCatalogController::class,
+    com.peakda.server.domain.feed.application.EmojiCatalog::class,
     SecurityConfigMockMvcTest.SecurityProbeController::class,
 )
 class SecurityConfigMockMvcTest {
@@ -79,7 +82,25 @@ class SecurityConfigMockMvcTest {
     @org.junit.jupiter.api.BeforeEach
     fun setUp() {
         `when`(feedService.list(null, FeedFilter.ALL, PageRequest()))
-            .thenReturn(PageResponse(emptyList<SpotRecordSummaryResponse>(), 0, 20, 0, 0, false))
+            .thenReturn(PageResponse(emptyList<com.peakda.server.domain.spot.application.SpotRecordView>(), 0, 20, 0, 0, false))
+        `when`(feedReactionService.list(123L, null, null, 50, false))
+            .thenReturn(com.peakda.server.domain.feed.application.ReactionPage(emptyList(), false, null))
+    }
+
+    @Test
+    fun `anonymous users can browse v2 feeds catalog and reaction counts`() {
+        mockMvc.get("/api/v2/feed").andExpect { status { isOk() } }
+        mockMvc.get("/api/v2/reaction-emojis").andExpect { status { isOk() } }
+        mockMvc.get("/api/v2/feed/123/reactions").andExpect { status { isOk() } }
+    }
+
+    @Test
+    fun `anonymous v2 reaction writes require authentication`() {
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put("/api/v2/feed/123/reactions/u:1f44d"))
+            .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.status().isUnauthorized)
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete("/api/v2/feed/123/reactions/u:1f44d"))
+            .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.status().isUnauthorized)
+        mockMvc.get("/api/v2/feed/drafts").andExpect { status { isUnauthorized() } }
     }
 
     @Test

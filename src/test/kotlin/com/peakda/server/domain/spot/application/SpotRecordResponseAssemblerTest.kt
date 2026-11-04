@@ -55,7 +55,7 @@ class SpotRecordResponseAssemblerTest {
         stubCommon(listOf(record))
         val count = object : RecordReactionTypeCount {
             override val spotRecordId = 101L
-            override val reactionType = ReactionType.HEART
+            override val reactionType = "HEART"
             override val count = 3L
         }
         `when`(spotRecordReactionRepository.countsBySpotRecordIdIn(listOf(101L))).thenReturn(listOf(count))
