@@ -7,7 +7,6 @@ import com.peakda.server.domain.notification.entity.DeviceToken
 import com.peakda.server.domain.notification.entity.NotificationLinkType
 import com.peakda.server.domain.notification.entity.NotificationType
 import com.peakda.server.domain.notification.repository.DeviceTokenRepository
-import com.peakda.server.domain.spot.entity.ReactionType
 import com.peakda.server.domain.user.application.FollowCreatedEvent
 import com.peakda.server.domain.user.entity.User
 import com.peakda.server.domain.user.repository.UserRepository
@@ -37,7 +36,7 @@ class NotificationEventListenerTest {
 
     @Test
     fun `본인이 남긴 리액션이면 알림을 생성하지 않는다`() {
-        listener.onReactionAdded(ReactionAddedEvent(actorId = 1L, recordId = 100L, recordOwnerId = 1L, reactionType = ReactionType.HEART))
+        listener.onReactionAdded(ReactionAddedEvent(actorId = 1L, recordId = 100L, recordOwnerId = 1L, emojiKey = "u:2764-fe0f"))
 
         verify(notificationService, never()).create(capture())
     }
@@ -46,7 +45,7 @@ class NotificationEventListenerTest {
     fun `타인의 리액션이면 기록 작성자에게 REACTION 알림을 생성한다`() {
         `when`(userRepository.findById(2L)).thenReturn(Optional.of(user(2L, "반응러")))
 
-        listener.onReactionAdded(ReactionAddedEvent(actorId = 2L, recordId = 100L, recordOwnerId = 9L, reactionType = ReactionType.HEART))
+        listener.onReactionAdded(ReactionAddedEvent(actorId = 2L, recordId = 100L, recordOwnerId = 9L, emojiKey = "u:2764-fe0f"))
 
         verify(notificationService).create(capture())
         assertThat(captor.value.recipientId).isEqualTo(9L)

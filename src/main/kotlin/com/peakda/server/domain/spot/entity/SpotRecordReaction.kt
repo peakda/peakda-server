@@ -3,8 +3,6 @@ package com.peakda.server.domain.spot.entity
 import com.peakda.server.common.persistence.BaseTimeEntity
 import jakarta.persistence.Column
 import jakarta.persistence.Entity
-import jakarta.persistence.EnumType
-import jakarta.persistence.Enumerated
 import jakarta.persistence.GeneratedValue
 import jakarta.persistence.GenerationType
 import jakarta.persistence.Id
@@ -33,10 +31,12 @@ class SpotRecordReaction(
     @Column(name = "spot_record_id", nullable = false)
     val spotRecordId: Long,
 
-    @Enumerated(EnumType.STRING)
     @Column(name = "reaction_type", nullable = false, columnDefinition = "TEXT")
-    val reactionType: ReactionType,
+    val reactionType: String,
 ) : BaseTimeEntity() {
+
+    constructor(userId: Long, spotRecordId: Long, reactionType: ReactionType) :
+        this(userId, spotRecordId, reactionType.name)
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
