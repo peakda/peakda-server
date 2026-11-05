@@ -32,7 +32,10 @@ interface SeasonalBloomControllerDocs {
             "region 은 bbox 와 AND 로 적용되며 bbox 를 무시하고 권역 전체를 반환하지 않는다. " +
             "동네형은 주소 첫 토큰으로 권역을 판정하고, 판정 불가한 주소는 권역 필터가 걸리면 제외한다. " +
             "date(방문예정일)로 그날 기준 명소형 상태를 재계산할 수 있다. 필터 UI 의 시기 탭은 status 를 쓴다. " +
-            "date 는 방문예정일 기반 재계산용이며 동네형은 최근 관측값을 유지하므로 미래 날짜에서는 두 기준이 섞인다.",
+            "date 는 방문예정일 기반 재계산용이며 동네형은 최근 관측값을 유지하므로 미래 날짜에서는 두 기준이 섞인다. " +
+            "promotionalPins 는 개화 핀과 별도인 홍보 핀이며 탭 시 linkUrl 로 바로 연결한다. " +
+            "북항 홍보 핀은 활성화된 경우 bbox 내, 권역 미지정 또는 경상 권역에서만 반환한다. " +
+            "꽃·상태·방문예정일 필터는 홍보 핀에 적용하지 않으며 count 는 기존 개화 핀 수를 유지한다.",
     )
     @ApiErrorResponses(
         ErrorCode.INVALID_REQUEST,

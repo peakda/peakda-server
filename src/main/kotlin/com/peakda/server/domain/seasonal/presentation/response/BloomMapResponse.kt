@@ -3,6 +3,7 @@ package com.peakda.server.domain.seasonal.presentation.response
 import com.peakda.server.domain.seasonal.entity.BloomCategory
 import com.peakda.server.domain.seasonal.entity.BloomStatus
 import com.peakda.server.domain.spot.entity.SpotType
+import com.peakda.server.domain.spot.presentation.response.PromotionalMapPinResponse
 import io.swagger.v3.oas.annotations.media.Schema
 import java.time.LocalDate
 
@@ -11,11 +12,14 @@ data class BloomMapResponse(
     @field:Schema(description = "명소 개화 추정 산출 기준일 (추정 데이터가 없으면 null)", example = "2026-06-06")
     val baseDate: LocalDate?,
 
-    @field:Schema(description = "핀 수", example = "12")
+    @field:Schema(description = "개화 핀 수 (홍보 핀 제외)", example = "12")
     val count: Int,
 
     @field:Schema(description = "Spot 핀 목록 (명소형 + 동네형)")
     val pins: List<BloomMapPin>,
+
+    @field:Schema(description = "영역 내 홍보 핀. 꽃·상태·방문예정일 필터와 무관하며, 비활성 또는 영역 밖이면 빈 목록이다.")
+    val promotionalPins: List<PromotionalMapPinResponse> = emptyList(),
 ) {
     @Schema(description = "지도 핀 1건과 그 꽃 슬롯들")
     data class BloomMapPin(

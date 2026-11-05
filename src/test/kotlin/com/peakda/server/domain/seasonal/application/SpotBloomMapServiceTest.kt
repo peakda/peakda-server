@@ -9,6 +9,8 @@ import com.peakda.server.domain.seasonal.entity.Estimator
 import com.peakda.server.domain.seasonal.entity.Region
 import com.peakda.server.domain.seasonal.entity.SeasonalBloomEstimate
 import com.peakda.server.domain.seasonal.repository.SeasonalBloomEstimateRepository
+import com.peakda.server.domain.spot.application.NorthPortPinProperties
+import com.peakda.server.domain.spot.application.NorthPortPinService
 import com.peakda.server.domain.spot.entity.BloomStage
 import com.peakda.server.domain.spot.entity.Plant
 import com.peakda.server.domain.spot.entity.PlantStatus
@@ -48,7 +50,11 @@ class SpotBloomMapServiceTest {
         Clock.fixed(LocalDate.of(2026, 4, 2).atStartOfDay(KST).toInstant(), KST),
     )
 
-    private val service = SpotBloomMapService(
+    private val service = createService()
+
+    private fun createService(
+        northPortPinService: NorthPortPinService = NorthPortPinService(NorthPortPinProperties()),
+    ) = SpotBloomMapService(
         attractionRepository,
         seasonalBloomEstimateRepository,
         bloomBaseDateResolver,
@@ -57,6 +63,7 @@ class SpotBloomMapServiceTest {
         spotRecordRepository,
         localSpotBloomResolver,
         AttractionEligibilityProperties(setOf("12")),
+        northPortPinService,
     )
 
     private val baseDate = LocalDate.of(2026, 3, 30)
@@ -345,6 +352,62 @@ class SpotBloomMapServiceTest {
         `when`(attractionRepository.findVisibleInBoundingBoxByContentTypes(setOf("12"), MIN_LAT, MAX_LAT, MIN_LNG, MAX_LNG))
             .thenReturn(attractions.toList())
     }
+
+    @Test
+    fun `개화 데이터가 없어도 홍보 핀은 반환하며 기존 핀 수에는 포함하지 않는다`() {
+        `when`(bloomBaseDateResolver.currentBaseDate()).thenReturn(null)
+        stubNoLocalSpots()
+        val response = serviceWithPromotion().map(MIN_LAT, MAX_LAT, MIN_LNG, MAX_LNG, category = null, date = null)
+
+        assertThat(response.baseDate).isNull()
+        assertThat(response.count).isZero()
+        assertThat(response.pins).isEmpty()
+        val pin = response.promotionalPins.single()
+        assertThat(pin.id).isEqualTo("BUSAN_NORTH_PORT")
+        assertThat(pin.iconKey).isEqualTo("SHARK")
+        assertThat(pin.linkUrl).isEqualTo("https://example.com/north-port")
+    }
+
+    @Test
+    fun `꽃 상태 방문예정일 필터를 적용해도 홍보 핀은 유지한다`() {
+        stubNoAttractions()
+        stubNoLocalSpots()
+        val response = serviceWithPromotion().map(
+            MIN_LAT, MAX_LAT, MIN_LNG, MAX_LNG,
+            categories = listOf(BloomCategory.CHERRY),
+            status = BloomStatus.PEAK,
+            region = Region.GYEONGSANG,
+            date = LocalDate.of(2026, 12, 3),
+        )
+
+        assertThat(response.promotionalPins).hasSize(1)
+    }
+
+    @Test
+    fun `경상 외 권역에서는 북항 홍보 핀을 제외한다`() {
+        stubNoAttractions()
+        stubNoLocalSpots()
+        val response = serviceWithPromotion().map(
+            MIN_LAT, MAX_LAT, MIN_LNG, MAX_LNG,
+            categories = null,
+            status = null,
+            region = Region.CAPITAL,
+            date = null,
+        )
+
+        assertThat(response.promotionalPins).isEmpty()
+    }
+
+    private fun serviceWithPromotion() = createService(
+        NorthPortPinService(
+            NorthPortPinProperties(
+                enabled = true,
+                latitude = (MIN_LAT + MAX_LAT) / 2,
+                longitude = (MIN_LNG + MAX_LNG) / 2,
+                linkUrl = "https://example.com/north-port",
+            ),
+        ),
+    )
 
     private fun stubNoAttractions() {
         `when`(bloomBaseDateResolver.currentBaseDate()).thenReturn(baseDate)
