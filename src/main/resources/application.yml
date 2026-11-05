@@ -305,6 +305,12 @@ peakda:
     clear-probability-threshold: 30
     congestion: { quiet-below: 35, normal-below: 65, busy-below: 85 }
   spot:
+    # Figma의 상어 핀은 프론트 자산을 사용한다. 실제 좌표·링크가 확정된 뒤 활성화한다.
+    north-port-pin:
+      enabled: ${NORTH_PORT_PIN_ENABLED:false}
+      latitude: ${NORTH_PORT_PIN_LATITUDE:}
+      longitude: ${NORTH_PORT_PIN_LONGITUDE:}
+      link-url: ${NORTH_PORT_PIN_LINK_URL:}
     favorite:
       banner-lead-days: 7
       photo-limit: 4

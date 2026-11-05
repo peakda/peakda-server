@@ -11,6 +11,7 @@ import com.peakda.server.domain.seasonal.presentation.response.BloomMapResponse
 import com.peakda.server.domain.seasonal.presentation.response.BloomMapResponse.BloomMapPin
 import com.peakda.server.domain.seasonal.presentation.response.BloomMapResponse.BloomSlot
 import com.peakda.server.domain.seasonal.repository.SeasonalBloomEstimateRepository
+import com.peakda.server.domain.spot.application.NorthPortPinService
 import com.peakda.server.domain.spot.entity.Spot
 import com.peakda.server.domain.spot.entity.SpotRecordStatus
 import com.peakda.server.domain.spot.entity.SpotType
@@ -41,6 +42,7 @@ class SpotBloomMapService(
     private val spotRecordRepository: SpotRecordRepository,
     private val localSpotBloomResolver: LocalSpotBloomResolver,
     private val eligibilityProperties: AttractionEligibilityProperties,
+    private val northPortPinService: NorthPortPinService,
 ) {
     @Transactional(readOnly = true)
     fun map(
@@ -75,7 +77,12 @@ class SpotBloomMapService(
         val baseDate = bloomBaseDateResolver.currentBaseDate()
         val pins = buildAttractionPins(minLat, maxLat, minLng, maxLng, categories, status, region, date, baseDate) +
             buildLocalPins(minLat, maxLat, minLng, maxLng, categories, status, region)
-        return BloomMapResponse(baseDate = baseDate, count = pins.size, pins = pins)
+        val promotionalPins = if (region == null || region == Region.GYEONGSANG) {
+            northPortPinService.findInBoundingBox(minLat, maxLat, minLng, maxLng)
+        } else {
+            emptyList()
+        }
+        return BloomMapResponse(baseDate = baseDate, count = pins.size, pins = pins, promotionalPins = promotionalPins)
     }
 
     private fun buildAttractionPins(
