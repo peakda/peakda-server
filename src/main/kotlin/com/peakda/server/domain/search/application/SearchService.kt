@@ -9,11 +9,13 @@ import com.peakda.server.domain.search.presentation.response.TrendingSpotsRespon
 import com.peakda.server.domain.search.presentation.response.UserSearchItem
 import com.peakda.server.domain.seasonal.application.BloomBaseDateResolver
 import com.peakda.server.domain.seasonal.application.BloomEstimateOrdering
+import com.peakda.server.domain.seasonal.application.BloomStageStatusMapper
 import com.peakda.server.domain.seasonal.application.LocalSpotBloomResolver
 import com.peakda.server.domain.seasonal.entity.BloomCategory
 import com.peakda.server.domain.seasonal.entity.SeasonalBloomEstimate
 import com.peakda.server.domain.seasonal.repository.SeasonalBloomEstimateRepository
 import com.peakda.server.domain.spot.application.SpotThumbnailResolver
+import com.peakda.server.domain.spot.entity.BloomStage
 import com.peakda.server.domain.spot.entity.Spot
 import com.peakda.server.domain.spot.entity.SpotFavorite
 import com.peakda.server.domain.spot.entity.SpotRecordStatus
@@ -27,9 +29,14 @@ import com.peakda.server.domain.user.entity.User
 import com.peakda.server.domain.user.entity.UserStatus
 import com.peakda.server.domain.user.repository.FollowRepository
 import com.peakda.server.domain.user.repository.UserRepository
+import org.springframework.data.domain.Page
+import org.springframework.data.domain.PageImpl
+import org.springframework.data.domain.Pageable
+import org.springframework.data.domain.ScrollPosition
 import org.springframework.data.domain.PageRequest as SpringPageRequest
 import org.springframework.data.domain.Sort
 import org.springframework.stereotype.Service
+import org.springframework.transaction.annotation.Isolation
 import org.springframework.transaction.annotation.Transactional
 
 /**
@@ -52,40 +59,79 @@ class SearchService(
     private val spotThumbnailResolver: SpotThumbnailResolver,
 ) {
 
-    @Transactional(readOnly = true)
+    @Transactional(readOnly = true, isolation = Isolation.REPEATABLE_READ)
     fun searchSpots(userId: Long?, query: String, pageRequest: PageRequest, category: BloomCategory? = null): PageResponse<SpotSearchItem> {
         val q = query.trim()
         if (q.isEmpty()) return emptyPage(pageRequest)
+
         val pageable = pageRequest.toPageable(Sort.by(Sort.Direction.ASC, "name"))
-        val page = spotRepository.findByVisibleTrueAndNameContainingIgnoreCase(q, pageable)
-        val spots = page.content
+        val page = if (category == null) {
+            val spotPage = spotRepository.findByVisibleTrueAndNameContainingIgnoreCase(q, pageable)
+            val badges = bloomBySpot(spotPage.content)
+            spotPage.map { spot -> spot to badges[spot.id] }
+        } else {
+            findCategoryPage(q, pageable, category)
+        }
+        val spots = page.content.map { it.first }
         val spotIds = spots.mapNotNull { it.id }
         val favoritesBySpot = if (userId == null || spotIds.isEmpty()) emptyMap() else {
             spotFavoriteRepository.findByUserIdAndSpotIdIn(userId, spotIds).associateBy { it.spotId }
         }
-        val bloomBySpot = bloomBySpot(spots, category)
         val thumbnailBySpot = spotThumbnailResolver.resolve(spots)
-        val content = spots.mapNotNull { spot ->
-            val id = spot.id ?: return@mapNotNull null
-            val bloom = bloomBySpot[id]
-            if (category != null && bloom == null) return@mapNotNull null
+        return page.map { (spot, bloom) ->
+            val id = requireNotNull(spot.id)
             spot.toSearchItem(thumbnailBySpot[id], bloom, favoritesBySpot[id])
+        }.toPageResponse()
+    }
+
+    private fun findCategoryPage(
+        query: String,
+        pageable: Pageable,
+        category: BloomCategory,
+    ): Page<Pair<Spot, BloomBadge?>> {
+        val baseDate by lazy(bloomBaseDateResolver::currentBaseDate)
+        val observedFrom by lazy(localSpotBloomResolver::oldestFreshObservationDate)
+        val pageMatches = linkedMapOf<Long, BloomBadge>()
+        val pageRange = pageable.offset until (pageable.offset + pageable.pageSize)
+        var total = 0L
+        var position: ScrollPosition = ScrollPosition.keyset()
+
+        // 정확한 total은 모든 후보 배치를 검사하되, 페이지에 필요한 일치 항목만 보관한다.
+        while (true) {
+            val window = spotRepository.findFirst128ByVisibleTrueAndNameContainingIgnoreCaseOrderByNameAscIdAsc(query, position)
+            val attractionIds = window.content.filter { it.type == SpotType.ATTRACTION }.mapNotNull { it.attractionId }
+            val attractionStatuses = if (attractionIds.isEmpty()) emptyMap() else {
+                baseDate?.let {
+                    seasonalBloomEstimateRepository.findStatusesByBaseDateAndAttractionIdInAndBloomCategory(it, attractionIds, category)
+                        .associate { row -> row.attractionId to row.status }
+                }.orEmpty()
+            }
+            val localIds = window.content.filter { it.type == SpotType.LOCAL }.map { it.id }
+            val localStages = if (localIds.isEmpty()) emptyMap() else {
+                observedFrom?.let {
+                    spotRecordRepository.findLatestTaggedBloomStages(localIds, SpotRecordStatus.PUBLISHED.name, category.name, it)
+                        .associate { row -> row.spotId to BloomStage.valueOf(row.bloomStage) }
+                }.orEmpty()
+            }
+            for (candidate in window) {
+                val status = when (candidate.type) {
+                    SpotType.ATTRACTION -> attractionStatuses[candidate.attractionId]
+                    SpotType.LOCAL -> localStages[candidate.id]?.let(BloomStageStatusMapper::toStatus)
+                } ?: continue
+                if (total in pageRange) {
+                    pageMatches[candidate.id] = BloomBadge(category, category.displayName, status)
+                }
+                total++
+            }
+            if (window.isLast || window.isEmpty) break
+            position = window.positionAt(window.size() - 1)
         }
-        return if (category == null) {
-            page.map { spot ->
-                val id = requireNotNull(spot.id)
-                spot.toSearchItem(thumbnailBySpot[id], bloomBySpot[id], favoritesBySpot[id])
-            }.toPageResponse()
-        } else {
-            PageResponse(
-                content = content,
-                page = page.number,
-                size = page.size,
-                totalElements = content.size.toLong(),
-                totalPages = if (content.isEmpty()) 0 else 1,
-                hasNext = false,
-            )
+
+        val spotsById = if (pageMatches.isEmpty()) emptyMap() else {
+            spotRepository.findAllById(pageMatches.keys).associateBy { requireNotNull(it.id) }
         }
+        val content = pageMatches.map { (id, badge) -> spotsById.getValue(id) to badge }
+        return PageImpl(content, pageable, total)
     }
 
     @Transactional(readOnly = true)
@@ -164,25 +210,17 @@ class SearchService(
         followerCount = followerCount,
     )
 
-    private fun bloomBySpot(spots: Collection<Spot>, category: BloomCategory?): Map<Long, BloomBadge> {
+    private fun bloomBySpot(spots: Collection<Spot>): Map<Long, BloomBadge> {
         val attractionIdBySpot = spots
             .filter { it.type == SpotType.ATTRACTION }
             .mapNotNull { spot -> spot.attractionId?.let { requireNotNull(spot.id) to it } }
         val attractionBadges = if (attractionIdBySpot.isEmpty()) emptyMap() else {
             val baseDate = bloomBaseDateResolver.currentBaseDate()
             if (baseDate == null) emptyMap() else {
-                val estimates = if (category == null) {
-                    seasonalBloomEstimateRepository.findByBaseDateAndAttractionIdIn(
-                        baseDate,
-                        attractionIdBySpot.map { it.second },
-                    )
-                } else {
-                    seasonalBloomEstimateRepository.findByBaseDateAndAttractionIdInAndBloomCategory(
-                        baseDate,
-                        attractionIdBySpot.map { it.second },
-                        category,
-                    )
-                }
+                val estimates = seasonalBloomEstimateRepository.findByBaseDateAndAttractionIdIn(
+                    baseDate,
+                    attractionIdBySpot.map { it.second },
+                )
                 val byAttraction = estimates
                     .groupBy { it.attractionId }
                     .mapValues { (_, rows) -> rows.minWith(BloomEstimateOrdering.REPRESENTATIVE_FIRST).toBadge() }
@@ -193,10 +231,10 @@ class SearchService(
         val localSpotIds = spots.filter { it.type == SpotType.LOCAL }.mapNotNull { it.id }
         if (localSpotIds.isEmpty()) return attractionBadges
         val records = spotRecordRepository.findBySpotIdInAndStatus(localSpotIds, SpotRecordStatus.PUBLISHED)
-        // 동네형은 스팟당 대표 뱃지 1건만 노출한다 — 가장 최근 관측 신호 중 카테고리 필터에 맞는 첫 건.
+        // 동네형은 스팟당 대표 뱃지 1건만 노출한다 — 가장 최근 관측 신호의 첫 건.
         val localBadges = localSpotBloomResolver.resolve(records)
             .mapNotNull { (spotId, signals) ->
-                signals.firstOrNull { category == null || it.category == category }
+                signals.firstOrNull()
                     ?.let { spotId to BloomBadge(it.category, it.category.displayName, it.status) }
             }
             .toMap()

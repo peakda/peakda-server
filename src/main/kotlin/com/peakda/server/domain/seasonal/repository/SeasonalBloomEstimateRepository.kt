@@ -69,6 +69,19 @@ interface SeasonalBloomEstimateRepository : JpaRepository<SeasonalBloomEstimate,
         bloomCategory: BloomCategory,
     ): List<SeasonalBloomEstimate>
 
+    @Query(
+        """
+            SELECT e.attractionId AS attractionId, e.status AS status
+            FROM SeasonalBloomEstimate e
+            WHERE e.baseDate = :baseDate AND e.attractionId IN :attractionIds AND e.bloomCategory = :category
+        """,
+    )
+    fun findStatusesByBaseDateAndAttractionIdInAndBloomCategory(
+        baseDate: LocalDate,
+        attractionIds: Collection<Long>,
+        category: BloomCategory,
+    ): List<AttractionBloomStatusRow>
+
     fun findByBaseDateAndAttractionIdInAndBloomCategoryIn(
         baseDate: LocalDate,
         attractionIds: Collection<Long>,
@@ -164,3 +177,8 @@ data class SeasonalBloomEstimateUpsertCommand(
     val gddRatio: Double?,
     val evidence: String?,
 )
+
+interface AttractionBloomStatusRow {
+    val attractionId: Long
+    val status: BloomStatus
+}
