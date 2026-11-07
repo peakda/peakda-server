@@ -1,5 +1,10 @@
 package com.peakda.server.domain.spot.application
 
+import com.peakda.server.domain.feed.application.EmojiCatalog
+import com.peakda.server.domain.feed.application.FeedReactionService
+import com.peakda.server.domain.spot.repository.EmojiReactionCount
+import com.peakda.server.domain.spot.repository.SpotRecordRepository
+import org.springframework.context.ApplicationEventPublisher
 import com.peakda.server.domain.user.application.ProfileImageUrlResolver
 import com.peakda.server.domain.auth.oauth.model.OAuth2LoginType
 import com.peakda.server.domain.spot.entity.ReactionType
@@ -47,10 +52,90 @@ class SpotRecordResponseAssemblerTest {
         spotRecordReactionRepository,
         spotRecordPhotoUrlResolver,
         profileImageUrlResolver,
+        FeedReactionService(
+            mock(SpotRecordRepository::class.java),
+            spotRecordReactionRepository,
+            mock(ApplicationEventPublisher::class.java),
+            EmojiCatalog(),
+        ),
     )
 
     @Test
     fun `기록 상세에 리액션 집계와 내 리액션을 채운다`() {
+        val record = record(101L)
+        stubCommon(listOf(record))
+        `when`(spotRecordReactionRepository.emojiPreviews(listOf(101L), VIEWER_ID)).thenReturn(
+            listOf(reaction(101L, "u:1f525", 3, true), reaction(101L, "HEART", 2, false)),
+        )
+
+        val response = assembler.assemble(record, VIEWER_ID)
+
+        assertThat(response.reactions.items.map { it.key }).containsExactly("u:1f525", "u:2764-fe0f")
+        assertThat(response.reactions.items.map { it.emoji }).containsExactly("🔥", "❤️")
+        assertThat(response.reactions.items.map { it.count }).containsExactly(3L, 2L)
+        assertThat(response.reactions.items.map { it.reactedByMe }).containsExactly(true, false)
+        assertThat(response.reactions.hasMore).isFalse()
+    }
+
+    @Test
+    fun `목록 리액션은 배치 조회하고 다른 이모지만 달린 기록도 반환한다`() {
+        val records = listOf(record(101L), record(102L), record(103L))
+        stubCommon(records)
+        `when`(spotRecordReactionRepository.emojiPreviews(listOf(101L, 102L, 103L), VIEWER_ID)).thenReturn(
+            listOf(reaction(101L, "u:1f525", 2, true), reaction(102L, "u:1f44d-1f3fd", 1, false)),
+        )
+
+        val responses = assembler.assembleSummaries(records, VIEWER_ID)
+
+        assertThat(responses).hasSize(3)
+        assertThat(responses[0].reactions.items.single().emoji).isEqualTo("🔥")
+        assertThat(responses[1].reactions.items.single().emoji).isEqualTo("👍🏽")
+        assertThat(responses[2].reactions.items).isEmpty()
+        assertThat(responses[2].reactions.hasMore).isFalse()
+        verify(spotRecordReactionRepository).emojiPreviews(listOf(101L, 102L, 103L), VIEWER_ID)
+        verify(spotRecordReactionRepository, never()).countsBySpotRecordIdIn(org.mockito.ArgumentMatchers.anyList())
+        verify(spotRecordReactionRepository, never()).findByUserIdAndSpotRecordIdIn(anyLong(), org.mockito.ArgumentMatchers.anyList())
+    }
+
+    @Test
+    fun `익명 조회도 이모지 집계를 반환하고 reactedByMe는 false다`() {
+        val record = record(101L)
+        stubCommon(listOf(record))
+        `when`(spotRecordReactionRepository.emojiPreviews(listOf(101L), null)).thenReturn(
+            listOf(reaction(101L, "u:1f525", 1, false)),
+        )
+
+        val response = assembler.assembleSummaries(listOf(record), null).single()
+
+        assertThat(response.reactions.items.single().key).isEqualTo("u:1f525")
+        assertThat(response.reactions.items.single().reactedByMe).isFalse()
+        verify(spotRecordReactionRepository).emojiPreviews(listOf(101L), null)
+    }
+
+    @Test
+    fun `반응 종류가 8개를 넘으면 최대 8개와 hasMore를 반환한다`() {
+        val record = record(101L)
+        stubCommon(listOf(record))
+        val keys = listOf("HEART", "SMILE", "u:1f525", "u:1f44d", "u:1f44d-1f3fd", "u:1f600", "u:1f601", "u:1f602", "u:1f603")
+        `when`(spotRecordReactionRepository.emojiPreviews(listOf(101L), VIEWER_ID))
+            .thenReturn(keys.mapIndexed { index, key -> reaction(101L, key, (10 - index).toLong(), false) })
+
+        val detail = assembler.assemble(record, VIEWER_ID)
+        val summary = assembler.assembleSummaries(listOf(record), VIEWER_ID).single()
+
+        assertThat(detail.reactions.items).hasSize(8)
+        assertThat(detail.reactions.hasMore).isTrue()
+        assertThat(summary.reactions).isEqualTo(detail.reactions)
+    }
+
+    @Test
+    fun `빈 목록은 리액션을 조회하지 않는다`() {
+        assertThat(assembler.assembleSummaries(emptyList(), VIEWER_ID)).isEmpty()
+        org.mockito.Mockito.verifyNoInteractions(spotRecordReactionRepository)
+    }
+
+    @Test
+    fun `v1 피드용 중립 뷰는 기존 하트 웃음 집계를 유지한다`() {
         val record = record(101L)
         stubCommon(listOf(record))
         val count = object : RecordReactionTypeCount {
@@ -62,42 +147,10 @@ class SpotRecordResponseAssemblerTest {
         `when`(spotRecordReactionRepository.findByUserIdAndSpotRecordIdIn(VIEWER_ID, listOf(101L)))
             .thenReturn(listOf(SpotRecordReaction(VIEWER_ID, 101L, ReactionType.HEART)))
 
-        val response = assembler.assemble(record, VIEWER_ID)
+        val view = assembler.assembleView(record, VIEWER_ID)
 
-        assertThat(response.reactions.counts).extracting<Long> { it.count }.containsExactly(3L)
-        assertThat(response.reactions.myReactions).containsExactly(ReactionType.HEART)
-    }
-
-    @Test
-    fun `목록 리액션 조회는 기록 수와 무관하게 배치 쿼리를 한 번씩 사용한다`() {
-        val records = listOf(record(101L), record(102L), record(103L))
-        stubCommon(records)
-        `when`(spotRecordReactionRepository.countsBySpotRecordIdIn(listOf(101L, 102L, 103L))).thenReturn(emptyList())
-        `when`(spotRecordReactionRepository.findByUserIdAndSpotRecordIdIn(VIEWER_ID, listOf(101L, 102L, 103L)))
-            .thenReturn(emptyList())
-
-        val responses = assembler.assembleSummaries(records, VIEWER_ID)
-
-        assertThat(responses).hasSize(3)
-        assertThat(responses).allSatisfy { response ->
-            assertThat(response.reactions.counts).isEmpty()
-            assertThat(response.reactions.myReactions).isEmpty()
-        }
-        verify(spotRecordReactionRepository).countsBySpotRecordIdIn(listOf(101L, 102L, 103L))
-        verify(spotRecordReactionRepository).findByUserIdAndSpotRecordIdIn(VIEWER_ID, listOf(101L, 102L, 103L))
-        verify(spotRecordReactionRepository, never()).countsBySpotRecordId(anyLong())
-    }
-
-    @Test
-    fun `익명 조회는 집계만 반환하고 내 리액션을 조회하지 않는다`() {
-        val record = record(101L)
-        stubCommon(listOf(record))
-        `when`(spotRecordReactionRepository.countsBySpotRecordIdIn(listOf(101L))).thenReturn(emptyList())
-
-        val response = assembler.assembleSummaries(listOf(record), null).single()
-
-        assertThat(response.reactions.myReactions).isEmpty()
-        verify(spotRecordReactionRepository, never()).findByUserIdAndSpotRecordIdIn(anyLong(), org.mockito.ArgumentMatchers.anyList())
+        assertThat(view.legacyReactions.counts.single().count).isEqualTo(3L)
+        assertThat(view.legacyReactions.myReactions).containsExactly("HEART")
     }
 
     @Test
@@ -119,9 +172,6 @@ class SpotRecordResponseAssemblerTest {
             `when`(spotRecordPhotoUrlResolver.variantUrls(key, null))
                 .thenReturn(mapOf("thumbnail" to "thumb-$key", "medium" to "url-$key", "main" to "url-$key"))
         }
-        `when`(spotRecordReactionRepository.countsBySpotRecordIdIn(listOf(102L, 101L))).thenReturn(emptyList())
-        `when`(spotRecordReactionRepository.findByUserIdAndSpotRecordIdIn(VIEWER_ID, listOf(102L, 101L)))
-            .thenReturn(emptyList())
 
         val responses = assembler.assembleSummaries(records, VIEWER_ID)
 
@@ -144,9 +194,6 @@ class SpotRecordResponseAssemblerTest {
     fun `사진이 없는 목록 기록은 빈 사진 목록과 null 대표 사진을 반환한다`() {
         val record = record(101L)
         stubCommon(listOf(record))
-        `when`(spotRecordReactionRepository.countsBySpotRecordIdIn(listOf(101L))).thenReturn(emptyList())
-        `when`(spotRecordReactionRepository.findByUserIdAndSpotRecordIdIn(VIEWER_ID, listOf(101L)))
-            .thenReturn(emptyList())
 
         val response = assembler.assembleSummaries(listOf(record), VIEWER_ID).single()
 
@@ -166,6 +213,13 @@ class SpotRecordResponseAssemblerTest {
         `when`(spotRecordPlantRepository.findByIdSpotRecordIdIn(recordIds)).thenReturn(emptyList())
         `when`(plantRepository.findAllById(emptySet())).thenReturn(emptyList())
         `when`(profileImageUrlResolver.thumbnailUrl(null)).thenReturn(null)
+    }
+
+    private fun reaction(recordId: Long, key: String, count: Long, mine: Boolean) = object : EmojiReactionCount {
+        override val spotRecordId = recordId
+        override val storageKey = key
+        override val count = count
+        override val reactedByMe = mine
     }
 
     private fun record(id: Long): SpotRecord {

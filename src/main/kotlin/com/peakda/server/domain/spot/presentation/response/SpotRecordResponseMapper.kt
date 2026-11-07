@@ -1,15 +1,13 @@
 package com.peakda.server.domain.spot.presentation.response
 
-import com.peakda.server.domain.feed.presentation.response.ReactionCount
-import com.peakda.server.domain.feed.presentation.response.ReactionSummary
+import com.peakda.server.domain.feed.application.ReactionOverview
+import com.peakda.server.domain.feed.presentation.v2.response.toResponse
 import com.peakda.server.domain.spot.application.SpotRecordView
-import com.peakda.server.domain.spot.application.LegacyReactionOverview
 import com.peakda.server.domain.spot.application.PhotoView
 import com.peakda.server.domain.spot.application.SpotView
 import com.peakda.server.domain.spot.application.UserView
-import com.peakda.server.domain.spot.entity.ReactionType
 
-fun SpotRecordView.toRecordResponse(): SpotRecordResponse = SpotRecordResponse(
+fun SpotRecordView.toRecordResponse(reactions: ReactionOverview): SpotRecordResponse = SpotRecordResponse(
     id = id,
     spot = spot.toResponse(),
     user = user.toResponse(),
@@ -23,10 +21,10 @@ fun SpotRecordView.toRecordResponse(): SpotRecordResponse = SpotRecordResponse(
     publishedAt = publishedAt,
     createdAt = createdAt,
     updatedAt = updatedAt,
-    reactions = legacyReactions.toResponse(),
+    reactions = reactions.toResponse(),
 )
 
-fun SpotRecordView.toRecordSummaryResponse(): SpotRecordSummaryResponse {
+fun SpotRecordView.toRecordSummaryResponse(reactions: ReactionOverview): SpotRecordSummaryResponse {
     val mappedPhotos = photos.map { it.toResponse() }
     return SpotRecordSummaryResponse(
         id = id,
@@ -44,18 +42,10 @@ fun SpotRecordView.toRecordSummaryResponse(): SpotRecordSummaryResponse {
         publishedAt = publishedAt,
         createdAt = createdAt,
         updatedAt = updatedAt,
-        reactions = legacyReactions.toResponse(),
+        reactions = reactions.toResponse(),
     )
 }
 
 private fun SpotView.toResponse() = SpotRecordResponse.SpotSummary(id, type, name, address, attractionId)
 private fun UserView.toResponse() = SpotRecordResponse.UserSummary(id, nickname, profileImageUrl)
 private fun PhotoView.toResponse() = SpotRecordResponse.PhotoEntry(objectKey, url, sortOrder, variants)
-
-private fun LegacyReactionOverview.toResponse() = ReactionSummary(
-    counts = counts.mapNotNull { count ->
-        ReactionType.entries.firstOrNull { it.name == count.reactionType }
-            ?.let { ReactionCount(it, count.count) }
-    },
-    myReactions = myReactions.mapNotNull { key -> ReactionType.entries.firstOrNull { it.name == key } }.toSet(),
-)

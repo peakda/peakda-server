@@ -1,6 +1,6 @@
 package com.peakda.server.domain.spot.presentation.response
 
-import com.peakda.server.domain.feed.presentation.response.ReactionSummary
+import com.peakda.server.domain.feed.presentation.v2.response.ReactionOverviewResponse
 import com.peakda.server.domain.spot.entity.BloomStage
 import com.peakda.server.domain.spot.entity.ContentLinkPlatform
 import com.peakda.server.domain.spot.entity.SpotRecordStatus
@@ -50,8 +50,8 @@ data class SpotRecordResponse(
     @field:Schema(description = "최종 수정 시각")
     val updatedAt: Instant,
 
-    @field:Schema(description = "리액션 요약")
-    val reactions: ReactionSummary = ReactionSummary(emptyList(), emptySet()),
+    @field:Schema(description = "이모지 리액션 요약 (v2 피드와 동일, 최대 8종)")
+    val reactions: ReactionOverviewResponse = ReactionOverviewResponse(emptyList(), false),
 ) {
     @Schema(description = "스팟 요약")
     data class SpotSummary(
