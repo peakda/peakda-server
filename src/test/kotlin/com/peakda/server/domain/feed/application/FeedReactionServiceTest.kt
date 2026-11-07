@@ -2,94 +2,133 @@ package com.peakda.server.domain.feed.application
 
 import com.peakda.server.domain.spot.entity.ReactionType
 import com.peakda.server.domain.spot.entity.SpotRecord
-import com.peakda.server.domain.spot.entity.SpotRecordReaction
 import com.peakda.server.domain.spot.entity.SpotRecordStatus
 import com.peakda.server.domain.spot.exception.SpotRecordNotFoundException
-import com.peakda.server.domain.spot.repository.ReactionTypeCount
 import com.peakda.server.domain.spot.repository.SpotRecordReactionRepository
 import com.peakda.server.domain.spot.repository.SpotRecordRepository
 import org.assertj.core.api.Assertions.assertThat
 import org.assertj.core.api.Assertions.assertThatThrownBy
 import org.junit.jupiter.api.Test
+import org.mockito.ArgumentCaptor
 import org.mockito.Mockito.mock
+import org.mockito.Mockito.verify
+import org.mockito.Mockito.verifyNoInteractions
 import org.mockito.Mockito.`when`
 import org.springframework.context.ApplicationEventPublisher
 import org.springframework.test.util.ReflectionTestUtils
 import java.util.Optional
 
 class FeedReactionServiceTest {
-
-    private val spotRecordRepository = mock(SpotRecordRepository::class.java)
-    private val spotRecordReactionRepository = mock(SpotRecordReactionRepository::class.java)
-    private val eventPublisher = mock(ApplicationEventPublisher::class.java)
-
-    private val service = FeedReactionService(spotRecordRepository, spotRecordReactionRepository, eventPublisher)
+    private val records = mock(SpotRecordRepository::class.java)
+    private val reactions = mock(SpotRecordReactionRepository::class.java)
+    private val events = mock(ApplicationEventPublisher::class.java)
+    private val catalog = EmojiCatalog()
+    private val service = FeedReactionService(records, reactions, events, catalog)
 
     @Test
-    fun `게시된 기록에 리액션을 추가하고 갱신된 요약을 반환한다`() {
-        `when`(spotRecordRepository.findById(RECORD_ID)).thenReturn(Optional.of(record(SpotRecordStatus.PUBLISHED)))
-        `when`(spotRecordReactionRepository.countsBySpotRecordId(RECORD_ID))
-            .thenReturn(listOf(count(ReactionType.HEART, 3), count(ReactionType.SMILE, 1)))
-        `when`(spotRecordReactionRepository.findBySpotRecordIdAndUserId(RECORD_ID, USER_ID))
-            .thenReturn(listOf(reaction(ReactionType.HEART)))
+    fun `duplicate add does not publish an event`() {
+        `when`(records.findById(RECORD_ID)).thenReturn(Optional.of(record(SpotRecordStatus.PUBLISHED)))
+        `when`(reactions.insertIfAbsent(USER_ID, RECORD_ID, FIRE_KEY)).thenReturn(0)
+        `when`(reactions.countByRecordAndStorageKey(RECORD_ID, FIRE_KEY)).thenReturn(1)
+        `when`(reactions.existsByRecordUserAndStorageKey(RECORD_ID, USER_ID, FIRE_KEY)).thenReturn(true)
 
-        val response = service.add(USER_ID, RECORD_ID, ReactionType.HEART)
+        val result = service.add(USER_ID, RECORD_ID, FIRE_KEY)
 
-        assertThat(response.recordId).isEqualTo(RECORD_ID)
-        assertThat(response.counts).extracting<ReactionType> { it.reactionType }
-            .containsExactlyInAnyOrder(ReactionType.HEART, ReactionType.SMILE)
-        assertThat(response.myReactions).containsExactly(ReactionType.HEART)
+        assertThat(result.reactedByMe).isTrue
+        verifyNoInteractions(events)
     }
 
     @Test
-    fun `DRAFT 기록에는 리액션을 추가할 수 없다`() {
-        `when`(spotRecordRepository.findById(RECORD_ID)).thenReturn(Optional.of(record(SpotRecordStatus.DRAFT)))
+    fun `new insert publishes canonical emoji event`() {
+        `when`(records.findById(RECORD_ID)).thenReturn(Optional.of(record(SpotRecordStatus.PUBLISHED)))
+        `when`(reactions.insertIfAbsent(USER_ID, RECORD_ID, FIRE_KEY)).thenReturn(1)
+        `when`(reactions.countByRecordAndStorageKey(RECORD_ID, FIRE_KEY)).thenReturn(1)
+        `when`(reactions.existsByRecordUserAndStorageKey(RECORD_ID, USER_ID, FIRE_KEY)).thenReturn(true)
 
-        assertThatThrownBy { service.add(USER_ID, RECORD_ID, ReactionType.HEART) }
-            .isInstanceOf(SpotRecordNotFoundException::class.java)
+        service.add(USER_ID, RECORD_ID, FIRE_KEY)
+
+        val captor = ArgumentCaptor.forClass(ReactionAddedEvent::class.java)
+        verify(events).publishEvent(captor.capture())
+        assertThat(captor.value.emojiKey).isEqualTo(FIRE_KEY)
     }
 
     @Test
-    fun `존재하지 않는 기록에는 리액션을 추가할 수 없다`() {
-        `when`(spotRecordRepository.findById(RECORD_ID)).thenReturn(Optional.empty())
+    fun `legacy and all supported emoji are accepted together without activation settings`() {
+        `when`(records.findById(RECORD_ID)).thenReturn(Optional.of(record(SpotRecordStatus.PUBLISHED)))
+        listOf(HEART_KEY, FIRE_KEY, "u:1f44d-1f3fd", "u:1f468-200d-1f469-200d-1f467-200d-1f466").forEach { key ->
+            val storageKey = catalog.toStorageKey(key)
+            `when`(reactions.insertIfAbsent(USER_ID, RECORD_ID, storageKey)).thenReturn(1)
+            `when`(reactions.countByRecordAndStorageKey(RECORD_ID, storageKey)).thenReturn(1)
+            `when`(reactions.existsByRecordUserAndStorageKey(RECORD_ID, USER_ID, storageKey)).thenReturn(true)
 
-        assertThatThrownBy { service.add(USER_ID, RECORD_ID, ReactionType.HEART) }
-            .isInstanceOf(SpotRecordNotFoundException::class.java)
+            val result = service.add(USER_ID, RECORD_ID, key)
+
+            assertThat(result.key).isEqualTo(key)
+            assertThat(result.reactedByMe).isTrue()
+        }
     }
 
     @Test
-    fun `리액션을 취소하면 저장소에서 삭제하고 갱신된 요약을 반환한다`() {
-        `when`(spotRecordRepository.findById(RECORD_ID)).thenReturn(Optional.of(record(SpotRecordStatus.PUBLISHED)))
-        `when`(spotRecordReactionRepository.countsBySpotRecordId(RECORD_ID)).thenReturn(emptyList())
-        `when`(spotRecordReactionRepository.findBySpotRecordIdAndUserId(RECORD_ID, USER_ID)).thenReturn(emptyList())
-
-        val response = service.remove(USER_ID, RECORD_ID, ReactionType.HEART)
-
-        assertThat(response.counts).isEmpty()
-        assertThat(response.myReactions).isEmpty()
+    fun `invalid list size is a bad request`() {
+        `when`(records.findById(RECORD_ID)).thenReturn(Optional.of(record(SpotRecordStatus.PUBLISHED)))
+        assertThatThrownBy { service.list(RECORD_ID, USER_ID, null, 0, false) }
+            .isInstanceOf(InvalidEmojiException::class.java)
     }
 
-    // --- fixtures ---
+    @Test
+    fun `remove missing reaction is idempotent`() {
+        `when`(records.findById(RECORD_ID)).thenReturn(Optional.of(record(SpotRecordStatus.PUBLISHED)))
+        `when`(reactions.countByRecordAndStorageKey(RECORD_ID, FIRE_KEY)).thenReturn(0)
+        `when`(reactions.existsByRecordUserAndStorageKey(RECORD_ID, USER_ID, FIRE_KEY)).thenReturn(false)
 
-    private fun record(status: SpotRecordStatus): SpotRecord {
-        val record = SpotRecord(spotId = 100L, userId = 999L, status = status)
-        ReflectionTestUtils.setField(record, "id", RECORD_ID)
-        return record
+        val result = service.remove(USER_ID, RECORD_ID, FIRE_KEY)
+
+        assertThat(result.count).isZero
+        assertThat(result.reactedByMe).isFalse
+        verify(reactions).deleteByUserIdAndSpotRecordIdAndReactionType(USER_ID, RECORD_ID, FIRE_KEY)
     }
 
-    private fun reaction(type: ReactionType): SpotRecordReaction {
-        val reaction = SpotRecordReaction(userId = USER_ID, spotRecordId = RECORD_ID, reactionType = type)
-        ReflectionTestUtils.setField(reaction, "id", 1L)
-        return reaction
+    @Test
+    fun `draft and missing records remain hidden even for an invalid emoji key`() {
+        listOf(Optional.of(record(SpotRecordStatus.DRAFT)), Optional.empty<SpotRecord>()).forEach { hidden ->
+            `when`(records.findById(RECORD_ID)).thenReturn(hidden)
+            assertThatThrownBy { service.add(USER_ID, RECORD_ID, "invalid") }
+                .isInstanceOf(SpotRecordNotFoundException::class.java)
+            assertThatThrownBy { service.remove(USER_ID, RECORD_ID, "invalid") }
+                .isInstanceOf(SpotRecordNotFoundException::class.java)
+        }
+        verifyNoInteractions(reactions, events)
     }
 
-    private fun count(type: ReactionType, value: Long) = object : ReactionTypeCount {
-        override val reactionType: ReactionType = type
-        override val count: Long = value
+    @Test
+    fun `list cursor uses last returned key and does not skip`() {
+        `when`(records.findById(RECORD_ID)).thenReturn(Optional.of(record(SpotRecordStatus.PUBLISHED)))
+        val first = row("u:1f44d", 2, false)
+        val second = row("u:1f525", 1, true)
+        `when`(reactions.emojiList(RECORD_ID, USER_ID, null, false, 2)).thenReturn(listOf(first, second))
+
+        val page = service.list(RECORD_ID, USER_ID, null, 1, false)
+
+        assertThat(page.items).extracting<String> { it.key }.containsExactly("u:1f44d")
+        assertThat(page.hasMore).isTrue
+        assertThat(page.nextAfterKey).isEqualTo("u:1f44d")
+    }
+
+    private fun row(key: String, count: Long, mine: Boolean) = object : com.peakda.server.domain.spot.repository.EmojiReactionRow {
+        override val storageKey = key
+        override val count = count
+        override val reactedByMe = mine
+    }
+
+    private fun record(status: SpotRecordStatus): SpotRecord = SpotRecord(spotId = 100L, userId = 999L, status = status).also {
+        ReflectionTestUtils.setField(it, "id", RECORD_ID)
     }
 
     companion object {
         private const val USER_ID = 1L
         private const val RECORD_ID = 500L
+        private const val HEART_KEY = "u:2764-fe0f"
+        private const val SMILE_KEY = "u:1f600"
+        private const val FIRE_KEY = "u:1f525"
     }
 }

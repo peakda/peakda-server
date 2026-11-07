@@ -92,7 +92,7 @@ class OpenApiConfig(
         GroupedOpenApi.builder()
             .group("05-feed")
             .displayName("피드")
-            .pathsToMatch("/api/feed/**")
+            .pathsToMatch("/api/feed/**", "/api/v2/feed/**", "/api/v2/reaction-emojis")
             .build()
 
     @Bean

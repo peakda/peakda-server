@@ -6,8 +6,12 @@ import com.peakda.server.common.response.ApiResponse
 import com.peakda.server.common.security.principal.PrincipalDetails
 import com.peakda.server.domain.feed.application.FeedReactionService
 import com.peakda.server.domain.feed.application.FeedService
+import com.peakda.server.domain.feed.application.EmojiCatalog
 import com.peakda.server.domain.feed.entity.FeedFilter
 import com.peakda.server.domain.feed.presentation.response.FeedReactionSummaryResponse
+import com.peakda.server.domain.feed.presentation.response.toLegacyResponse
+import com.peakda.server.domain.spot.presentation.response.toRecordResponse
+import com.peakda.server.domain.spot.presentation.response.toRecordSummaryResponse
 import com.peakda.server.domain.spot.entity.ReactionType
 import com.peakda.server.domain.spot.presentation.response.SpotRecordResponse
 import com.peakda.server.domain.spot.presentation.response.SpotRecordSummaryResponse
@@ -21,6 +25,7 @@ import org.springframework.web.bind.annotation.RestController
 class FeedController(
     private val feedService: FeedService,
     private val feedReactionService: FeedReactionService,
+    private val emojiCatalog: EmojiCatalog,
 ) : FeedControllerDocs {
 
     override fun list(
@@ -29,7 +34,12 @@ class FeedController(
         pageRequest: PageRequest,
     ): ResponseEntity<ApiResponse<PageResponse<SpotRecordSummaryResponse>>> {
         val userId = principal?.getUser()?.id
-        val response = feedService.list(userId, filter, pageRequest)
+        val page = feedService.list(userId, filter, pageRequest)
+        val response = PageResponse(
+            content = page.content.map { it.toRecordSummaryResponse() },
+            page = page.page, size = page.size, totalElements = page.totalElements,
+            totalPages = page.totalPages, hasNext = page.hasNext,
+        )
         return ResponseEntity.ok(ApiResponse.success(HttpStatus.OK, response))
     }
 
@@ -38,7 +48,7 @@ class FeedController(
         id: Long,
     ): ResponseEntity<ApiResponse<SpotRecordResponse>> {
         val userId = principal?.getUser()?.id
-        val response = feedService.detail(id, userId)
+        val response = feedService.detail(id, userId).toRecordResponse()
         return ResponseEntity.ok(ApiResponse.success(HttpStatus.OK, response))
     }
 
@@ -48,7 +58,8 @@ class FeedController(
         reactionType: ReactionType,
     ): ResponseEntity<ApiResponse<FeedReactionSummaryResponse>> {
         val userId = requireNotNull(principal.getUser().id)
-        val response = feedReactionService.add(userId, id, reactionType)
+        feedReactionService.add(userId, id, emojiCatalog.legacyKey(reactionType))
+        val response = feedReactionService.legacySummary(id, userId).toLegacyResponse(id, emojiCatalog)
         return ResponseEntity.ok(ApiResponse.success(HttpStatus.OK, response))
     }
 
@@ -58,7 +69,8 @@ class FeedController(
         reactionType: ReactionType,
     ): ResponseEntity<ApiResponse<FeedReactionSummaryResponse>> {
         val userId = requireNotNull(principal.getUser().id)
-        val response = feedReactionService.remove(userId, id, reactionType)
+        feedReactionService.remove(userId, id, emojiCatalog.legacyKey(reactionType))
+        val response = feedReactionService.legacySummary(id, userId).toLegacyResponse(id, emojiCatalog)
         return ResponseEntity.ok(ApiResponse.success(HttpStatus.OK, response))
     }
 }

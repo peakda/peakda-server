@@ -1,6 +1,6 @@
 package com.peakda.server.domain.spot.entity
 
-/** 피드 리액션(결정 F) — V1 은 고정 이모지 2종으로 시작, 확장은 이 enum 에 값만 추가한다. */
+/** v1 API 호환 타입. 전체 기본 이모지는 EmojiCatalog의 문자열 키를 사용한다. */
 enum class ReactionType {
     HEART,
     SMILE,

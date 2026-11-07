@@ -12,8 +12,10 @@ import com.peakda.server.domain.spot.entity.SpotRecordPlantId
 import com.peakda.server.domain.spot.entity.SpotRecordStatus
 import com.peakda.server.domain.spot.entity.SpotType
 import com.peakda.server.domain.spot.exception.SpotRecordNotFoundException
-import com.peakda.server.domain.spot.presentation.response.SpotRecordResponse
-import com.peakda.server.domain.spot.presentation.response.SpotRecordSummaryResponse
+import com.peakda.server.domain.spot.application.SpotRecordView
+import com.peakda.server.domain.spot.application.SpotView
+import com.peakda.server.domain.spot.application.UserView
+import com.peakda.server.domain.spot.application.LegacyReactionOverview
 import com.peakda.server.domain.spot.repository.PlantRepository
 import com.peakda.server.domain.spot.repository.SpotRecordPlantRepository
 import com.peakda.server.domain.spot.repository.SpotRecordRepository
@@ -30,7 +32,6 @@ import org.mockito.Mockito.`when`
 import org.springframework.data.domain.PageImpl
 import org.springframework.data.domain.Sort
 import org.springframework.test.util.ReflectionTestUtils
-import java.time.Instant
 import java.util.Optional
 import org.springframework.data.domain.PageRequest as SpringPageRequest
 
@@ -62,7 +63,7 @@ class FeedServiceTest {
         val pageable = SpringPageRequest.of(0, 20, sort)
         `when`(spotRecordRepository.findByStatus(SpotRecordStatus.PUBLISHED, pageable))
             .thenReturn(PageImpl(listOf(record), pageable, 1))
-        `when`(responseAssembler.assembleSummaries(listOf(record), USER_ID)).thenReturn(listOf(summary(1L)))
+        `when`(responseAssembler.assembleViews(listOf(record), USER_ID)).thenReturn(listOf(view(1L)))
 
         val response = service.list(USER_ID, FeedFilter.ALL, PageRequest(page = 0, size = 20))
 
@@ -75,7 +76,7 @@ class FeedServiceTest {
         val pageable = SpringPageRequest.of(0, 20, sort)
         `when`(spotRecordRepository.findByStatus(SpotRecordStatus.PUBLISHED, pageable))
             .thenReturn(PageImpl(listOf(record), pageable, 1))
-        `when`(responseAssembler.assembleSummaries(listOf(record), null)).thenReturn(listOf(summary(1L)))
+        `when`(responseAssembler.assembleViews(listOf(record), null)).thenReturn(listOf(view(1L)))
 
         val response = service.list(null, FeedFilter.ALL, PageRequest(page = 0, size = 20))
 
@@ -104,7 +105,7 @@ class FeedServiceTest {
         `when`(followRepository.findFollowingIds(USER_ID)).thenReturn(listOf(FOLLOWING_ID))
         `when`(spotRecordRepository.findByUserIdInAndStatus(listOf(FOLLOWING_ID), SpotRecordStatus.PUBLISHED, pageable))
             .thenReturn(PageImpl(listOf(record), pageable, 1))
-        `when`(responseAssembler.assembleSummaries(listOf(record), USER_ID)).thenReturn(listOf(summary(2L)))
+        `when`(responseAssembler.assembleViews(listOf(record), USER_ID)).thenReturn(listOf(view(2L)))
 
         val response = service.list(USER_ID, FeedFilter.FOLLOWING, PageRequest(page = 0, size = 20))
 
@@ -132,7 +133,7 @@ class FeedServiceTest {
             .thenReturn(listOf(SpotRecordPlant(SpotRecordPlantId(3L, 10L))))
         `when`(spotRecordRepository.findByIdInAndStatus(listOf(3L), SpotRecordStatus.PUBLISHED, pageable))
             .thenReturn(PageImpl(listOf(record), pageable, 1))
-        `when`(responseAssembler.assembleSummaries(listOf(record), USER_ID)).thenReturn(listOf(summary(3L)))
+        `when`(responseAssembler.assembleViews(listOf(record), USER_ID)).thenReturn(listOf(view(3L)))
 
         val response = service.list(USER_ID, FeedFilter.INTEREST, PageRequest(page = 0, size = 20))
 
@@ -146,7 +147,7 @@ class FeedServiceTest {
         `when`(blockRepository.findBlockedIdsByBlockerId(USER_ID)).thenReturn(listOf(BLOCKED_ID))
         `when`(spotRecordRepository.findByStatusAndUserIdNotIn(SpotRecordStatus.PUBLISHED, setOf(BLOCKED_ID), pageable))
             .thenReturn(PageImpl(listOf(record), pageable, 1))
-        `when`(responseAssembler.assembleSummaries(listOf(record), USER_ID)).thenReturn(listOf(summary(1L)))
+        `when`(responseAssembler.assembleViews(listOf(record), USER_ID)).thenReturn(listOf(view(1L)))
 
         val response = service.list(USER_ID, FeedFilter.ALL, PageRequest(page = 0, size = 20))
 
@@ -184,7 +185,7 @@ class FeedServiceTest {
     fun `게시된 기록 상세는 정상 조회된다`() {
         val record = record(1L, status = SpotRecordStatus.PUBLISHED)
         `when`(spotRecordRepository.findById(1L)).thenReturn(Optional.of(record))
-        `when`(responseAssembler.assemble(record, USER_ID)).thenReturn(detail(1L))
+        `when`(responseAssembler.assembleView(record, USER_ID)).thenReturn(view(1L))
 
         val response = service.detail(1L, USER_ID)
 
@@ -220,35 +221,21 @@ class FeedServiceTest {
         return record
     }
 
-    private fun summary(id: Long) = SpotRecordSummaryResponse(
+    private fun view(id: Long) = SpotRecordView(
         id = id,
-        spotId = 100L,
-        spotName = "남산",
-        user = SpotRecordResponse.UserSummary(id = FOLLOWING_ID, nickname = "user", profileImageUrl = null),
+        spot = SpotView(100L, SpotType.LOCAL, "남산", null, null),
+        user = UserView(FOLLOWING_ID, "user", null),
         visitedDate = null,
         bloomStage = null,
         memo = null,
-        plants = emptyList(),
-        coverPhoto = null,
-        status = SpotRecordStatus.PUBLISHED,
-        publishedAt = null,
-        createdAt = Instant.now(),
-        updatedAt = Instant.now(),
-    )
-
-    private fun detail(id: Long) = SpotRecordResponse(
-        id = id,
-        spot = SpotRecordResponse.SpotSummary(id = 100L, type = SpotType.LOCAL, name = "남산", address = null, attractionId = null),
-        user = SpotRecordResponse.UserSummary(id = FOLLOWING_ID, nickname = "user", profileImageUrl = null),
-        visitedDate = null,
-        bloomStage = null,
-        memo = null,
+        contentLink = null,
         plants = emptyList(),
         photos = emptyList(),
         status = SpotRecordStatus.PUBLISHED,
         publishedAt = null,
-        createdAt = Instant.now(),
-        updatedAt = Instant.now(),
+        createdAt = java.time.Instant.EPOCH,
+        updatedAt = java.time.Instant.EPOCH,
+        legacyReactions = LegacyReactionOverview(emptyList(), emptySet()),
     )
 
     private fun favoriteCategory(userId: Long, category: BloomCategory) =
