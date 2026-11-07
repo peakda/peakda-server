@@ -1,12 +1,13 @@
 package com.peakda.server.domain.spot.application
 
 import com.peakda.server.common.storage.ObjectStorage
+import com.peakda.server.domain.spot.entity.SpotRecordPhotoDeletion
 import com.peakda.server.domain.spot.entity.SpotRecordPhotoUpload
 import com.peakda.server.domain.spot.exception.SpotRecordForbiddenException
+import com.peakda.server.domain.spot.repository.SpotRecordPhotoDeletionRepository
 import com.peakda.server.domain.spot.repository.SpotRecordPhotoRepository
 import com.peakda.server.domain.spot.repository.SpotRecordPhotoUploadRepository
 import com.peakda.server.domain.spot.repository.SpotRecordRepository
-import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Propagation
 import org.springframework.transaction.annotation.Transactional
@@ -19,9 +20,8 @@ class SpotRecordPhotoAccessService(
     private val photos: SpotRecordPhotoRepository,
     private val storage: ObjectStorage,
     private val records: SpotRecordRepository,
+    private val deletions: SpotRecordPhotoDeletionRepository,
 ) {
-    private val log = LoggerFactory.getLogger(javaClass)
-
     /** 모든 변경 경로가 동일한 순서로 잠근다. 반환한 행은 호출 트랜잭션이 끝날 때까지 잠긴다. */
     fun lockForChange(
         userId: Long,
@@ -66,7 +66,7 @@ class SpotRecordPhotoAccessService(
         upload.variantNames = SpotRecordPhotoPolicy.CURRENT_VARIANT_NAMES
     }
 
-    /** 참조 해제를 flush한 뒤, 소유자가 일치하는 마지막 참조만 물리 삭제한다. */
+    /** 참조 해제를 flush한 뒤, 소유자가 일치하는 마지막 참조의 삭제를 같은 트랜잭션에 예약한다. */
     fun deleteUnreferenced(userId: Long, keys: Set<String>, locked: Map<String, SpotRecordPhotoUpload>) {
         photos.flush()
         val ownedUploads = keys.sorted().mapNotNull(locked::get).filter { it.ownerId == userId && it.available }
@@ -78,11 +78,9 @@ class SpotRecordPhotoAccessService(
             val key = upload.objectKey
             if (key in referencedKeys) return@forEach
             upload.available = false
-            SpotRecordPhotoPolicy.availableVariantNames(upload.variantNames).forEach { name ->
-                val variantKey = "${key.substringBeforeLast('/')}/$name.jpg"
-                runCatching { storage.delete(variantKey) }
-                    .onFailure { log.warn("기록 사진 삭제 실패 key={}", variantKey, it) }
-            }
+            deletions.save(
+                SpotRecordPhotoDeletion(key, upload.ownerId, upload.evidence, upload.variantNames),
+            )
         }
     }
 

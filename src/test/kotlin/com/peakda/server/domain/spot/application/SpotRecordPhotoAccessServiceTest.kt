@@ -17,8 +17,9 @@ class SpotRecordPhotoAccessServiceTest {
     private val uploads = mock(SpotRecordPhotoUploadRepository::class.java)
     private val photos = mock(SpotRecordPhotoRepository::class.java)
     private val storage = mock(ObjectStorage::class.java)
+    private val deletions = mock(com.peakda.server.domain.spot.repository.SpotRecordPhotoDeletionRepository::class.java)
     private val records = mock(SpotRecordRepository::class.java)
-    private val service = SpotRecordPhotoAccessService(uploads, photos, storage, records)
+    private val service = SpotRecordPhotoAccessService(uploads, photos, storage, records, deletions)
     private val prefix = "spot-records/1/2026/10/1d09271c-0933-4dbd-a832-35d8990c8d64"
     private val key = "$prefix/main.jpg"
 
@@ -156,16 +157,11 @@ class SpotRecordPhotoAccessServiceTest {
     @Test
     fun `마지막 본인 참조가 해제되면 삭제 전 재첨부를 차단하고 보유 variant를 삭제한다`() {
         val upload = upload(variants = "thumbnail,main")
-        doAnswer {
-            assertThat(upload.available).isFalse()
-            null
-        }.`when`(storage).delete(anyString())
-
         service.deleteUnreferenced(1L, setOf(key), mapOf(key to upload))
 
-        verify(storage).delete("$prefix/thumbnail.jpg")
-        verify(storage).delete(key)
-        verifyNoMoreInteractions(storage)
+        assertThat(upload.available).isFalse()
+        verify(deletions).save(org.mockito.ArgumentMatchers.any(com.peakda.server.domain.spot.entity.SpotRecordPhotoDeletion::class.java))
+        verifyNoInteractions(storage)
     }
 
     @Test
@@ -228,12 +224,11 @@ class SpotRecordPhotoAccessServiceTest {
 
         service.deleteUnreferenced(1L, keys, listOf(referenced, unreferenced, foreign, retired).associateBy { it.objectKey })
 
-        val order = inOrder(photos, storage)
+        val order = inOrder(photos, deletions)
         order.verify(photos).flush()
         order.verify(photos).findReferencedObjectKeys(candidates)
-        order.verify(storage).delete("z/thumbnail.jpg")
-        order.verify(storage).delete(unreferenced.objectKey)
-        verifyNoMoreInteractions(photos, storage)
+        order.verify(deletions).save(org.mockito.ArgumentMatchers.any(com.peakda.server.domain.spot.entity.SpotRecordPhotoDeletion::class.java))
+        verifyNoMoreInteractions(photos, deletions)
         assertThat(referenced.available).isTrue()
         assertThat(unreferenced.available).isFalse()
         assertThat(foreign.available).isTrue()

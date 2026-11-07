@@ -35,6 +35,8 @@ import java.util.concurrent.TimeoutException
 
 class SpotRecordPhotoAccessIntegrationTest : IntegrationTestSupport() {
     @Autowired lateinit var access: SpotRecordPhotoAccessService
+    @Autowired lateinit var deletionService: SpotRecordPhotoDeletionService
+    @Autowired lateinit var deletions: com.peakda.server.domain.spot.repository.SpotRecordPhotoDeletionRepository
     @Autowired lateinit var photos: SpotRecordPhotoRepository
     @Autowired lateinit var uploads: SpotRecordPhotoUploadRepository
     @Autowired lateinit var records: SpotRecordRepository
@@ -46,6 +48,7 @@ class SpotRecordPhotoAccessIntegrationTest : IntegrationTestSupport() {
 
     @BeforeEach
     fun clean() {
+        deletions.deleteAllInBatch()
         photos.deleteAllInBatch()
         uploads.deleteAllInBatch()
         records.deleteAllInBatch()
@@ -54,9 +57,28 @@ class SpotRecordPhotoAccessIntegrationTest : IntegrationTestSupport() {
 
     @AfterEach
     fun cleanup() {
+        deletions.deleteAllInBatch()
         photos.deleteAllInBatch()
         uploads.deleteAllInBatch()
         records.deleteAllInBatch()
+    }
+
+    @Test
+    fun `원본 트랜잭션 rollback은 파일을 보존하고 삭제 예약을 남기지 않는다`() {
+        val key = key(7L)
+        uploads.saveAndFlush(upload(key, 7L))
+        val recordId = saveRecord(7L)
+        photos.saveAndFlush(SpotRecordPhoto(recordId, key, 1))
+
+        transactions.executeWithoutResult { status ->
+            recordService.delete(recordId, 7L)
+            status.setRollbackOnly()
+        }
+
+        assertThat(deletions.count()).isZero()
+        assertThat(photos.findBySpotRecordIdOrderBySortOrderAsc(recordId)).hasSize(1)
+        assertThat(uploads.findById(key).orElseThrow().available).isTrue()
+        verify(storage, never()).delete(org.mockito.ArgumentMatchers.anyString())
     }
 
     @Test
@@ -72,8 +94,12 @@ class SpotRecordPhotoAccessIntegrationTest : IntegrationTestSupport() {
         assertThat(uploads.findById(key).orElseThrow().available).isTrue()
 
         recordService.delete(second, 7L)
+        assertThat(deletions.findAll().single().status).isEqualTo(com.peakda.server.domain.spot.entity.PhotoDeletionStatus.PENDING)
+        verify(storage, never()).delete(org.mockito.ArgumentMatchers.anyString())
+        deletionService.drain()
         verify(storage).delete("${key.substringBeforeLast('/')}/thumbnail.jpg")
         verify(storage).delete("${key.substringBeforeLast('/')}/medium.jpg")
+        deletionService.drain()
         verify(storage).delete(key)
         assertThat(uploads.findById(key).orElseThrow().available).isFalse()
     }
@@ -130,6 +156,7 @@ class SpotRecordPhotoAccessIntegrationTest : IntegrationTestSupport() {
             allowDelete.countDown()
             executor.shutdownNow()
         }
+        deletionService.drain()
         verify(storage).delete(key)
         assertThat(uploads.findById(key).orElseThrow().available).isFalse()
     }
@@ -191,6 +218,7 @@ class SpotRecordPhotoAccessIntegrationTest : IntegrationTestSupport() {
         )
 
         recordService.deleteAllByUser(7L)
+        deletionService.drain()
 
         assertThat(records.findByUserId(7L)).isEmpty()
         assertThat(photos.findBySpotRecordIdIn(listOf(ownedRecord, sharedRecord, contaminatedRecord))).isEmpty()
@@ -285,6 +313,7 @@ class SpotRecordPhotoAccessIntegrationTest : IntegrationTestSupport() {
             statistics.isStatisticsEnabled = wasEnabled
         }
         verify(storage, never()).delete(keys.first())
+        deletionService.drain()
         keys.drop(1).forEach { verify(storage).delete(it) }
     }
 

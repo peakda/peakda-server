@@ -34,6 +34,8 @@ import java.util.concurrent.TimeoutException
 
 class SpotRecordPhotoBackfillIntegrationTest : IntegrationTestSupport() {
     @Autowired lateinit var backfill: SpotRecordPhotoVariantBackfillService
+    @Autowired lateinit var deletionService: SpotRecordPhotoDeletionService
+    @Autowired lateinit var deletions: com.peakda.server.domain.spot.repository.SpotRecordPhotoDeletionRepository
     @Autowired lateinit var photos: SpotRecordPhotoRepository
     @Autowired lateinit var uploads: SpotRecordPhotoUploadRepository
     @Autowired lateinit var records: SpotRecordRepository
@@ -46,6 +48,7 @@ class SpotRecordPhotoBackfillIntegrationTest : IntegrationTestSupport() {
 
     @BeforeEach
     fun clean() {
+        deletions.deleteAllInBatch()
         photos.deleteAllInBatch()
         uploads.deleteAllInBatch()
         records.deleteAllInBatch()
@@ -54,6 +57,7 @@ class SpotRecordPhotoBackfillIntegrationTest : IntegrationTestSupport() {
 
     @AfterEach
     fun cleanup() {
+        deletions.deleteAllInBatch()
         photos.deleteAllInBatch()
         uploads.deleteAllInBatch()
         records.deleteAllInBatch()
@@ -144,14 +148,15 @@ class SpotRecordPhotoBackfillIntegrationTest : IntegrationTestSupport() {
         uploads.saveAndFlush(upload(key, 7L))
         val deleteEntered = CountDownLatch(1)
         val releaseDelete = CountDownLatch(1)
-        doAnswer {
-            deleteEntered.countDown()
-            check(releaseDelete.await(5, TimeUnit.SECONDS))
-            null
-        }.`when`(storage).delete(anyString())
         val executor = Executors.newFixedThreadPool(2)
         try {
-            val deleteFuture = executor.submit { recordService.delete(recordId, 7L) }
+            val deleteFuture = executor.submit {
+                transactions.executeWithoutResult {
+                    recordService.delete(recordId, 7L)
+                    deleteEntered.countDown()
+                    check(releaseDelete.await(5, TimeUnit.SECONDS))
+                }
+            }
             check(deleteEntered.await(5, TimeUnit.SECONDS))
             val backfillFuture = executor.submit<SpotRecordPhotoVariantBackfillResult> { backfill.backfill(50) }
             assertThatThrownBy { backfillFuture.get(200, TimeUnit.MILLISECONDS) }
@@ -196,6 +201,7 @@ class SpotRecordPhotoBackfillIntegrationTest : IntegrationTestSupport() {
             deleteFuture.get(10, TimeUnit.SECONDS)
             assertThat(photos.findBySpotRecordIdOrderBySortOrderAsc(recordId)).isEmpty()
             assertThat(uploads.findById(key).orElseThrow().available).isFalse()
+            deletionService.drain()
             verify(storage).delete("${key.substringBeforeLast('/')}/medium.jpg")
         } finally {
             releaseUpload.countDown()
