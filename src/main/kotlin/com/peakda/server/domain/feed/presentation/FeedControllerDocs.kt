@@ -9,8 +9,8 @@ import com.peakda.server.common.security.principal.PrincipalDetails
 import com.peakda.server.domain.feed.entity.FeedFilter
 import com.peakda.server.domain.feed.presentation.response.FeedReactionSummaryResponse
 import com.peakda.server.domain.spot.entity.ReactionType
-import com.peakda.server.domain.spot.presentation.response.SpotRecordResponse
-import com.peakda.server.domain.spot.presentation.response.SpotRecordSummaryResponse
+import com.peakda.server.domain.feed.presentation.response.LegacyFeedRecordResponse
+import com.peakda.server.domain.feed.presentation.response.LegacyFeedRecordSummaryResponse
 import io.swagger.v3.oas.annotations.Operation
 import io.swagger.v3.oas.annotations.Parameter
 import io.swagger.v3.oas.annotations.security.SecurityRequirement
@@ -46,7 +46,7 @@ interface FeedControllerDocs {
         @Parameter(description = "피드 필터", example = "ALL")
         @RequestParam("filter", defaultValue = "ALL") filter: FeedFilter,
         @Valid @ModelAttribute pageRequest: PageRequest,
-    ): ResponseEntity<ApiResponse<PageResponse<SpotRecordSummaryResponse>>>
+    ): ResponseEntity<ApiResponse<PageResponse<LegacyFeedRecordSummaryResponse>>>
 
     @Operation(
         summary = "피드 상세 조회",
@@ -59,7 +59,7 @@ interface FeedControllerDocs {
         @AuthenticationPrincipal principal: PrincipalDetails?,
         @Parameter(description = "스팟 기록 id", example = "1024")
         @PathVariable("id") id: Long,
-    ): ResponseEntity<ApiResponse<SpotRecordResponse>>
+    ): ResponseEntity<ApiResponse<LegacyFeedRecordResponse>>
 
     @Operation(
         summary = "리액션 추가",

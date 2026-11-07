@@ -4,6 +4,8 @@ import com.peakda.server.domain.spot.application.LegacyReactionCount
 import com.peakda.server.domain.feed.application.ReactionOverview
 import com.peakda.server.domain.feed.application.ReactionTally
 import com.peakda.server.domain.feed.presentation.response.toLegacyResponse
+import com.peakda.server.domain.feed.presentation.response.toLegacyFeedRecordResponse
+import com.peakda.server.domain.feed.presentation.response.toLegacyFeedRecordSummaryResponse
 import com.peakda.server.domain.feed.presentation.v2.response.toFeedRecordResponse
 import com.peakda.server.domain.feed.presentation.v2.response.toFeedRecordSummaryResponse
 import com.peakda.server.domain.spot.application.ContentLinkView
@@ -67,6 +69,23 @@ class FeedResponseMapperTest {
         assertThat(detail.reactions.hasMore).isTrue()
         assertThat(summary.coverPhoto?.objectKey).isEqualTo("record/main.jpg")
         assertThat(summary.reactions).isEqualTo(detail.reactions)
+    }
+
+    @Test
+    fun `v1 record adapters preserve content and legacy reaction counts`() {
+        val detail = view.toLegacyFeedRecordResponse()
+        val summary = view.toLegacyFeedRecordSummaryResponse()
+
+        assertThat(detail.spot.id).isEqualTo(view.spot.id)
+        assertThat(detail.user.nickname).isEqualTo(view.user.nickname)
+        assertThat(detail.contentLink?.url).isEqualTo(view.contentLink?.url)
+        assertThat(detail.photos.single().variants).isEqualTo(view.photos.single().variants)
+        assertThat(detail.reactions.counts.single().reactionType.name).isEqualTo("HEART")
+        assertThat(detail.reactions.counts.single().count).isEqualTo(2L)
+        assertThat(detail.reactions.myReactions.single().name).isEqualTo("HEART")
+        assertThat(summary.reactions).isEqualTo(detail.reactions)
+        assertThat(summary.coverPhoto).isEqualTo(detail.photos.first())
+        assertThat(summary.photos).isEqualTo(detail.photos)
     }
 
     @Test

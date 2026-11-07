@@ -10,11 +10,11 @@ import com.peakda.server.domain.feed.application.EmojiCatalog
 import com.peakda.server.domain.feed.entity.FeedFilter
 import com.peakda.server.domain.feed.presentation.response.FeedReactionSummaryResponse
 import com.peakda.server.domain.feed.presentation.response.toLegacyResponse
-import com.peakda.server.domain.spot.presentation.response.toRecordResponse
-import com.peakda.server.domain.spot.presentation.response.toRecordSummaryResponse
+import com.peakda.server.domain.feed.presentation.response.toLegacyFeedRecordResponse
+import com.peakda.server.domain.feed.presentation.response.toLegacyFeedRecordSummaryResponse
 import com.peakda.server.domain.spot.entity.ReactionType
-import com.peakda.server.domain.spot.presentation.response.SpotRecordResponse
-import com.peakda.server.domain.spot.presentation.response.SpotRecordSummaryResponse
+import com.peakda.server.domain.feed.presentation.response.LegacyFeedRecordResponse
+import com.peakda.server.domain.feed.presentation.response.LegacyFeedRecordSummaryResponse
 import org.springframework.http.HttpStatus
 import org.springframework.http.ResponseEntity
 import org.springframework.web.bind.annotation.RequestMapping
@@ -32,11 +32,11 @@ class FeedController(
         principal: PrincipalDetails?,
         filter: FeedFilter,
         pageRequest: PageRequest,
-    ): ResponseEntity<ApiResponse<PageResponse<SpotRecordSummaryResponse>>> {
+    ): ResponseEntity<ApiResponse<PageResponse<LegacyFeedRecordSummaryResponse>>> {
         val userId = principal?.getUser()?.id
         val page = feedService.list(userId, filter, pageRequest)
         val response = PageResponse(
-            content = page.content.map { it.toRecordSummaryResponse() },
+            content = page.content.map { it.toLegacyFeedRecordSummaryResponse() },
             page = page.page, size = page.size, totalElements = page.totalElements,
             totalPages = page.totalPages, hasNext = page.hasNext,
         )
@@ -46,9 +46,9 @@ class FeedController(
     override fun get(
         principal: PrincipalDetails?,
         id: Long,
-    ): ResponseEntity<ApiResponse<SpotRecordResponse>> {
+    ): ResponseEntity<ApiResponse<LegacyFeedRecordResponse>> {
         val userId = principal?.getUser()?.id
-        val response = feedService.detail(id, userId).toRecordResponse()
+        val response = feedService.detail(id, userId).toLegacyFeedRecordResponse()
         return ResponseEntity.ok(ApiResponse.success(HttpStatus.OK, response))
     }
 

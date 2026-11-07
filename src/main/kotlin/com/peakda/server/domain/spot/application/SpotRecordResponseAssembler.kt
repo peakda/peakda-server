@@ -1,5 +1,6 @@
 package com.peakda.server.domain.spot.application
 
+import com.peakda.server.domain.feed.application.FeedReactionService
 import com.peakda.server.domain.spot.entity.Plant
 import com.peakda.server.domain.spot.entity.Spot
 import com.peakda.server.domain.spot.entity.SpotRecord
@@ -28,10 +29,13 @@ class SpotRecordResponseAssembler(
     private val spotRecordReactionRepository: SpotRecordReactionRepository,
     private val spotRecordPhotoUrlResolver: SpotRecordPhotoUrlResolver,
     private val profileImageUrlResolver: ProfileImageUrlResolver,
+    private val feedReactionService: FeedReactionService,
 ) {
 
     fun assemble(record: SpotRecord, viewerId: Long?): SpotRecordResponse {
-        return assembleView(record, viewerId).toRecordResponse()
+        val view = assembleViews(listOf(record), viewerId, includeLegacyReactions = false).single()
+        val reactions = feedReactionService.previews(listOf(view.id), viewerId).getValue(view.id)
+        return view.toRecordResponse(reactions)
     }
 
     /** Version-neutral view shared by the v1 and v2 feed adapters. */
@@ -41,15 +45,22 @@ class SpotRecordResponseAssembler(
     }
 
     fun assembleViews(records: List<SpotRecord>, viewerId: Long?): List<SpotRecordView> {
+        return assembleViews(records, viewerId, includeLegacyReactions = true)
+    }
+
+    private fun assembleViews(records: List<SpotRecord>, viewerId: Long?, includeLegacyReactions: Boolean): List<SpotRecordView> {
         if (records.isEmpty()) return emptyList()
-        val context = loadContext(records, viewerId)
+        val context = loadContext(records, viewerId, includeLegacyReactions)
         return records.map { record ->
             buildView(record, context, requireNotNull(record.id) { "record.id must not be null" })
         }
     }
 
     fun assembleSummaries(records: List<SpotRecord>, viewerId: Long?): List<SpotRecordSummaryResponse> {
-        return assembleViews(records, viewerId).map { it.toRecordSummaryResponse() }
+        if (records.isEmpty()) return emptyList()
+        val views = assembleViews(records, viewerId, includeLegacyReactions = false)
+        val reactions = feedReactionService.previews(views.map { it.id }, viewerId)
+        return views.map { it.toRecordSummaryResponse(reactions.getValue(it.id)) }
     }
 
     private fun buildView(record: SpotRecord, context: AssemblyContext, recordId: Long): SpotRecordView {
@@ -82,7 +93,7 @@ class SpotRecordResponseAssembler(
         )
     }
 
-    private fun loadContext(records: List<SpotRecord>, viewerId: Long?): AssemblyContext {
+    private fun loadContext(records: List<SpotRecord>, viewerId: Long?, includeLegacyReactions: Boolean = true): AssemblyContext {
         val recordIds = records.mapNotNull { it.id }
         val spotIds = records.map { it.spotId }.toSet()
         val userIds = records.map { it.userId }.toSet()
@@ -98,10 +109,10 @@ class SpotRecordResponseAssembler(
             .mapNotNull { join -> plantsById[join.plantId]?.let { join.spotRecordId to it } }
             .groupBy({ it.first }, { it.second })
             .mapValues { (_, plants) -> plants.sortedBy { it.sortOrder } }
-        val countsByRecordId = spotRecordReactionRepository.countsBySpotRecordIdIn(recordIds)
+        val countsByRecordId = (if (includeLegacyReactions) spotRecordReactionRepository.countsBySpotRecordIdIn(recordIds) else emptyList())
             .groupBy { it.spotRecordId }
             .mapValues { (_, counts) -> counts.map { LegacyReactionCount(it.reactionType, it.count) } }
-        val mineByRecordId = viewerId?.let {
+        val mineByRecordId = viewerId?.takeIf { includeLegacyReactions }?.let {
             spotRecordReactionRepository.findByUserIdAndSpotRecordIdIn(it, recordIds)
                 .groupBy { reaction -> reaction.spotRecordId }
                 .mapValues { (_, reactions) -> reactions.map { reaction -> reaction.reactionType }.toSet() }
