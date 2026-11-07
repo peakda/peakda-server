@@ -28,7 +28,7 @@ class SpotRecordServiceTest {
     private val spotRecordPlantRepository = mock(SpotRecordPlantRepository::class.java)
     private val plantRepository = mock(PlantRepository::class.java)
     private val spotService = mock(SpotService::class.java)
-    private val spotRecordPhotoUploader = mock(SpotRecordPhotoUploader::class.java)
+    private val photoAccess = mock(SpotRecordPhotoAccessService::class.java)
     private val responseAssembler = mock(SpotRecordResponseAssembler::class.java)
 
     private val service = SpotRecordService(
@@ -37,7 +37,7 @@ class SpotRecordServiceTest {
         spotRecordPlantRepository,
         plantRepository,
         spotService,
-        spotRecordPhotoUploader,
+        photoAccess,
         responseAssembler,
     )
 
@@ -96,7 +96,7 @@ class SpotRecordServiceTest {
         val draft = record(1L, OWNER_ID, SpotRecordStatus.DRAFT)
         val spotInput = spotInput()
         `when`(spotService.findOrCreate(spotInput)).thenReturn(spot(100L))
-        `when`(spotRecordRepository.findByUserIdAndStatus(OWNER_ID, SpotRecordStatus.DRAFT)).thenReturn(draft)
+        `when`(spotRecordRepository.findByUserIdAndStatusForUpdate(OWNER_ID, SpotRecordStatus.DRAFT)).thenReturn(draft)
         `when`(responseAssembler.assemble(draft, OWNER_ID)).thenReturn(response(1L))
 
         service.create(createCommand(spotInput, contentLinkUrl = " instagram.com/p/C5y7abc "))
@@ -113,7 +113,7 @@ class SpotRecordServiceTest {
         }
         val spotInput = spotInput()
         `when`(spotService.findOrCreate(spotInput)).thenReturn(spot(100L))
-        `when`(spotRecordRepository.findByUserIdAndStatus(OWNER_ID, SpotRecordStatus.DRAFT)).thenReturn(draft)
+        `when`(spotRecordRepository.findByUserIdAndStatusForUpdate(OWNER_ID, SpotRecordStatus.DRAFT)).thenReturn(draft)
         `when`(responseAssembler.assemble(draft, OWNER_ID)).thenReturn(response(1L))
 
         service.create(createCommand(spotInput, contentLinkUrl = null))
@@ -135,7 +135,7 @@ class SpotRecordServiceTest {
             contentLinkUrl = "https://www.instagram.com/p/old"
             contentLinkPlatform = ContentLinkPlatform.INSTAGRAM
         }
-        `when`(spotRecordRepository.findById(1L)).thenReturn(Optional.of(record))
+        `when`(spotRecordRepository.findByIdForUpdate(1L)).thenReturn(record)
         `when`(responseAssembler.assemble(record, OWNER_ID)).thenReturn(response(1L))
 
         service.update(updateCommand(contentLinkUrl = null))

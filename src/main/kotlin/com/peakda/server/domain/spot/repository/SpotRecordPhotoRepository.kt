@@ -10,6 +10,7 @@ interface SpotRecordPhotoRepository : JpaRepository<SpotRecordPhoto, Long> {
     fun findBySpotRecordIdOrderBySortOrderAsc(spotRecordId: Long): List<SpotRecordPhoto>
     fun findBySpotRecordIdIn(spotRecordIds: Collection<Long>): List<SpotRecordPhoto>
     fun deleteBySpotRecordId(spotRecordId: Long)
+    fun existsByObjectKey(objectKey: String): Boolean
 
     /** variant 백필 대상(보유 variant 가 기록되지 않은 사진)을 오래된 순으로 가져온다. */
     fun findByVariantNamesIsNullOrderByIdAsc(pageable: Pageable): List<SpotRecordPhoto>
