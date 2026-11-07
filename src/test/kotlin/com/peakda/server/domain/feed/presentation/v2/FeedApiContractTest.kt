@@ -102,6 +102,16 @@ class FeedApiContractTest {
     }
 
     @Test
+    fun `v1 detail keeps legacy reaction envelope`() {
+        mvc.perform(get("/api/feed/1024"))
+            .andExpect(status().isOk)
+            .andExpect(jsonPath("$.data.spot.id").value(11))
+            .andExpect(jsonPath("$.data.reactions.counts").exists())
+            .andExpect(jsonPath("$.data.reactions.myReactions").exists())
+            .andExpect(jsonPath("$.data.reactions.items").doesNotExist())
+    }
+
+    @Test
     fun `v1 and v2 mutation contracts map to the same canonical key`() {
         Mockito.`when`(reactionService.legacySummary(1024L, 7L)).thenReturn(
             ReactionOverview(listOf(ReactionTally("u:2764-fe0f", "❤️", 1, true)), false),

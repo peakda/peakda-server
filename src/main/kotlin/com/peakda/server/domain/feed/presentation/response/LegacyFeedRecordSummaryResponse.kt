@@ -1,0 +1,40 @@
+package com.peakda.server.domain.feed.presentation.response
+
+import com.peakda.server.domain.spot.presentation.response.SpotRecordResponse
+import com.peakda.server.domain.spot.entity.BloomStage
+import com.peakda.server.domain.spot.entity.SpotRecordStatus
+import io.swagger.v3.oas.annotations.media.Schema
+import java.time.Instant
+import java.time.LocalDate
+
+@Schema(description = "v1 피드 기록 목록용 요약 — 대표 사진과 전체 사진 목록을 포함")
+data class LegacyFeedRecordSummaryResponse(
+    val id: Long,
+    val spotId: Long,
+    val spotName: String,
+    val user: SpotRecordResponse.UserSummary,
+    val visitedDate: LocalDate?,
+    val bloomStage: BloomStage?,
+    val memo: String?,
+    @field:Schema(description = "관련 콘텐츠 링크 (없으면 null)")
+    val contentLink: SpotRecordResponse.ContentLink? = null,
+    val plants: List<SpotRecordResponse.PlantSummary>,
+    @field:Schema(description = "대표(첫 번째) 사진 — 없으면 null")
+    val coverPhoto: SpotRecordResponse.PhotoEntry?,
+    @field:Schema(
+        description = "첨부 사진 전체 목록 (sortOrder 오름차순, 사진이 없으면 빈 배열)",
+        example = "[{\"objectKey\":\"spot-records/7/2026/09/9b1deb4d/main.jpg\"," +
+            "\"url\":\"https://cdn.peakda.com/spot-records/7/2026/09/9b1deb4d/main.jpg\",\"sortOrder\":1," +
+            "\"variants\":{\"thumbnail\":\"https://cdn.peakda.com/spot-records/7/2026/09/9b1deb4d/thumbnail.jpg\"," +
+            "\"medium\":\"https://cdn.peakda.com/spot-records/7/2026/09/9b1deb4d/medium.jpg\"," +
+            "\"main\":\"https://cdn.peakda.com/spot-records/7/2026/09/9b1deb4d/main.jpg\"}}]",
+    )
+    val photos: List<SpotRecordResponse.PhotoEntry> = emptyList(),
+    val status: SpotRecordStatus,
+    val publishedAt: Instant?,
+    val createdAt: Instant,
+    val updatedAt: Instant,
+
+    @field:Schema(description = "리액션 요약")
+    val reactions: ReactionSummary = ReactionSummary(emptyList(), emptySet()),
+)
