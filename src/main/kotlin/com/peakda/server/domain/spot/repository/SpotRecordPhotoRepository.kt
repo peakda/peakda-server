@@ -4,12 +4,23 @@ import com.peakda.server.domain.spot.entity.SpotRecordPhoto
 import org.springframework.data.domain.Pageable
 import org.springframework.data.jpa.repository.JpaRepository
 import org.springframework.data.jpa.repository.Query
+import org.springframework.data.jpa.repository.Modifying
 import org.springframework.data.repository.query.Param
+import java.time.Instant
 
 interface SpotRecordPhotoRepository : JpaRepository<SpotRecordPhoto, Long> {
     fun findBySpotRecordIdOrderBySortOrderAsc(spotRecordId: Long): List<SpotRecordPhoto>
     fun findBySpotRecordIdIn(spotRecordIds: Collection<Long>): List<SpotRecordPhoto>
     fun deleteBySpotRecordId(spotRecordId: Long)
+    @Query("select distinct p.objectKey from SpotRecordPhoto p where p.objectKey in :keys")
+    fun findReferencedObjectKeys(@Param("keys") keys: Collection<String>): List<String>
+
+    @Query("select distinct p.spotRecordId from SpotRecordPhoto p where p.objectKey = :key")
+    fun findRecordIdsByObjectKey(@Param("key") key: String): List<Long>
+
+    @Modifying
+    @Query("update SpotRecordPhoto p set p.variantNames = :variants, p.updatedAt = :now where p.objectKey = :key")
+    fun updateVariantsByObjectKey(@Param("key") key: String, @Param("variants") variants: String, @Param("now") now: Instant): Int
 
     /** variant 백필 대상(보유 variant 가 기록되지 않은 사진)을 오래된 순으로 가져온다. */
     fun findByVariantNamesIsNullOrderByIdAsc(pageable: Pageable): List<SpotRecordPhoto>

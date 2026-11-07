@@ -33,7 +33,7 @@ class SpotRecordService(
     private val spotRecordPlantRepository: SpotRecordPlantRepository,
     private val plantRepository: PlantRepository,
     private val spotService: SpotService,
-    private val spotRecordPhotoUploader: SpotRecordPhotoUploader,
+    private val photoAccess: SpotRecordPhotoAccessService,
     private val responseAssembler: SpotRecordResponseAssembler,
 ) {
 
@@ -54,7 +54,7 @@ class SpotRecordService(
         val spotId = requireNotNull(spot.id)
         val now = Instant.now()
 
-        val existingDraft = spotRecordRepository.findByUserIdAndStatus(command.userId, SpotRecordStatus.DRAFT)
+        val existingDraft = spotRecordRepository.findByUserIdAndStatusForUpdate(command.userId, SpotRecordStatus.DRAFT)
         val record = if (existingDraft != null) {
             existingDraft.spotId = spotId
             existingDraft.visitedDate = command.visitedDate
@@ -80,7 +80,7 @@ class SpotRecordService(
 
         val recordId = requireNotNull(record.id)
         replacePlants(recordId, command.plantIds)
-        replacePhotos(recordId, command.photoKeys)
+        replacePhotos(recordId, command.userId, command.photoKeys)
         return responseAssembler.assemble(record, command.userId)
     }
 
@@ -96,7 +96,7 @@ class SpotRecordService(
         }
         command.photoKeys?.let {
             validatePhotoKeysCount(it.size)
-            replacePhotos(command.recordId, it)
+            replacePhotos(command.recordId, command.userId, it)
         }
         return responseAssembler.assemble(record, command.userId)
     }
@@ -122,24 +122,28 @@ class SpotRecordService(
     fun delete(recordId: Long, userId: Long) {
         val record = loadOwned(recordId, userId)
         val photos = spotRecordPhotoRepository.findBySpotRecordIdOrderBySortOrderAsc(recordId)
+        val keys = photos.map { it.objectKey }.toSet()
+        val locked = photoAccess.lockForChange(userId, keys, emptySet())
         spotRecordPlantRepository.deleteByIdSpotRecordId(recordId)
         spotRecordPhotoRepository.deleteBySpotRecordId(recordId)
         spotRecordRepository.delete(record)
-        photos.forEach { spotRecordPhotoUploader.deleteByMainKey(it.objectKey) }
+        photoAccess.deleteUnreferenced(userId, keys, locked)
     }
 
     /** 사용자의 모든 스팟 기록(사진·식물·스토리지 객체 포함)을 삭제한다. 계정 탈퇴 시 사용. */
     fun deleteAllByUser(userId: Long) {
-        val records = spotRecordRepository.findByUserId(userId)
+        val records = spotRecordRepository.findByUserIdForUpdate(userId)
         if (records.isEmpty()) return
         val recordIds = records.mapNotNull { it.id }
         val photos = spotRecordPhotoRepository.findBySpotRecordIdIn(recordIds)
+        val keys = photos.map { it.objectKey }.toSet()
+        val locked = photoAccess.lockForChange(userId, keys, emptySet())
         recordIds.forEach { recordId ->
             spotRecordPlantRepository.deleteByIdSpotRecordId(recordId)
             spotRecordPhotoRepository.deleteBySpotRecordId(recordId)
         }
         spotRecordRepository.deleteAll(records)
-        photos.forEach { spotRecordPhotoUploader.deleteByMainKey(it.objectKey) }
+        photoAccess.deleteUnreferenced(userId, keys, locked)
     }
 
     /** 본인 기록은 DRAFT/PUBLISHED 상관없이 조회 가능. 타인 기록은 PUBLISHED 만 노출하고, DRAFT 는 404 로 응답해 존재 자체를 숨긴다. */
@@ -167,7 +171,7 @@ class SpotRecordService(
     }
 
     private fun loadOwned(recordId: Long, userId: Long): SpotRecord {
-        val record = spotRecordRepository.findById(recordId).orElseThrow { SpotRecordNotFoundException() }
+        val record = spotRecordRepository.findByIdForUpdate(recordId) ?: throw SpotRecordNotFoundException()
         if (record.userId != userId) throw SpotRecordForbiddenException()
         return record
     }
@@ -209,13 +213,14 @@ class SpotRecordService(
         spotRecordPlantRepository.saveAll(entries)
     }
 
-    private fun replacePhotos(recordId: Long, photoKeys: List<String>) {
+    private fun replacePhotos(recordId: Long, userId: Long, photoKeys: List<String>) {
         val existing = spotRecordPhotoRepository.findBySpotRecordIdOrderBySortOrderAsc(recordId)
         val existingVariantNames = existing.associate { it.objectKey to it.variantNames }
         val existingKeys = existingVariantNames.keys
         val nextKeys = photoKeys.toList()
         val nextKeySet = nextKeys.toSet()
         val orphanedKeys = existingKeys - nextKeySet
+        val locked = photoAccess.lockForChange(userId, existingKeys, nextKeySet)
 
         spotRecordPhotoRepository.deleteBySpotRecordId(recordId)
         spotRecordPhotoRepository.flush()
@@ -225,15 +230,11 @@ class SpotRecordService(
                     spotRecordId = recordId,
                     objectKey = key,
                     sortOrder = index + 1,
-                    // 이미 달려 있던 사진은 보유 variant 를 그대로 두고, 새로 올라온 사진에만 현재 정책을 적는다.
-                    variantNames = if (key in existingKeys) {
-                        existingVariantNames[key]
-                    } else {
-                        SpotRecordPhotoPolicy.CURRENT_VARIANT_NAMES
-                    },
+                    // 잠금을 기다리는 동안 backfill된 목록을 덮어쓰지 않는다. 미등록 legacy만 기존 값을 유지한다.
+                    variantNames = locked[key]?.variantNames ?: existingVariantNames[key],
                 )
             )
         }
-        orphanedKeys.forEach { spotRecordPhotoUploader.deleteByMainKey(it) }
+        photoAccess.deleteUnreferenced(userId, orphanedKeys, locked)
     }
 }

@@ -5,11 +5,29 @@ import com.peakda.server.domain.spot.entity.SpotRecordStatus
 import org.springframework.data.domain.Page
 import org.springframework.data.domain.Pageable
 import org.springframework.data.jpa.repository.JpaRepository
+import org.springframework.data.jpa.repository.Lock
+import jakarta.persistence.LockModeType
 import org.springframework.data.jpa.repository.Query
 import org.springframework.data.repository.query.Param
 import java.time.Instant
 
 interface SpotRecordRepository : JpaRepository<SpotRecord, Long> {
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("select r from SpotRecord r where r.id = :id")
+    fun findByIdForUpdate(id: Long): SpotRecord?
+
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("select r from SpotRecord r where r.id in :ids order by r.id")
+    fun findByIdsForUpdate(ids: Collection<Long>): List<SpotRecord>
+
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("select r from SpotRecord r where r.userId = :userId order by r.id")
+    fun findByUserIdForUpdate(userId: Long): List<SpotRecord>
+
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("select r from SpotRecord r where r.userId = :userId and r.status = :status")
+    fun findByUserIdAndStatusForUpdate(userId: Long, status: SpotRecordStatus): SpotRecord?
+
     fun findByUserId(userId: Long): List<SpotRecord>
     fun findByUserIdAndStatus(userId: Long, status: SpotRecordStatus): SpotRecord?
     fun findBySpotId(spotId: Long, pageable: Pageable): Page<SpotRecord>
