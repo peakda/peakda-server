@@ -25,6 +25,7 @@ import com.peakda.server.common.storage.ObjectStorage
 import com.peakda.server.domain.spot.repository.SpotRecordPhotoUploadRepository
 
 class SpotRecordPhotoAuthorizationRegressionTest {
+    private val deletions = mock(com.peakda.server.domain.spot.repository.SpotRecordPhotoDeletionRepository::class.java)
     private val records = mock(SpotRecordRepository::class.java)
     private val photos = mock(SpotRecordPhotoRepository::class.java)
     private val storage = mock(ObjectStorage::class.java)
@@ -36,7 +37,7 @@ class SpotRecordPhotoAuthorizationRegressionTest {
         mock(SpotRecordPlantRepository::class.java),
         mock(PlantRepository::class.java),
         spots,
-        SpotRecordPhotoAccessService(uploads, photos, storage, records),
+        SpotRecordPhotoAccessService(uploads, photos, storage, records, deletions),
         mock(SpotRecordResponseAssembler::class.java),
     )
     private val record = SpotRecord(spotId = 10L, userId = 1L, status = SpotRecordStatus.DRAFT).apply {
