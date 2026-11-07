@@ -8,6 +8,7 @@ CREATE TABLE spot_record_photo_deletions (
     evidence VARCHAR(64) NOT NULL,
     variant_names TEXT NOT NULL,
     completed_variants TEXT NOT NULL DEFAULT '',
+    deletion_started BOOLEAN NOT NULL DEFAULT false,
     status VARCHAR(16) NOT NULL DEFAULT 'PENDING',
     attempts INTEGER NOT NULL DEFAULT 0,
     total_attempts INTEGER NOT NULL DEFAULT 0,

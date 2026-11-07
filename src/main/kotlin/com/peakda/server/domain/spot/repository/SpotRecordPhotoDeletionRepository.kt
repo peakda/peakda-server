@@ -6,6 +6,8 @@ import org.springframework.data.jpa.repository.JpaRepository
 import org.springframework.data.jpa.repository.Lock
 import org.springframework.data.jpa.repository.Query
 import java.time.Instant
+import com.peakda.server.domain.spot.entity.PhotoDeletionStatus
+import org.springframework.data.domain.Pageable
 
 interface SpotRecordPhotoDeletionRepository : JpaRepository<SpotRecordPhotoDeletion, Long> {
     @Query(value = """
@@ -18,6 +20,9 @@ interface SpotRecordPhotoDeletionRepository : JpaRepository<SpotRecordPhotoDelet
 
     @Query("select d.status as status, count(d) as total from SpotRecordPhotoDeletion d where d.status <> com.peakda.server.domain.spot.entity.PhotoDeletionStatus.COMPLETED group by d.status")
     fun countOutstandingByStatus(): List<PhotoDeletionStatusCount>
+
+    @Query("select d.id from SpotRecordPhotoDeletion d where d.status = :status order by d.id")
+    fun findIdsByStatus(status: PhotoDeletionStatus, pageable: Pageable): List<Long>
 
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("select d from SpotRecordPhotoDeletion d where d.id = :id")

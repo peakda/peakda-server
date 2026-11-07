@@ -33,6 +33,8 @@ class SpotRecordPhotoDeletion(
     var status: PhotoDeletionStatus = PhotoDeletionStatus.PENDING
     @Column(columnDefinition = "TEXT", nullable = false)
     var completedVariants: String = ""
+    @Column(nullable = false)
+    var deletionStarted: Boolean = false
     var attempts: Int = 0
     var totalAttempts: Int = 0
     var reprocessCount: Int = 0

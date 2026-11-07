@@ -32,4 +32,13 @@ class SpotRecordPhotoDeletionJobTest {
         verify(service).outstandingCounts()
         assertThat(registry.names()).contains("spotRecordPhotoDeletion")
     }
+    @Test fun `FAILED 복구는 기존 수동 잡 레지스트리에서 명시적으로 재예약 후 처리한다`() {
+        val job = SpotRecordPhotoDeletionRetryJob(service, testJobLogger())
+        ManualJobRegistry(listOf(job)).find("spotRecordPhotoDeletionRetryFailed")!!.runNow()
+        val order = inOrder(service)
+        order.verify(service).retryFailedBatch()
+        order.verify(service).drain()
+        order.verify(service).outstandingCounts()
+    }
+
 }

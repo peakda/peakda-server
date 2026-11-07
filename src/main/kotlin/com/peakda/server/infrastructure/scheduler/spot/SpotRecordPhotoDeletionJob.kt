@@ -19,7 +19,9 @@ class SpotRecordPhotoDeletionJob(
 
     @Scheduled(fixedDelayString = "\${spot.photo-deletion.fixed-delay:30s}")
     fun run() {
-        logger.runIfEnabled(jobName, scheduler.enabled && properties.enabled) { execute() }
+        if (!scheduler.enabled || !properties.enabled) return
+        // 행별 claim/lease가 중복 실행을 제어한다. 느린 외부 호출이 다른 노드의 poll을 막지 않는다.
+        logger.run(jobName) { execute() }
     }
 
     override fun runNow() {

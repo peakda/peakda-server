@@ -240,7 +240,7 @@ class SpotRecordPhotoDeletionIntegrationTest : IntegrationTestSupport() {
         verifyNoInteractions(storage)
     }
 
-    @Test fun `처리 중인 삭제가 객체 잠금을 보유하면 첨부가 추월하지 못한다`() {
+    @Test fun `삭제 시작 커밋 후 스토리지 호출 중에도 첨부가 재생성하지 못한다`() {
         val (key, id) = fixture()
         recordService.delete(id, 7L)
         pending()
@@ -255,12 +255,55 @@ class SpotRecordPhotoDeletionIntegrationTest : IntegrationTestSupport() {
                 assertThatThrownBy { transactions.executeWithoutResult { access.lockForChange(7L, emptySet(), setOf(key)) } }
                     .isInstanceOf(SpotRecordForbiddenException::class.java)
             }
-            assertThatThrownBy { attach.get(200, TimeUnit.MILLISECONDS) }.isInstanceOf(TimeoutException::class.java)
+            attach.get(5, TimeUnit.SECONDS)
             release.countDown()
             deletion.get(10, TimeUnit.SECONDS)
             attach.get(10, TimeUnit.SECONDS)
         } finally { release.countDown(); pool.shutdownNow() }
         assertThat(jobs.findAll().single().status).isEqualTo(PhotoDeletionStatus.COMPLETED)
+    }
+
+    @Test fun `스토리지 호출이 멈춰도 lease 재획득과 새 worker 완료를 막지 않는다`() {
+        val (key, id) = fixture()
+        recordService.delete(id, 7L)
+        val job = pending()
+        val old = worker.claimNext()!!
+        val entered = CountDownLatch(1)
+        val release = CountDownLatch(1)
+        val calls = java.util.concurrent.atomic.AtomicInteger()
+        doAnswer {
+            if (calls.incrementAndGet() == 1) { entered.countDown(); check(release.await(10, TimeUnit.SECONDS)) }
+            null
+        }.`when`(storage).delete(anyString())
+        val pool = Executors.newSingleThreadExecutor()
+        try {
+            val oldProcess = pool.submit<Boolean> { worker.process(old) }
+            check(entered.await(5, TimeUnit.SECONDS))
+            assertThat(row(job.id!!).deletionStarted).isTrue()
+            assertThat(uploads.findById(key).orElseThrow().available).isFalse()
+            time = now.plusSeconds(20)
+            val fresh = newWorker().claimNext()!!
+            assertThat(worker.process(fresh)).isTrue()
+            assertThat(row(job.id!!).status).isEqualTo(PhotoDeletionStatus.COMPLETED)
+            release.countDown()
+            assertThat(oldProcess.get(5, TimeUnit.SECONDS)).isFalse()
+            verify(storage, times(2)).delete("${key.substringBeforeLast('/')}/thumbnail.jpg")
+        } finally { release.countDown(); pool.shutdownNow() }
+    }
+
+    @Test fun `삭제 시작 이후 예기치 않은 참조는 등록부를 다시 열지 않고 FAILED로 관측한다`() {
+        val (key, id) = fixture()
+        recordService.delete(id, 7L)
+        val job = pending()
+        // 외부 호출 결과가 유실됐을 수 있는 durable intent를 재시작한다.
+        jobs.saveAndFlush(job.apply { deletionStarted = true })
+        val other = records.saveAndFlush(SpotRecord(99L, 7L, status = SpotRecordStatus.PUBLISHED)).id!!
+        photos.saveAndFlush(SpotRecordPhoto(other, key, 1))
+        worker.drain()
+        assertThat(row(job.id!!).status).isEqualTo(PhotoDeletionStatus.FAILED)
+        assertThat(row(job.id!!).lastError).isEqualTo("REFERENCE_AFTER_DELETE_STARTED")
+        assertThat(uploads.findById(key).orElseThrow().available).isFalse()
+        verifyNoInteractions(storage)
     }
 
     @Test fun `동시 claim은 같은 작업을 두 번 획득하지 않는다`() {
