@@ -5,6 +5,8 @@ import com.peakda.server.domain.spot.entity.Spot
 import com.peakda.server.domain.spot.entity.SpotType
 import org.springframework.data.domain.Page
 import org.springframework.data.domain.Pageable
+import org.springframework.data.domain.ScrollPosition
+import org.springframework.data.domain.Window
 import org.springframework.data.jpa.repository.JpaRepository
 import org.springframework.data.jpa.repository.Modifying
 import org.springframework.data.jpa.repository.Query
@@ -30,6 +32,11 @@ interface SpotRepository : JpaRepository<Spot, Long> {
     /** 이름 부분일치(대소문자 무시) 스팟 검색. 비공개(visible=false) 는 제외. */
     fun findByVisibleTrueAndNameContainingIgnoreCase(name: String, pageable: Pageable): Page<Spot>
 
+    fun findFirst128ByVisibleTrueAndNameContainingIgnoreCaseOrderByNameAscIdAsc(
+        name: String,
+        position: ScrollPosition,
+    ): Window<SpotSearchCandidate>
+
     @Query(
         """
             SELECT s FROM Spot s
@@ -46,6 +53,13 @@ interface SpotRepository : JpaRepository<Spot, Long> {
         @Param("minLng") minLng: Double,
         @Param("maxLng") maxLng: Double,
     ): List<Spot>
+}
+
+interface SpotSearchCandidate {
+    val id: Long
+    val name: String
+    val type: SpotType
+    val attractionId: Long?
 }
 
 /** Spot 공개 여부 동기화에 필요한 컬럼만 읽는 projection. */

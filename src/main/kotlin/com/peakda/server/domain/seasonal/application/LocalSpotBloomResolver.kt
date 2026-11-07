@@ -46,10 +46,10 @@ class LocalSpotBloomResolver(
         val categoriesByRecord = categoriesByRecord(records)
         if (categoriesByRecord.isEmpty()) return emptyMap()
 
-        val today = LocalDate.now(clock)
+        val observedFrom = oldestFreshObservationDate() ?: return emptyMap()
         val latestBySpotCategory = linkedMapOf<Long, LinkedHashMap<BloomCategory, SpotRecord>>()
         records
-            .filter { it.bloomStage != null && it.isFreshOn(today) }
+            .filter { it.bloomStage != null && !it.observedDate.isBefore(observedFrom) }
             .sortedWith(RECENT_FIRST)
             .forEach { record ->
                 val recordId = record.id ?: return@forEach
@@ -69,8 +69,12 @@ class LocalSpotBloomResolver(
     }
 
     /** 관측일이 [LocalSpotBloomProperties.maxAgeDays] 이내인 기록만 현재 상태의 근거로 인정한다. */
-    private fun SpotRecord.isFreshOn(today: LocalDate): Boolean =
-        ChronoUnit.DAYS.between(observedDate, today).coerceAtLeast(0) <= properties.maxAgeDays
+    fun oldestFreshObservationDate(): LocalDate? {
+        val maxAge = properties.maxAgeDays
+        if (maxAge < 0) return null
+        val today = LocalDate.now(clock)
+        return today.minusDays(maxAge.coerceAtMost(ChronoUnit.DAYS.between(LocalDate.MIN, today)))
+    }
 
     /** 각 기록 id 의 꽃 카테고리 집합 (식물의 bloomCategory 브릿지 경유). */
     private fun categoriesByRecord(records: List<SpotRecord>): Map<Long, Set<BloomCategory>> {

@@ -10,6 +10,7 @@ import jakarta.persistence.LockModeType
 import org.springframework.data.jpa.repository.Query
 import org.springframework.data.repository.query.Param
 import java.time.Instant
+import java.time.LocalDate
 
 interface SpotRecordRepository : JpaRepository<SpotRecord, Long> {
     @Lock(LockModeType.PESSIMISTIC_WRITE)
@@ -33,6 +34,33 @@ interface SpotRecordRepository : JpaRepository<SpotRecord, Long> {
     fun findBySpotId(spotId: Long, pageable: Pageable): Page<SpotRecord>
     fun findBySpotIdAndStatus(spotId: Long, status: SpotRecordStatus, pageable: Pageable): Page<SpotRecord>
     fun findBySpotIdInAndStatus(spotIds: Collection<Long>, status: SpotRecordStatus): List<SpotRecord>
+    @Query(
+        value = """
+            SELECT DISTINCT ON (r.spot_id) r.spot_id AS "spotId", r.bloom_stage AS "bloomStage"
+            FROM spot_records r
+            WHERE r.spot_id IN (:spotIds)
+              AND r.status = :status
+              AND r.bloom_stage IS NOT NULL
+              AND COALESCE(r.visited_date, CAST(r.created_at AT TIME ZONE 'UTC' AS date)) >= :observedFrom
+              AND EXISTS (
+                  SELECT 1
+                  FROM spot_record_plants tag
+                  JOIN plants p ON p.id = tag.plant_id
+                  WHERE tag.spot_record_id = r.id AND p.bloom_category = :category
+              )
+            ORDER BY r.spot_id,
+                     COALESCE(r.visited_date, CAST(r.created_at AT TIME ZONE 'UTC' AS date)) DESC,
+                     r.created_at DESC, r.id DESC
+        """,
+        nativeQuery = true,
+    )
+    fun findLatestTaggedBloomStages(
+        spotIds: Collection<Long>,
+        status: String,
+        category: String,
+        observedFrom: LocalDate,
+    ): List<SpotRecordBloomStageRow>
+
     fun countBySpotIdAndStatus(spotId: Long, status: SpotRecordStatus): Long
     fun findBySpotIdAndStatusOrderByCreatedAtDesc(
         spotId: Long,
@@ -116,4 +144,9 @@ interface UserRecordCount {
 interface SpotRecordLastModifiedAt {
     val spotId: Long
     val lastModifiedAt: Instant
+}
+
+interface SpotRecordBloomStageRow {
+    val spotId: Long
+    val bloomStage: String
 }
