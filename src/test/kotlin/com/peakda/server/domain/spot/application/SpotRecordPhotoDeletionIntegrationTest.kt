@@ -61,9 +61,9 @@ class SpotRecordPhotoDeletionIntegrationTest : IntegrationTestSupport() {
         records.deleteAllInBatch()
         uploads.deleteAllInBatch()
     }
-    private fun newWorker(max: Int = 3) = SpotRecordPhotoDeletionService(
+    private fun newWorker(max: Int = 3, batchSize: Int = 50) = SpotRecordPhotoDeletionService(
         jobs, uploads, photos, storage,
-        SpotRecordPhotoDeletionProperties(maxAttempts = max, initialBackoff = Duration.ofSeconds(10), maxBackoff = Duration.ofSeconds(15), lease = Duration.ofSeconds(20)),
+        SpotRecordPhotoDeletionProperties(batchSize = batchSize, maxAttempts = max, initialBackoff = Duration.ofSeconds(10), maxBackoff = Duration.ofSeconds(15), lease = Duration.ofSeconds(20)),
         meters, manager, clock,
     )
     private fun fixture(owner: Long = 7L): Pair<String, Long> {
@@ -351,6 +351,31 @@ class SpotRecordPhotoDeletionIntegrationTest : IntegrationTestSupport() {
         assertThat(worker.process(fresh)).isTrue()
         assertThat(row(job.id!!).status).isEqualTo(PhotoDeletionStatus.COMPLETED)
         verify(storage, times(2)).delete("${key.substringBeforeLast('/')}/thumbnail.jpg")
+    }
+
+    @Test fun `batch보다 많은 FAILED는 앞쪽 영구 실패를 반복해도 뒤쪽 작업을 재처리한다`() {
+        val failed = (1..3).map {
+            val key = "spot-records/7/2026/11/${UUID.randomUUID()}/main.jpg"
+            uploads.saveAndFlush(SpotRecordPhotoUpload(key, 7L, "main", "SERVER_UPLOAD", available = false))
+            jobs.saveAndFlush(SpotRecordPhotoDeletion(key, 7L, "SERVER_UPLOAD", "main", now).apply {
+                status = PhotoDeletionStatus.FAILED
+                attempts = 3
+                totalAttempts = 3
+                deletionStarted = true
+                lastError = "SecurityException"
+            })
+        }
+        failed.take(2).forEach { doThrow(SecurityException("permanent")).`when`(storage).delete(it.objectKey) }
+        val bounded = newWorker(batchSize = 2)
+        assertThat(bounded.retryFailedBatch()).isEqualTo(2)
+        bounded.drain()
+        assertThat(failed.take(2).map { row(it.id!!).reprocessCount }).containsOnly(1)
+        assertThat(row(failed.last().id!!).reprocessCount).isZero()
+        assertThat(bounded.retryFailedBatch()).isEqualTo(2)
+        bounded.drain()
+        assertThat(row(failed.last().id!!).status).isEqualTo(PhotoDeletionStatus.COMPLETED)
+        assertThat(row(failed.last().id!!).reprocessCount).isEqualTo(1)
+        verify(storage).delete(failed.last().objectKey)
     }
 
     @Test fun `탈퇴의 기존 위임이 커밋한 작업과 증거는 owner row 물리 삭제 후에도 처리된다`() {

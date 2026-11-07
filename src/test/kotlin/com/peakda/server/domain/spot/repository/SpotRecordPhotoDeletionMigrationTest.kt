@@ -46,7 +46,7 @@ class SpotRecordPhotoDeletionMigrationTest {
                             s.executeUpdate(insert)
                             s.executeQuery("SELECT indexname FROM pg_indexes WHERE tablename='spot_record_photo_deletions'").use { rows ->
                                 val indexes = buildList { while(rows.next()) add(rows.getString(1)) }
-                                assertThat(indexes).contains("uq_photo_deletion_active", "idx_photo_deletion_due", "idx_photo_deletion_lease")
+                                assertThat(indexes).contains("uq_photo_deletion_active", "idx_photo_deletion_due", "idx_photo_deletion_lease", "idx_photo_deletion_failed_recovery")
                             }
                         }
                         Liquibase("db/changelog/db.changelog-master.yaml", resources, JdbcConnection(connection)).update(Contexts(), LabelExpression())

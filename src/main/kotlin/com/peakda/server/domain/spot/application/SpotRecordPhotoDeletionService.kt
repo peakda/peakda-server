@@ -15,6 +15,7 @@ import org.springframework.transaction.PlatformTransactionManager
 import org.springframework.transaction.TransactionDefinition
 import org.springframework.transaction.support.TransactionTemplate
 import org.springframework.data.domain.PageRequest
+import org.springframework.data.domain.Sort
 import java.time.Clock
 import java.util.UUID
 
@@ -136,8 +137,10 @@ class SpotRecordPhotoDeletionService(
         } ?: false
 
     /** 기존 관리자 수동 잡 전용: ID 페이지로 제한하고 자동 FAILED 반복 실행은 하지 않는다. */
-    fun retryFailedBatch(): Int = jobs.findIdsByStatus(PhotoDeletionStatus.FAILED, PageRequest.of(0, properties.batchSize))
-        .count { retryFailed(it) }
+    fun retryFailedBatch(): Int = jobs.findIdsByStatus(
+        PhotoDeletionStatus.FAILED,
+        PageRequest.of(0, properties.batchSize, Sort.by("reprocessCount", "id")),
+    ).count { retryFailed(it) }
 
     /** 내부 운영 복구용. 진행/누적 횟수/오류는 보존하고 다음 bounded 시도만 연다. 공개 API는 추가하지 않는다. */
     fun retryFailed(id: Long): Boolean = transactions.execute {

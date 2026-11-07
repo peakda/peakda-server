@@ -21,7 +21,7 @@ interface SpotRecordPhotoDeletionRepository : JpaRepository<SpotRecordPhotoDelet
     @Query("select d.status as status, count(d) as total from SpotRecordPhotoDeletion d where d.status <> com.peakda.server.domain.spot.entity.PhotoDeletionStatus.COMPLETED group by d.status")
     fun countOutstandingByStatus(): List<PhotoDeletionStatusCount>
 
-    @Query("select d.id from SpotRecordPhotoDeletion d where d.status = :status order by d.id")
+    @Query("select d.id from SpotRecordPhotoDeletion d where d.status = :status")
     fun findIdsByStatus(status: PhotoDeletionStatus, pageable: Pageable): List<Long>
 
     @Lock(LockModeType.PESSIMISTIC_WRITE)

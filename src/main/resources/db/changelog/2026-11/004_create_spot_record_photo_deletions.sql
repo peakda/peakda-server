@@ -27,5 +27,6 @@ CREATE TABLE spot_record_photo_deletions (
 CREATE UNIQUE INDEX uq_photo_deletion_active ON spot_record_photo_deletions(object_key) WHERE status <> 'COMPLETED';
 CREATE INDEX idx_photo_deletion_due ON spot_record_photo_deletions(next_attempt_at, id) WHERE status IN ('PENDING','RETRYABLE');
 CREATE INDEX idx_photo_deletion_lease ON spot_record_photo_deletions(lease_until, id) WHERE status = 'PROCESSING';
+CREATE INDEX idx_photo_deletion_failed_recovery ON spot_record_photo_deletions(reprocess_count, id) WHERE status = 'FAILED';
 COMMENT ON TABLE spot_record_photo_deletions IS '마지막 참조 해제와 함께 커밋하는 사진 전용 삭제 작업 및 variant별 재시도 증거';
 --rollback DROP TABLE spot_record_photo_deletions;
