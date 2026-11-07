@@ -38,6 +38,7 @@ class SpotRecordService(
 ) {
 
     fun create(command: CreateSpotRecordCommand): SpotRecordResponse {
+        if (command.status == SpotRecordStatus.HIDDEN) throw SpotRecordInvalidStatusException()
         val contentLinkUrl = command.contentLinkUrl?.let { SpotRecordContentLinkPolicy.normalize(it) }
         validatePlantIds(command.plantIds)
         validatePhotoKeysCount(command.photoKeys.size)
@@ -103,8 +104,10 @@ class SpotRecordService(
 
     fun publish(recordId: Long, userId: Long): SpotRecordResponse {
         val record = loadOwned(recordId, userId)
-        if (record.status == SpotRecordStatus.PUBLISHED) {
-            return responseAssembler.assemble(record, userId)
+        when (record.status) {
+            SpotRecordStatus.PUBLISHED -> return responseAssembler.assemble(record, userId)
+            SpotRecordStatus.HIDDEN -> throw SpotRecordInvalidStatusException()
+            SpotRecordStatus.DRAFT -> Unit
         }
         val plantIds = spotRecordPlantRepository.findByIdSpotRecordId(recordId).map { it.plantId }
         val photoKeys = spotRecordPhotoRepository.findBySpotRecordIdOrderBySortOrderAsc(recordId).map { it.objectKey }
