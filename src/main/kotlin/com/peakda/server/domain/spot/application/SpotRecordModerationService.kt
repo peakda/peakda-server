@@ -47,7 +47,7 @@ class SpotRecordModerationService(
     }
 
     private fun find(recordId: Long): SpotRecord =
-        spotRecordRepository.findById(recordId).orElseThrow { SpotRecordNotFoundException() }
+        spotRecordRepository.findByIdForUpdate(recordId) ?: throw SpotRecordNotFoundException()
 
     companion object {
         private const val MEMO_SUMMARY_LENGTH = 80
