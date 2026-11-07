@@ -15,7 +15,7 @@ class SpotRecordPhotoUpload(
     @Column(name = "owner_id", nullable = false)
     val ownerId: Long,
     @Column(name = "variant_names", nullable = false, columnDefinition = "TEXT")
-    val variantNames: String,
+    var variantNames: String,
     @Column(name = "evidence", nullable = false)
     val evidence: String,
     @Column(name = "available", nullable = false)

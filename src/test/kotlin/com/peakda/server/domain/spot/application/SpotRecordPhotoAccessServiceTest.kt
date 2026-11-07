@@ -7,6 +7,7 @@ import com.peakda.server.domain.spot.entity.SpotRecordPhotoUpload
 import com.peakda.server.domain.spot.exception.SpotRecordForbiddenException
 import com.peakda.server.domain.spot.repository.SpotRecordPhotoRepository
 import com.peakda.server.domain.spot.repository.SpotRecordPhotoUploadRepository
+import com.peakda.server.domain.spot.repository.SpotRecordRepository
 import org.assertj.core.api.Assertions.assertThat
 import org.assertj.core.api.Assertions.assertThatThrownBy
 import org.junit.jupiter.api.Test
@@ -16,7 +17,8 @@ class SpotRecordPhotoAccessServiceTest {
     private val uploads = mock(SpotRecordPhotoUploadRepository::class.java)
     private val photos = mock(SpotRecordPhotoRepository::class.java)
     private val storage = mock(ObjectStorage::class.java)
-    private val service = SpotRecordPhotoAccessService(uploads, photos, storage)
+    private val records = mock(SpotRecordRepository::class.java)
+    private val service = SpotRecordPhotoAccessService(uploads, photos, storage, records)
     private val prefix = "spot-records/1/2026/10/1d09271c-0933-4dbd-a832-35d8990c8d64"
     private val key = "$prefix/main.jpg"
 
@@ -143,7 +145,7 @@ class SpotRecordPhotoAccessServiceTest {
     @Test
     fun `다른 기록에 참조가 있으면 파일과 사용 가능 상태를 유지한다`() {
         val upload = upload()
-        `when`(photos.existsByObjectKey(key)).thenReturn(true)
+        `when`(photos.findReferencedObjectKeys(listOf(key))).thenReturn(listOf(key))
 
         service.deleteUnreferenced(1L, setOf(key), mapOf(key to upload))
 
@@ -169,9 +171,104 @@ class SpotRecordPhotoAccessServiceTest {
     @Test
     fun `여러 key는 항상 같은 순서로 잠근다`() {
         service.lockForChange(1L, setOf("z", "a"), emptySet())
+        verify(uploads).findByKeysForUpdate(listOf("a", "z"))
+        verifyNoMoreInteractions(uploads)
+    }
+
+    @Test
+    fun `신규 등록이 섞이면 정렬된 순차 잠금으로 낮은 key 등록을 뒤늦게 시도하지 않는다`() {
+        val existing = "z"
+        `when`(uploads.findByKeyForUpdate(key)).thenReturn(upload())
+        service.lockForChange(1L, setOf(existing), setOf(key, existing))
         val order = inOrder(uploads)
-        order.verify(uploads).findByKeyForUpdate("a")
-        order.verify(uploads).findByKeyForUpdate("z")
+        order.verify(uploads).findByKeyForUpdate(key)
+        order.verify(uploads).findByKeyForUpdate(existing)
+        verifyNoMoreInteractions(uploads)
+    }
+
+    @Test
+    fun `대량 기존 연결 잠금은 정렬된 배치로 모든 key를 처리한다`() {
+        val keys = (0..1_000).map { "key-${it.toString().padStart(4, '0')}" }
+        `when`(uploads.findByKeysForUpdate(keys.take(1_000))).thenReturn(
+            keys.take(1_000).map { SpotRecordPhotoUpload(it, 1L, "thumbnail,main", "SERVER_UPLOAD") },
+        )
+        `when`(uploads.findByKeysForUpdate(keys.drop(1_000))).thenReturn(
+            keys.drop(1_000).map { SpotRecordPhotoUpload(it, 1L, "thumbnail,main", "SERVER_UPLOAD") },
+        )
+
+        assertThat(service.lockForChange(1L, keys.reversed().toSet(), emptySet()).keys).containsExactlyElementsOf(keys)
+        val order = inOrder(uploads)
+        order.verify(uploads).findByKeysForUpdate(keys.take(1_000))
+        order.verify(uploads).findByKeysForUpdate(keys.drop(1_000))
+        verifyNoMoreInteractions(uploads)
+    }
+
+    @Test
+    fun `backfill은 기존 참조 기록을 ID 순서로 먼저 잠그고 객체를 잠근다`() {
+        `when`(photos.findRecordIdsByObjectKey(key)).thenReturn(listOf(3L, 1L))
+        `when`(uploads.findByKeyForUpdate(key)).thenReturn(upload())
+
+        assertThat(service.lockForBackfill(key).ownerId).isEqualTo(1L)
+
+        val order = inOrder(photos, records, uploads)
+        order.verify(photos).findRecordIdsByObjectKey(key)
+        order.verify(records).findByIdsForUpdate(listOf(1L, 3L))
+        order.verify(uploads).findByKeyForUpdate(key)
+    }
+
+    @Test
+    fun `삭제 후보 참조는 flush 뒤 한 번에 조회하고 타인 미등록 retired key는 후보에서 뺀다`() {
+        val referenced = upload()
+        val unreferenced = SpotRecordPhotoUpload("z/main.jpg", 1L, "thumbnail,main", "SERVER_UPLOAD")
+        val foreign = SpotRecordPhotoUpload("foreign/main.jpg", 2L, "thumbnail,main", "SERVER_UPLOAD")
+        val retired = SpotRecordPhotoUpload("retired/main.jpg", 1L, "thumbnail,main", "SERVER_UPLOAD", available = false)
+        val keys = setOf("unknown", foreign.objectKey, retired.objectKey, unreferenced.objectKey, key)
+        val candidates = listOf(key, unreferenced.objectKey)
+        `when`(photos.findReferencedObjectKeys(candidates)).thenReturn(listOf(key))
+
+        service.deleteUnreferenced(1L, keys, listOf(referenced, unreferenced, foreign, retired).associateBy { it.objectKey })
+
+        val order = inOrder(photos, storage)
+        order.verify(photos).flush()
+        order.verify(photos).findReferencedObjectKeys(candidates)
+        order.verify(storage).delete("z/thumbnail.jpg")
+        order.verify(storage).delete(unreferenced.objectKey)
+        verifyNoMoreInteractions(photos, storage)
+        assertThat(referenced.available).isTrue()
+        assertThat(unreferenced.available).isFalse()
+        assertThat(foreign.available).isTrue()
+    }
+
+    @Test
+    fun `삭제 후보가 없으면 빈 IN 조회를 실행하지 않는다`() {
+        service.deleteUnreferenced(1L, setOf("unknown"), emptyMap())
+
+        verify(photos).flush()
+        verifyNoMoreInteractions(photos)
+        verifyNoInteractions(storage)
+    }
+
+    @Test
+    fun `내부 조회 단위를 넘는 key도 잘리지 않고 각 배치의 참조를 보존한다`() {
+        val locked = (0..1_000).associate { index ->
+            val key = "key-${index.toString().padStart(4, '0')}/main.jpg"
+            key to SpotRecordPhotoUpload(key, 1L, "thumbnail,main", "SERVER_UPLOAD")
+        }
+        val firstBatch = locked.keys.take(1_000)
+        val lastBatch = locked.keys.drop(1_000)
+        `when`(photos.findReferencedObjectKeys(firstBatch)).thenReturn(listOf(firstBatch.first()))
+        `when`(photos.findReferencedObjectKeys(lastBatch)).thenReturn(lastBatch)
+
+        service.deleteUnreferenced(1L, locked.keys, locked)
+
+        verify(photos).flush()
+        verify(photos).findReferencedObjectKeys(firstBatch)
+        verify(photos).findReferencedObjectKeys(lastBatch)
+        verifyNoMoreInteractions(photos)
+        assertThat(locked.getValue(firstBatch.first()).available).isTrue()
+        assertThat(locked.getValue(lastBatch.single()).available).isTrue()
+        assertThat(firstBatch.drop(1).map { locked.getValue(it).available }).containsOnly(false)
+        verify(storage, never()).delete(lastBatch.single())
     }
 
     private fun upload(owner: Long = 1L, variants: String = SpotRecordPhotoPolicy.CURRENT_VARIANT_NAMES) =

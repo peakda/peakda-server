@@ -17,6 +17,9 @@ object SpotRecordPhotoPolicy {
     fun isServerMainKey(userId: Long, key: String): Boolean =
         SERVER_MAIN_KEY.matchEntire(key)?.groupValues?.get(1) == userId.toString()
 
+    fun ownerIdOfServerMainKey(key: String): Long? =
+        SERVER_MAIN_KEY.matchEntire(key)?.groupValues?.get(1)?.toLongOrNull()
+
     const val MAX_FILES_PER_REQUEST: Int = 5
     const val MIN_FILES_PER_REQUEST: Int = 1
     const val MAX_FILE_SIZE_BYTES: Long = 10L * 1024 * 1024

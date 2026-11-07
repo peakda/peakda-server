@@ -26,6 +26,8 @@ import org.mockito.Mockito.`when`
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.test.context.bean.override.mockito.MockitoBean
 import org.springframework.transaction.support.TransactionTemplate
+import jakarta.persistence.EntityManagerFactory
+import org.hibernate.SessionFactory
 import java.util.concurrent.CountDownLatch
 import java.util.concurrent.Executors
 import java.util.concurrent.TimeUnit
@@ -38,6 +40,7 @@ class SpotRecordPhotoAccessIntegrationTest : IntegrationTestSupport() {
     @Autowired lateinit var records: SpotRecordRepository
     @Autowired lateinit var recordService: SpotRecordService
     @Autowired lateinit var transactions: TransactionTemplate
+    @Autowired lateinit var entityManagerFactory: EntityManagerFactory
 
     @MockitoBean lateinit var storage: ObjectStorage
 
@@ -245,6 +248,44 @@ class SpotRecordPhotoAccessIntegrationTest : IntegrationTestSupport() {
         transactions.executeWithoutResult { access.lockForChange(7L, emptySet(), setOf(key)) }
 
         assertThat(uploads.findById(key).orElseThrow().variantNames).isEqualTo("thumbnail,medium,main")
+    }
+
+    @Test
+    fun `여러 사진 참조 해제는 flush 후 한 배치 조회로 남은 foreign 참조도 보존한다`() {
+        val keys = (1..12).map { index ->
+            "spot-records/7/2026/11/123e4567-e89b-42d3-a456-${index.toString().padStart(12, '0')}/main.jpg"
+        }
+        uploads.saveAllAndFlush(keys.map { upload(it, 7L) })
+        val recordIds = (1..3).map { saveRecord(7L) }
+        photos.saveAllAndFlush(keys.mapIndexed { index, key -> SpotRecordPhoto(recordIds[index / 4], key, index % 4 + 1) })
+        val foreignRecord = saveRecord(8L)
+        photos.saveAndFlush(SpotRecordPhoto(foreignRecord, keys.first(), 1))
+        val statistics = entityManagerFactory.unwrap(SessionFactory::class.java).statistics
+        val wasEnabled = statistics.isStatisticsEnabled
+        statistics.isStatisticsEnabled = true
+        try {
+            transactions.executeWithoutResult {
+                statistics.clear()
+                val locked = access.lockForChange(7L, keys.toSet(), emptySet())
+                println("upload lock fixture: keys=12, query executions=${statistics.queryExecutionCount}")
+                assertThat(statistics.queryExecutionCount).isEqualTo(1L)
+                recordIds.forEach { photos.deleteBySpotRecordId(it) }
+                statistics.clear()
+
+                access.deleteUnreferenced(7L, keys.toSet(), locked)
+
+                val queries = statistics.queryExecutionCount
+                println("reference lookup fixture: keys=12, query executions=$queries")
+                assertThat(queries).isEqualTo(1L)
+                assertThat(locked.getValue(keys.first()).available).isTrue()
+                assertThat(keys.drop(1).map { locked.getValue(it).available }).containsOnly(false)
+            }
+        } finally {
+            statistics.clear()
+            statistics.isStatisticsEnabled = wasEnabled
+        }
+        verify(storage, never()).delete(keys.first())
+        keys.drop(1).forEach { verify(storage).delete(it) }
     }
 
     private fun saveRecord(userId: Long): Long = requireNotNull(

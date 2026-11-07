@@ -17,6 +17,10 @@ interface SpotRecordRepository : JpaRepository<SpotRecord, Long> {
     fun findByIdForUpdate(id: Long): SpotRecord?
 
     @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("select r from SpotRecord r where r.id in :ids order by r.id")
+    fun findByIdsForUpdate(ids: Collection<Long>): List<SpotRecord>
+
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("select r from SpotRecord r where r.userId = :userId order by r.id")
     fun findByUserIdForUpdate(userId: Long): List<SpotRecord>
 

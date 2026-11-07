@@ -11,6 +11,10 @@ import com.peakda.server.domain.spot.repository.SpotRecordPhotoRepository
 import com.peakda.server.domain.spot.repository.SpotRecordPlantRepository
 import com.peakda.server.domain.spot.repository.SpotRecordRepository
 import org.assertj.core.api.Assertions.assertThatThrownBy
+import org.assertj.core.api.Assertions.assertThat
+import org.mockito.ArgumentCaptor
+import org.mockito.Mockito.verify
+import com.peakda.server.domain.spot.entity.SpotRecordPhotoUpload
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.mockito.Mockito.mock
@@ -32,7 +36,7 @@ class SpotRecordPhotoAuthorizationRegressionTest {
         mock(SpotRecordPlantRepository::class.java),
         mock(PlantRepository::class.java),
         spots,
-        SpotRecordPhotoAccessService(uploads, photos, storage),
+        SpotRecordPhotoAccessService(uploads, photos, storage, records),
         mock(SpotRecordResponseAssembler::class.java),
     )
     private val record = SpotRecord(spotId = 10L, userId = 1L, status = SpotRecordStatus.DRAFT).apply {
@@ -101,5 +105,20 @@ class SpotRecordPhotoAuthorizationRegressionTest {
         service.deleteAllByUser(1L)
 
         verifyNoInteractions(storage)
+    }
+
+    @Test
+    fun `재정렬은 backfill 이전 스냅샷 대신 잠금 후 최신 등록 variant를 저장한다`() {
+        val key = foreignKey.replace("spot-records/2/", "spot-records/1/")
+        `when`(photos.findBySpotRecordIdOrderBySortOrderAsc(100L)).thenReturn(listOf(SpotRecordPhoto(100L, key, 1)))
+        `when`(uploads.findByKeysForUpdate(listOf(key))).thenReturn(
+            listOf(SpotRecordPhotoUpload(key, 1L, "thumbnail,medium,main", "SERVER_UPLOAD")),
+        )
+
+        service.update(UpdateSpotRecordCommand(100L, 1L, null, null, null, null, null, listOf(key)))
+
+        val saved = ArgumentCaptor.forClass(SpotRecordPhoto::class.java)
+        verify(photos).save(saved.capture())
+        assertThat(saved.value.variantNames).isEqualTo("thumbnail,medium,main")
     }
 }

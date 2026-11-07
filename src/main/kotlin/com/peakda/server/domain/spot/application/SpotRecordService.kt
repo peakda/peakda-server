@@ -230,12 +230,8 @@ class SpotRecordService(
                     spotRecordId = recordId,
                     objectKey = key,
                     sortOrder = index + 1,
-                    // 이미 달려 있던 사진은 보유 variant 를 그대로 두고, 새로 올라온 사진에만 현재 정책을 적는다.
-                    variantNames = if (key in existingKeys) {
-                        existingVariantNames[key]
-                    } else {
-                        locked.getValue(key).variantNames
-                    },
+                    // 잠금을 기다리는 동안 backfill된 목록을 덮어쓰지 않는다. 미등록 legacy만 기존 값을 유지한다.
+                    variantNames = locked[key]?.variantNames ?: existingVariantNames[key],
                 )
             )
         }
