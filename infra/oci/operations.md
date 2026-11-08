@@ -11,6 +11,7 @@ AWS 무료 플랜 크레딧이 2026-10-14 전후로 소진되어 prod 를 OCI Al
 | 이미지 | `ghcr.io/peakda/peakda-server:<커밋 SHA>` (ARM64) |
 | 배포 | `.github/workflows/deploy-prod-oci.yml` → SSH(배포 전용 키, `deploy-gate.sh` 로만 실행) → `deploy.sh` |
 | 미디어 | OCI Object Storage `peakda-prod-media`(공개 읽기). `cdn.peakda.com` → Caddy → `media-cache`(nginx 디스크 캐시 2GB) → Object Storage |
+| 미니게임 | `play.peakda.com` → Caddy → Cloudflare Workers `play-peakda.peakda.workers.dev`(웹소켓 `/ws` 포함). 게임 코드·배포는 별도 프로젝트 |
 | 백업 | 6시간마다 PostgreSQL 덤프·Redis 스냅샷 → `peakda-prod-backup`(30일 보관) |
 | DNS | 가비아 DNS (등록처와 같은 곳) |
 
