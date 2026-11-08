@@ -61,3 +61,12 @@
 {$CDN_DOMAIN} {
 	reverse_proxy media-cache:8080
 }
+
+# 북항 상어 미니게임 "북항에 퐁당!". 게임은 Cloudflare Workers(play-peakda)에서 돌고 DNS 는 가비아라
+# 워커 Custom Domain 을 붙일 수 없다. workers.dev 는 다른 Host 를 받지 않으므로 CNAME 대신 여기서 프록시한다.
+# 웹소켓(/ws)도 그대로 넘어간다. 워커는 X-Forwarded-Host 로 원래 주소(play.peakda.com)를 알 수 있다.
+play.peakda.com {
+	reverse_proxy https://play-peakda.peakda.workers.dev {
+		header_up Host {upstream_hostport}
+	}
+}
