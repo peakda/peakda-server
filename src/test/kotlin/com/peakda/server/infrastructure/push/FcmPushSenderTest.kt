@@ -1,5 +1,6 @@
 package com.peakda.server.infrastructure.push
 
+import com.google.api.client.json.gson.GsonFactory
 import com.google.firebase.messaging.BatchResponse
 import com.google.firebase.messaging.FirebaseMessaging
 import com.google.firebase.messaging.FirebaseMessagingException
@@ -52,6 +53,13 @@ class FcmPushSenderTest {
             ),
         )
         assertThat(data).doesNotContainKey("targetId")
+    }
+
+    @Test
+    fun `iOS 알림은 APNs 기본 알림음을 넣어 보낸다`() {
+        val json = GsonFactory.getDefaultInstance().toString(FcmPushSender.IOS_NOTIFICATION_CONFIG)
+
+        assertThat(json).isEqualTo("""{"payload":{"aps":{"sound":"default"}}}""")
     }
 
     @Test
