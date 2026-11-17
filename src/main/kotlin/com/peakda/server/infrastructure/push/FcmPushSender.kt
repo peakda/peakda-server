@@ -1,5 +1,7 @@
 package com.peakda.server.infrastructure.push
 
+import com.google.firebase.messaging.ApnsConfig
+import com.google.firebase.messaging.Aps
 import com.google.firebase.messaging.BatchResponse
 import com.google.firebase.messaging.FirebaseMessaging
 import com.google.firebase.messaging.FirebaseMessagingException
@@ -59,6 +61,7 @@ class FcmPushSender(
         val message = MulticastMessage.builder()
             .addAllTokens(tokens)
             .setNotification(Notification.builder().setTitle(payload.title).setBody(payload.body).build())
+            .setApnsConfig(IOS_NOTIFICATION_CONFIG)
             .putAllData(payload.data())
             .build()
         return try {
@@ -106,6 +109,14 @@ class FcmPushSender(
 
     companion object {
         private const val MAX_MULTICAST_SIZE = 500
+
+        /**
+         * iOS 는 APNs 페이로드에 sound 가 없으면 알림을 소리 없이 띄운다.
+         * Android 는 앱이 만든 알림 채널(기본 중요도)이 소리를 정하므로 해당 없다.
+         */
+        internal val IOS_NOTIFICATION_CONFIG: ApnsConfig = ApnsConfig.builder()
+            .setAps(Aps.builder().setSound("default").build())
+            .build()
 
         /** 기기가 더 이상 이 토큰을 쓰지 않는다는 뜻이라 즉시 지운다. */
         private val INVALID_TOKEN_ERRORS = setOf(
