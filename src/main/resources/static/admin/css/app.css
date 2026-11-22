@@ -1186,6 +1186,21 @@ img.image-preview {
 .login-card p:not(.eyebrow) {
     margin-bottom: 24px;
     color: var(--muted);
+    word-break: keep-all;
+}
+
+.login-card p.login-message {
+    margin-top: -12px;
+    padding: 10px 12px;
+    border: 1px solid #e3bcb9;
+    border-radius: 6px;
+    color: var(--danger);
+    background: var(--danger-soft);
+}
+
+.login-actions {
+    display: grid;
+    gap: 8px;
 }
 
 .muted {
