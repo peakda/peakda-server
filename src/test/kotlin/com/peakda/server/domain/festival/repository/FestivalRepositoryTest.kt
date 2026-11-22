@@ -174,18 +174,49 @@ class FestivalRepositoryTest : IntegrationTestSupport() {
     }
 
     @Test
-    fun `sitemap 용 조회는 해당 종류 축제의 id와 수정 시각을 id 오름차순으로 돌려준다`() {
+    fun `sitemap 용 조회는 모든 종류 축제의 id와 수정 시각을 id 오름차순으로 돌려준다`() {
         val saved = repository.saveAllAndFlush(
             listOf(
                 festival("첫째", LocalDate.of(2026, 3, 1), LocalDate.of(2026, 3, 2)),
                 festival("정규화 실패", null, null),
+                festival("크리스마스 트리", LocalDate.of(2026, 12, 1), LocalDate.of(2026, 12, 31), FestivalKind.TREE),
             ),
         )
 
-        val rows = repository.findByKindOrderByIdAsc(FestivalKind.FESTIVAL)
+        val rows = repository.findByOrderByIdAsc()
 
         assertThat(rows.map { it.id }).containsExactlyElementsOf(saved.map { requireNotNull(it.id) }.sorted())
         assertThat(rows.map { it.updatedAt }).doesNotContainNull()
+    }
+
+    @Test
+    fun `좌표 범위 조회는 기간이 겹치는 축제와 트리 명소를 모두 돌려준다`() {
+        repository.saveAllAndFlush(
+            listOf(
+                festival("봄꽃 축제", LocalDate.of(2026, 12, 1), LocalDate.of(2026, 12, 5)).placedAt(35.15, 128.66),
+                festival("크리스마스 트리", LocalDate.of(2026, 11, 20), LocalDate.of(2026, 12, 31), FestivalKind.TREE)
+                    .placedAt(35.16, 128.66),
+                festival("범위 밖 트리", LocalDate.of(2026, 11, 20), LocalDate.of(2026, 12, 31), FestivalKind.TREE)
+                    .placedAt(36.50, 128.66),
+                festival("기간 밖 축제", LocalDate.of(2026, 10, 1), LocalDate.of(2026, 10, 3)).placedAt(35.15, 128.66),
+            ),
+        )
+
+        val result = repository.findInBoundingBoxOverlapping(
+            minLat = 35.0,
+            maxLat = 35.3,
+            minLng = 128.5,
+            maxLng = 128.8,
+            from = LocalDate.of(2026, 12, 1),
+            to = LocalDate.of(2026, 12, 14),
+        )
+
+        assertThat(result.map { it.name }).containsExactlyInAnyOrder("봄꽃 축제", "크리스마스 트리")
+    }
+
+    private fun Festival.placedAt(lat: Double, lng: Double): Festival = apply {
+        latitude = lat
+        longitude = lng
     }
 
     private fun festival(

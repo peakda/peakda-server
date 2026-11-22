@@ -3,6 +3,7 @@ package com.peakda.server.domain.visittiming.application
 import com.peakda.server.domain.congestion.application.DailyCongestion
 import com.peakda.server.domain.festival.application.FestivalPhase
 import com.peakda.server.domain.festival.application.NearbyFestival
+import com.peakda.server.domain.festival.entity.FestivalKind
 import com.peakda.server.domain.seasonal.entity.BloomStatus
 import com.peakda.server.domain.weather.application.DailyWeather
 import com.peakda.server.domain.weather.application.WeatherSky
@@ -67,9 +68,28 @@ class VisitTimingRecommenderTest {
 
     @Test
     fun `그날 열리는 주변 축제가 있으면 이유에 넣는다`() {
-        val festival = NearbyFestival(1, "진해군항제", today, today.plusDays(3), FestivalPhase.ONGOING, 300.0)
+        val festival = NearbyFestival(1, "진해군항제", FestivalKind.FESTIVAL, today, today.plusDays(3), FestivalPhase.ONGOING, 300.0)
 
         val result = VisitTimingRecommender.recommend(dates, congestionOf(10.0), emptyMap(), null, listOf(festival), properties)
+
+        assertThat(result?.reasons).contains(VisitReason.FESTIVAL_ONGOING)
+    }
+
+    @Test
+    fun `주변에 트리 명소만 있으면 축제 진행 중 이유를 넣지 않는다`() {
+        val tree = NearbyFestival(2, "크리스마스 트리", FestivalKind.TREE, today, today.plusDays(3), FestivalPhase.ONGOING, 300.0)
+
+        val result = VisitTimingRecommender.recommend(dates, congestionOf(10.0), emptyMap(), null, listOf(tree), properties)
+
+        assertThat(result?.reasons).doesNotContain(VisitReason.FESTIVAL_ONGOING)
+    }
+
+    @Test
+    fun `트리 명소와 축제가 함께 있으면 축제 기준으로 이유를 넣는다`() {
+        val tree = NearbyFestival(2, "크리스마스 트리", FestivalKind.TREE, today, today.plusDays(3), FestivalPhase.ONGOING, 100.0)
+        val festival = NearbyFestival(1, "진해군항제", FestivalKind.FESTIVAL, today, today.plusDays(3), FestivalPhase.ONGOING, 300.0)
+
+        val result = VisitTimingRecommender.recommend(dates, congestionOf(10.0), emptyMap(), null, listOf(tree, festival), properties)
 
         assertThat(result?.reasons).contains(VisitReason.FESTIVAL_ONGOING)
     }

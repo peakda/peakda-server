@@ -82,16 +82,14 @@ private const val FESTIVAL_UPSERT_SQL = """
 interface FestivalRepository : JpaRepository<Festival, Long> {
     fun findByNameAndVenueAndStartDate(name: String, venue: String, startDate: String): Festival?
 
-    fun findByIdAndKind(id: Long, kind: FestivalKind): Festival?
-
     fun findByIdInAndKind(ids: Collection<Long>, kind: FestivalKind): List<Festival>
 
     fun findAllByOrderByIdDesc(pageable: Pageable): Page<Festival>
 
     fun findByKindOrderByIdDesc(kind: FestivalKind, pageable: Pageable): Page<Festival>
 
-    /** [kind] 축제의 id·수정 시각을 id 오름차순으로 (sitemap). */
-    fun findByKindOrderByIdAsc(kind: FestivalKind): List<LastModifiedRow>
+    /** 모든 종류 축제의 id·수정 시각을 id 오름차순으로 (sitemap). */
+    fun findByOrderByIdAsc(): List<LastModifiedRow>
 
     fun findByNameContainingIgnoreCaseOrderByIdDesc(name: String, pageable: Pageable): Page<Festival>
 
@@ -125,21 +123,19 @@ interface FestivalRepository : JpaRepository<Festival, Long> {
     ): List<Festival>
 
     /**
-     * 좌표 범위(bbox) 안에서 [from]~[to] 기간과 하루라도 겹치는 [kind] 축제. 종료일이 없으면 시작일을 종료일로 본다.
+     * 좌표 범위(bbox) 안에서 [from]~[to] 기간과 하루라도 겹치는 모든 종류의 축제. 종료일이 없으면 시작일을 종료일로 본다.
      * 정확한 반경 판정과 정렬은 호출측(application)이 거리 계산으로 한다.
      */
     @Query(
         """
             SELECT f FROM Festival f
-            WHERE f.kind = :kind
-              AND f.latitude BETWEEN :minLat AND :maxLat
+            WHERE f.latitude BETWEEN :minLat AND :maxLat
               AND f.longitude BETWEEN :minLng AND :maxLng
               AND f.startsOn <= :to
               AND COALESCE(f.endsOn, f.startsOn) >= :from
         """,
     )
     fun findInBoundingBoxOverlapping(
-        @Param("kind") kind: FestivalKind,
         @Param("minLat") minLat: Double,
         @Param("maxLat") maxLat: Double,
         @Param("minLng") minLng: Double,

@@ -2,6 +2,7 @@ package com.peakda.server.domain.visittiming.application
 
 import com.peakda.server.domain.congestion.application.DailyCongestion
 import com.peakda.server.domain.festival.application.NearbyFestival
+import com.peakda.server.domain.festival.entity.FestivalKind
 import com.peakda.server.domain.seasonal.entity.BloomStatus
 import com.peakda.server.domain.weather.application.DailyWeather
 import com.peakda.server.domain.weather.application.WeatherSky
@@ -15,6 +16,7 @@ import java.time.LocalDate
  * 3. 남은 후보 중 집중률이 가장 낮은 날, 같으면 강수확률이 낮은 날, 그래도 같으면 이른 날.
  *
  * 혼잡도 데이터가 있으면 혼잡도를 아는 날만, 없으면 날씨를 아는 날만 후보로 둔다.
+ * 축제 진행 중 이유는 축제·행사([FestivalKind.FESTIVAL])만 본다. 트리 명소는 주변 목록에만 나온다.
  */
 object VisitTimingRecommender {
     fun recommend(
@@ -56,7 +58,9 @@ object VisitTimingRecommender {
             }
         }
         if (weather != null && isClear(weather, properties)) add(VisitReason.CLEAR_WEATHER)
-        if (festivals.any { date in it.startsOn..it.endsOn }) add(VisitReason.FESTIVAL_ONGOING)
+        if (festivals.any { it.kind == FestivalKind.FESTIVAL && date in it.startsOn..it.endsOn }) {
+            add(VisitReason.FESTIVAL_ONGOING)
+        }
     }
 
     private fun isRainy(weather: DailyWeather?, properties: VisitTimingProperties): Boolean {

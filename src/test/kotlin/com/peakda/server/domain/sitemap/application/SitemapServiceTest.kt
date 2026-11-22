@@ -4,7 +4,6 @@ import com.peakda.server.common.persistence.LastModifiedRow
 import com.peakda.server.domain.curation.entity.CurationStatus
 import com.peakda.server.domain.curation.repository.CurationRepository
 import com.peakda.server.domain.festival.entity.FestivalEditorialStatus
-import com.peakda.server.domain.festival.entity.FestivalKind
 import com.peakda.server.domain.festival.repository.FestivalEditorialLastModifiedAt
 import com.peakda.server.domain.festival.repository.FestivalEditorialRepository
 import com.peakda.server.domain.festival.repository.FestivalRepository
@@ -53,7 +52,7 @@ class SitemapServiceTest {
 
     @Test
     fun `축제는 전체를 담고 발행 에디토리얼이 더 최근이면 에디토리얼 수정 시각을 쓴다`() {
-        `when`(festivalRepository.findByKindOrderByIdAsc(FestivalKind.FESTIVAL)).thenReturn(listOf(row(10L, MAY_1), row(11L, MAY_1)))
+        `when`(festivalRepository.findByOrderByIdAsc()).thenReturn(listOf(row(10L, MAY_1), row(11L, MAY_1)))
         `when`(festivalEditorialRepository.findByStatus(FestivalEditorialStatus.PUBLISHED))
             .thenReturn(listOf(editorialAt(11L, MAY_3)))
 

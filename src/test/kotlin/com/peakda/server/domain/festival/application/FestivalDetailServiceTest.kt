@@ -20,6 +20,7 @@ import org.mockito.Mockito.verify
 import org.mockito.Mockito.`when`
 import org.springframework.test.util.ReflectionTestUtils
 import java.time.LocalDate
+import java.util.Optional
 
 class FestivalDetailServiceTest {
 
@@ -37,7 +38,7 @@ class FestivalDetailServiceTest {
 
     @Test
     fun `축제가 없으면 찾을 수 없음 예외다`() {
-        `when`(festivalRepository.findByIdAndKind(FESTIVAL_ID, FestivalKind.FESTIVAL)).thenReturn(null)
+        `when`(festivalRepository.findById(FESTIVAL_ID)).thenReturn(Optional.empty())
 
         assertThatThrownBy { service.detail(FESTIVAL_ID, STARTS_ON) }
             .isInstanceOf(FestivalNotFoundException::class.java)
@@ -59,8 +60,33 @@ class FestivalDetailServiceTest {
         assertThat(response.name).isEqualTo("태백 해바라기축제")
         assertThat(response.venue).isEqualTo("구와우마을")
         assertThat(response.roadAddress).isEqualTo("강원특별자치도 태백시 구와우길 38-20")
+        assertThat(response.kind).isEqualTo(FestivalKind.FESTIVAL)
         assertThat(response.editorial).isNull()
         verify(festivalHighlightRepository, never()).findByFestivalEditorialIdOrderBySortOrderAsc(anyLong())
+    }
+
+    @Test
+    fun `트리 명소도 상세를 조회할 수 있고 종류를 TREE로 돌려준다`() {
+        stubFestival(festival(FESTIVAL_ID, STARTS_ON, ENDS_ON, FestivalKind.TREE))
+        stubNoEditorial()
+
+        val response = service.detail(FESTIVAL_ID, STARTS_ON)
+
+        assertThat(response.kind).isEqualTo(FestivalKind.TREE)
+        assertThat(response.phase).isEqualTo(FestivalPhase.ONGOING)
+    }
+
+    @Test
+    fun `트리 명소는 이름에 꽃 이름이 있어도 꽃 카테고리를 붙이지 않는다`() {
+        val tree = festival(FESTIVAL_ID, STARTS_ON, ENDS_ON, FestivalKind.TREE)
+        tree.name = "벚꽃 크리스마스 트리"
+        stubFestival(tree)
+        stubNoEditorial()
+
+        val response = service.detail(FESTIVAL_ID, STARTS_ON)
+
+        assertThat(response.category).isNull()
+        assertThat(response.displayName).isNull()
     }
 
     @Test
@@ -171,7 +197,7 @@ class FestivalDetailServiceTest {
     }
 
     private fun stubFestival(festival: Festival) {
-        `when`(festivalRepository.findByIdAndKind(FESTIVAL_ID, FestivalKind.FESTIVAL)).thenReturn(festival)
+        `when`(festivalRepository.findById(FESTIVAL_ID)).thenReturn(Optional.of(festival))
     }
 
     private fun stubNoEditorial() {
@@ -187,6 +213,7 @@ class FestivalDetailServiceTest {
         id: Long,
         startsOn: LocalDate?,
         endsOn: LocalDate?,
+        kind: FestivalKind = FestivalKind.FESTIVAL,
     ): Festival {
         val festival = Festival(
             name = "태백 해바라기축제",
@@ -199,6 +226,7 @@ class FestivalDetailServiceTest {
             roadAddress = "강원특별자치도 태백시 구와우길 38-20",
             latitude = 37.1642,
             longitude = 128.9867,
+            kind = kind,
         )
         ReflectionTestUtils.setField(festival, "id", id)
         return festival

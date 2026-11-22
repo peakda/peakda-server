@@ -1,6 +1,7 @@
 package com.peakda.server.domain.festival.presentation.response
 
 import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
+import com.peakda.server.domain.festival.entity.FestivalKind
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Test
 
@@ -10,6 +11,7 @@ class FestivalDetailResponseSerializationTest {
         val response = FestivalDetailResponse(
             festivalId = 1L,
             name = "축제",
+            kind = FestivalKind.FESTIVAL,
             venue = "축제장",
             roadAddress = null,
             latitude = null,
