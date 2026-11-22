@@ -4,7 +4,6 @@ import com.peakda.server.common.persistence.LastModifiedRow
 import com.peakda.server.domain.curation.entity.CurationStatus
 import com.peakda.server.domain.curation.repository.CurationRepository
 import com.peakda.server.domain.festival.entity.FestivalEditorialStatus
-import com.peakda.server.domain.festival.entity.FestivalKind
 import com.peakda.server.domain.festival.repository.FestivalEditorialRepository
 import com.peakda.server.domain.festival.repository.FestivalRepository
 import com.peakda.server.domain.sitemap.presentation.response.SitemapResponse
@@ -21,7 +20,7 @@ import java.time.Instant
  * 웹 sitemap 을 만들 공개 상세 페이지 목록. 비로그인으로 열리는 상세만 담는다.
  *
  * - 스팟: 공개 명소형 스팟. 동네(LOCAL) 스팟은 사용자 기록으로 생긴 지점이라 검색 노출 대상이 아니다.
- * - 축제: 상세가 모든 축제에 열려 있으므로 전체.
+ * - 축제: 상세가 모든 종류(축제·행사, 트리 명소)에 열려 있으므로 전체.
  * - 큐레이션: 발행된 것만.
  *
  * 수정 시각은 상세 화면 내용의 마지막 변경이다. 스팟은 게시 기록, 축제는 발행 에디토리얼의 변경까지 반영한다.
@@ -55,7 +54,7 @@ class SitemapService(
         val editorialModifiedAtByFestivalId = festivalEditorialRepository
             .findByStatus(FestivalEditorialStatus.PUBLISHED)
             .associate { it.festivalId to it.updatedAt }
-        return festivalRepository.findByKindOrderByIdAsc(FestivalKind.FESTIVAL)
+        return festivalRepository.findByOrderByIdAsc()
             .map { it.toEntry(editorialModifiedAtByFestivalId[it.id]) }
     }
 

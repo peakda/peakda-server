@@ -55,6 +55,11 @@ class OAuth2AuthenticationSuccessHandler(
                 return
             }
 
+            if (clientKind == OAuth2ClientKind.ADMIN) {
+                AdminLoginRedirect.sendError(response, AdminLoginRedirect.SIGNUP_REQUIRED)
+                return
+            }
+
             val signupTokenCookie = CookieUtils.createSignupTokenCookie(signupSession.token, cookieProperties)
             val accessTokenCookie = CookieUtils.deleteAccessTokenCookie(cookieProperties)
             val refreshTokenCookie = CookieUtils.deleteRefreshTokenCookie(cookieProperties)
@@ -110,6 +115,11 @@ class OAuth2AuthenticationSuccessHandler(
         response.addHeader("Set-Cookie", refreshTokenCookie.toString())
         response.addHeader("Set-Cookie", signupTokenCookie.toString())
 
+        // 백오피스는 웹과 같은 쿠키로 인증하므로 발급은 같고, 돌아갈 곳만 다르다.
+        if (clientKind == OAuth2ClientKind.ADMIN) {
+            AdminLoginRedirect.sendHome(response)
+            return
+        }
         response.sendRedirect(redirectUri)
     }
 

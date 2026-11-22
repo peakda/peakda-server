@@ -9,6 +9,17 @@ import org.springframework.web.multipart.MultipartFile
 import java.time.YearMonth
 
 object SpotRecordPhotoPolicy {
+    private val SERVER_MAIN_KEY = Regex(
+        "spot-records/([1-9][0-9]*)/[0-9]{4}/(?:0[1-9]|1[0-2])/" +
+            "[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}/main\\.jpg",
+    )
+
+    fun isServerMainKey(userId: Long, key: String): Boolean =
+        SERVER_MAIN_KEY.matchEntire(key)?.groupValues?.get(1) == userId.toString()
+
+    fun ownerIdOfServerMainKey(key: String): Long? =
+        SERVER_MAIN_KEY.matchEntire(key)?.groupValues?.get(1)?.toLongOrNull()
+
     const val MAX_FILES_PER_REQUEST: Int = 5
     const val MIN_FILES_PER_REQUEST: Int = 1
     const val MAX_FILE_SIZE_BYTES: Long = 10L * 1024 * 1024

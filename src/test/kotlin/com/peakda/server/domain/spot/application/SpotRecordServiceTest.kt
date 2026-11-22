@@ -6,6 +6,11 @@ import com.peakda.server.domain.spot.entity.SpotRecord
 import com.peakda.server.domain.spot.entity.SpotRecordStatus
 import com.peakda.server.domain.spot.entity.SpotType
 import com.peakda.server.domain.spot.exception.SpotRecordInvalidContentLinkException
+import com.peakda.server.domain.spot.exception.SpotRecordInvalidStatusException
+import com.peakda.server.domain.spot.entity.BloomStage
+import com.peakda.server.domain.spot.entity.SpotRecordPlant
+import com.peakda.server.domain.spot.entity.SpotRecordPlantId
+import com.peakda.server.domain.spot.entity.SpotRecordPhoto
 import com.peakda.server.domain.spot.exception.SpotRecordNotFoundException
 import com.peakda.server.domain.spot.presentation.response.SpotRecordResponse
 import com.peakda.server.domain.spot.repository.PlantRepository
@@ -28,7 +33,7 @@ class SpotRecordServiceTest {
     private val spotRecordPlantRepository = mock(SpotRecordPlantRepository::class.java)
     private val plantRepository = mock(PlantRepository::class.java)
     private val spotService = mock(SpotService::class.java)
-    private val spotRecordPhotoUploader = mock(SpotRecordPhotoUploader::class.java)
+    private val photoAccess = mock(SpotRecordPhotoAccessService::class.java)
     private val responseAssembler = mock(SpotRecordResponseAssembler::class.java)
 
     private val service = SpotRecordService(
@@ -37,7 +42,7 @@ class SpotRecordServiceTest {
         spotRecordPlantRepository,
         plantRepository,
         spotService,
-        spotRecordPhotoUploader,
+        photoAccess,
         responseAssembler,
     )
 
@@ -96,7 +101,7 @@ class SpotRecordServiceTest {
         val draft = record(1L, OWNER_ID, SpotRecordStatus.DRAFT)
         val spotInput = spotInput()
         `when`(spotService.findOrCreate(spotInput)).thenReturn(spot(100L))
-        `when`(spotRecordRepository.findByUserIdAndStatus(OWNER_ID, SpotRecordStatus.DRAFT)).thenReturn(draft)
+        `when`(spotRecordRepository.findByUserIdAndStatusForUpdate(OWNER_ID, SpotRecordStatus.DRAFT)).thenReturn(draft)
         `when`(responseAssembler.assemble(draft, OWNER_ID)).thenReturn(response(1L))
 
         service.create(createCommand(spotInput, contentLinkUrl = " instagram.com/p/C5y7abc "))
@@ -113,7 +118,7 @@ class SpotRecordServiceTest {
         }
         val spotInput = spotInput()
         `when`(spotService.findOrCreate(spotInput)).thenReturn(spot(100L))
-        `when`(spotRecordRepository.findByUserIdAndStatus(OWNER_ID, SpotRecordStatus.DRAFT)).thenReturn(draft)
+        `when`(spotRecordRepository.findByUserIdAndStatusForUpdate(OWNER_ID, SpotRecordStatus.DRAFT)).thenReturn(draft)
         `when`(responseAssembler.assemble(draft, OWNER_ID)).thenReturn(response(1L))
 
         service.create(createCommand(spotInput, contentLinkUrl = null))
@@ -135,7 +140,7 @@ class SpotRecordServiceTest {
             contentLinkUrl = "https://www.instagram.com/p/old"
             contentLinkPlatform = ContentLinkPlatform.INSTAGRAM
         }
-        `when`(spotRecordRepository.findById(1L)).thenReturn(Optional.of(record))
+        `when`(spotRecordRepository.findByIdForUpdate(1L)).thenReturn(record)
         `when`(responseAssembler.assemble(record, OWNER_ID)).thenReturn(response(1L))
 
         service.update(updateCommand(contentLinkUrl = null))
@@ -152,6 +157,49 @@ class SpotRecordServiceTest {
         service.update(updateCommand(contentLinkUrl = ""))
         assertThat(record.contentLinkUrl).isNull()
         assertThat(record.contentLinkPlatform).isNull()
+    }
+
+    @Test
+    fun `숨김 기록은 작성자가 게시해도 상태와 게시 시각을 유지하고 기존 상태 오류로 거부한다`() {
+        val publishedAt = Instant.parse("2026-11-01T00:00:00Z")
+        val record = record(1L, OWNER_ID, SpotRecordStatus.HIDDEN).apply { this.publishedAt = publishedAt }
+        `when`(spotRecordRepository.findByIdForUpdate(1L)).thenReturn(record)
+
+        assertThatThrownBy { service.publish(1L, OWNER_ID) }
+            .isInstanceOf(SpotRecordInvalidStatusException::class.java)
+        assertThat(record.status).isEqualTo(SpotRecordStatus.HIDDEN)
+        assertThat(record.publishedAt).isEqualTo(publishedAt)
+        org.mockito.Mockito.verifyNoInteractions(spotRecordPlantRepository, spotRecordPhotoRepository, photoAccess, responseAssembler)
+    }
+
+    @Test
+    fun `숨김 상태로 직접 생성할 수 없고 기존 초안에도 영향을 주지 않는다`() {
+        val command = createCommand(spotInput(), null).copy(status = SpotRecordStatus.HIDDEN)
+        assertThatThrownBy { service.create(command) }.isInstanceOf(SpotRecordInvalidStatusException::class.java)
+        org.mockito.Mockito.verifyNoInteractions(spotService, spotRecordRepository, photoAccess)
+    }
+
+    @Test
+    fun `준비된 초안은 게시하고 게시 재요청은 최초 게시 시각과 응답을 유지한다`() {
+        val record = record(1L, OWNER_ID, SpotRecordStatus.DRAFT).apply {
+            visitedDate = java.time.LocalDate.of(2026, 11, 1)
+            bloomStage = BloomStage.PEAK
+        }
+        `when`(spotRecordRepository.findByIdForUpdate(1L)).thenReturn(record)
+        `when`(spotRecordPlantRepository.findByIdSpotRecordId(1L)).thenReturn(listOf(SpotRecordPlant(SpotRecordPlantId(1L, 10L))))
+        `when`(spotRecordPhotoRepository.findBySpotRecordIdOrderBySortOrderAsc(1L)).thenReturn(listOf(SpotRecordPhoto(1L, "legacy.jpg", 1)))
+        val expected = response(1L)
+        `when`(responseAssembler.assemble(record, OWNER_ID)).thenReturn(expected)
+
+        assertThat(service.publish(1L, OWNER_ID)).isEqualTo(expected)
+        val publishedAt = record.publishedAt
+        assertThat(record.status).isEqualTo(SpotRecordStatus.PUBLISHED)
+        assertThat(publishedAt).isNotNull()
+        assertThat(service.publish(1L, OWNER_ID)).isEqualTo(expected)
+        assertThat(record.publishedAt).isEqualTo(publishedAt)
+        org.mockito.Mockito.verify(spotRecordPlantRepository).findByIdSpotRecordId(1L)
+        org.mockito.Mockito.verify(spotRecordPhotoRepository).findBySpotRecordIdOrderBySortOrderAsc(1L)
+        org.mockito.Mockito.verifyNoInteractions(photoAccess)
     }
 
     private fun spotInput() = SpotResolveInput(

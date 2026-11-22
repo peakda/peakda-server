@@ -7,7 +7,6 @@ import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Test
 import org.mockito.ArgumentMatchers.any
 import org.mockito.ArgumentMatchers.anyDouble
-import org.mockito.ArgumentMatchers.eq
 import org.mockito.Mockito.mock
 import org.mockito.Mockito.`when`
 import org.springframework.test.util.ReflectionTestUtils
@@ -22,7 +21,6 @@ class NearbyFestivalServiceTest {
     fun `반경 밖과 끝난 축제는 빼고 진행 중을 먼저, 가까운 순으로 상한만큼 돌려준다`() {
         `when`(
             repository.findInBoundingBoxOverlapping(
-                eq(FestivalKind.FESTIVAL) ?: FestivalKind.FESTIVAL,
                 anyDouble(), anyDouble(), anyDouble(), anyDouble(), anyDate(), anyDate(),
             ),
         ).thenReturn(
@@ -40,9 +38,36 @@ class NearbyFestivalServiceTest {
         assertThat(result.first().phase).isEqualTo(FestivalPhase.ONGOING)
     }
 
+    @Test
+    fun `트리 명소도 주변 축제로 돌려주고 종류를 함께 담는다`() {
+        `when`(
+            repository.findInBoundingBoxOverlapping(
+                anyDouble(), anyDouble(), anyDouble(), anyDouble(), anyDate(), anyDate(),
+            ),
+        ).thenReturn(
+            listOf(
+                festival(1, "진행 중 축제", today.minusDays(1), today.plusDays(10), 35.1510, 128.6600),
+                festival(2, "크리스마스 트리", today.minusDays(1), today.plusDays(10), 35.1520, 128.6600, FestivalKind.TREE),
+            ),
+        )
+
+        val result = service.findNearby(35.15, 128.66, today, 5_000.0, 14, 5)
+
+        assertThat(result).extracting<FestivalKind> { it.kind }
+            .containsExactly(FestivalKind.FESTIVAL, FestivalKind.TREE)
+    }
+
     private fun anyDate(): LocalDate = any(LocalDate::class.java) ?: today
 
-    private fun festival(id: Long, name: String, startsOn: LocalDate, endsOn: LocalDate, lat: Double, lng: Double): Festival {
+    private fun festival(
+        id: Long,
+        name: String,
+        startsOn: LocalDate,
+        endsOn: LocalDate,
+        lat: Double,
+        lng: Double,
+        kind: FestivalKind = FestivalKind.FESTIVAL,
+    ): Festival {
         val festival = Festival(
             name = name,
             venue = "축제장",
@@ -52,6 +77,7 @@ class NearbyFestivalServiceTest {
             endsOn = endsOn,
             latitude = lat,
             longitude = lng,
+            kind = kind,
         )
         ReflectionTestUtils.setField(festival, "id", id)
         return festival

@@ -4,10 +4,12 @@ import com.peakda.server.common.exception.ErrorCode
 import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Component
 import software.amazon.awssdk.core.sync.RequestBody
+import software.amazon.awssdk.core.exception.SdkClientException
 import software.amazon.awssdk.services.s3.S3Client
 import software.amazon.awssdk.services.s3.model.CopyObjectRequest
 import software.amazon.awssdk.services.s3.model.DeleteObjectRequest
 import software.amazon.awssdk.services.s3.model.GetObjectRequest
+import software.amazon.awssdk.services.s3.model.HeadObjectRequest
 import software.amazon.awssdk.services.s3.model.PutObjectRequest
 import software.amazon.awssdk.services.s3.model.S3Exception
 import software.amazon.awssdk.services.s3.presigner.S3Presigner
@@ -83,6 +85,20 @@ class S3ObjectStorage(
         } catch (e: S3Exception) {
             logFailure("delete", key, e)
             throw StorageException(ErrorCode.STORAGE_DELETE_FAILED)
+        }
+    }
+
+    override fun exists(key: String): Boolean {
+        try {
+            s3Client.headObject(HeadObjectRequest.builder().bucket(properties.bucket).key(key).build())
+            return true
+        } catch (e: S3Exception) {
+            if (e.statusCode() == 404 && e.awsErrorDetails()?.errorCode() != "NoSuchBucket") return false
+            logFailure("head", key, e)
+            throw StorageException(ErrorCode.STORAGE_DOWNLOAD_FAILED)
+        } catch (e: SdkClientException) {
+            log.error("스토리지 head 통신 실패 - bucket={}, key={}", properties.bucket, key, e)
+            throw StorageException(ErrorCode.STORAGE_DOWNLOAD_FAILED)
         }
     }
 

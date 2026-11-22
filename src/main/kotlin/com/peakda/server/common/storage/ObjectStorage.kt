@@ -11,6 +11,11 @@ interface ObjectStorage {
     fun upload(key: String, bytes: ByteArray, contentType: String): String
     fun copy(sourceKey: String, destinationKey: String): String
     fun download(key: String): ByteArray
+    /** 확인된 없음만 false로 반환한다. 기존 구현의 조회 실패는 그대로 전달한다. */
+    fun exists(key: String): Boolean {
+        download(key)
+        return true
+    }
     fun delete(key: String)
     fun presignedGetUrl(key: String): String
 }

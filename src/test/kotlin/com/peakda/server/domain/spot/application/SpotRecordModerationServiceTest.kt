@@ -11,7 +11,6 @@ import org.mockito.Mockito.mock
 import org.mockito.Mockito.`when`
 import org.springframework.test.util.ReflectionTestUtils
 import java.time.LocalDate
-import java.util.Optional
 
 class SpotRecordModerationServiceTest {
 
@@ -21,7 +20,7 @@ class SpotRecordModerationServiceTest {
     @Test
     fun `게시된 기록을 숨기고 숨긴 기록을 복구한다`() {
         val record = record(SpotRecordStatus.PUBLISHED)
-        `when`(repository.findById(RECORD_ID)).thenReturn(Optional.of(record))
+        `when`(repository.findByIdForUpdate(RECORD_ID)).thenReturn(record)
 
         service.hide(RECORD_ID)
         assertThat(record.status).isEqualTo(SpotRecordStatus.HIDDEN)
@@ -33,10 +32,31 @@ class SpotRecordModerationServiceTest {
     @Test
     fun `초안 기록은 관리자 노출 상태를 바꿀 수 없다`() {
         val record = record(SpotRecordStatus.DRAFT)
-        `when`(repository.findById(RECORD_ID)).thenReturn(Optional.of(record))
+        `when`(repository.findByIdForUpdate(RECORD_ID)).thenReturn(record)
 
         assertThatThrownBy { service.hide(RECORD_ID) }
             .isInstanceOf(SpotRecordInvalidStatusException::class.java)
+    }
+
+    @Test
+    fun `숨김과 복구 재요청은 멱등이고 최초 게시 시각을 보존한다`() {
+        val publishedAt = java.time.Instant.parse("2026-11-01T00:00:00Z")
+        val record = record(SpotRecordStatus.PUBLISHED).apply { this.publishedAt = publishedAt }
+        `when`(repository.findByIdForUpdate(RECORD_ID)).thenReturn(record)
+        repeat(2) { service.hide(RECORD_ID) }
+        assertThat(record.status).isEqualTo(SpotRecordStatus.HIDDEN)
+        repeat(2) { service.restore(RECORD_ID) }
+        assertThat(record.status).isEqualTo(SpotRecordStatus.PUBLISHED)
+        assertThat(record.publishedAt).isEqualTo(publishedAt)
+    }
+
+    @Test
+    fun `초안 복구와 없는 기록은 기존 오류를 반환한다`() {
+        `when`(repository.findByIdForUpdate(RECORD_ID)).thenReturn(record(SpotRecordStatus.DRAFT))
+        assertThatThrownBy { service.restore(RECORD_ID) }.isInstanceOf(SpotRecordInvalidStatusException::class.java)
+        `when`(repository.findByIdForUpdate(RECORD_ID)).thenReturn(null)
+        assertThatThrownBy { service.hide(RECORD_ID) }
+            .isInstanceOf(com.peakda.server.domain.spot.exception.SpotRecordNotFoundException::class.java)
     }
 
     @Test

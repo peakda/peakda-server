@@ -90,6 +90,8 @@ interface SpotRecordControllerDocs {
         ErrorCode.PLANT_INACTIVE,
         ErrorCode.SPOT_RECORD_INVALID_STATUS,
         ErrorCode.SPOT_RECORD_INVALID_CONTENT_LINK,
+        ErrorCode.SPOT_RECORD_FORBIDDEN,
+        ErrorCode.STORAGE_DOWNLOAD_FAILED,
     )
     @PostMapping
     fun create(
@@ -113,6 +115,7 @@ interface SpotRecordControllerDocs {
         ErrorCode.PLANT_INACTIVE,
         ErrorCode.SPOT_RECORD_INVALID_STATUS,
         ErrorCode.SPOT_RECORD_INVALID_CONTENT_LINK,
+        ErrorCode.STORAGE_DOWNLOAD_FAILED,
     )
     @PatchMapping("/{id}")
     fun update(

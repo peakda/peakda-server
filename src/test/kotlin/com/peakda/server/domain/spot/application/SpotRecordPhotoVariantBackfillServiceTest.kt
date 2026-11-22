@@ -8,6 +8,13 @@ import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Test
 import org.mockito.Mockito.mock
 import org.mockito.Mockito.`when`
+import org.mockito.Mockito.verify
+import com.peakda.server.domain.spot.entity.SpotRecordPhotoUpload
+import org.springframework.transaction.PlatformTransactionManager
+import org.springframework.transaction.support.SimpleTransactionStatus
+import org.mockito.ArgumentMatchers.any
+import org.springframework.transaction.TransactionDefinition
+import org.junit.jupiter.api.BeforeEach
 import org.springframework.data.domain.PageRequest
 import java.awt.image.BufferedImage
 import java.io.ByteArrayOutputStream
@@ -17,17 +24,27 @@ class SpotRecordPhotoVariantBackfillServiceTest {
 
     private val spotRecordPhotoRepository = mock(SpotRecordPhotoRepository::class.java)
     private val objectStorage = FakeObjectStorage()
+    private val photoAccess = mock(SpotRecordPhotoAccessService::class.java)
+    private val transactionManager = mock(PlatformTransactionManager::class.java)
     private val service = SpotRecordPhotoVariantBackfillService(
         spotRecordPhotoRepository,
         objectStorage,
         ImageResizer(),
+        photoAccess,
+        transactionManager,
     )
+
+    @BeforeEach
+    fun prepareTransactions() {
+        `when`(transactionManager.getTransaction(any(TransactionDefinition::class.java))).thenReturn(SimpleTransactionStatus())
+    }
 
     @Test
     fun `원본에서 빠진 variant 를 만들어 올리고 보유 목록을 기록한다`() {
         val photo = photo("$PREFIX/main.jpg")
         objectStorage.put("$PREFIX/main.jpg", jpegBytes())
         stubTargets(listOf(photo), remaining = 0L)
+        stubActive(photo.objectKey)
 
         val result = service.backfill(50)
 
@@ -35,7 +52,9 @@ class SpotRecordPhotoVariantBackfillServiceTest {
         assertThat(result.updated).isEqualTo(1)
         assertThat(result.failed).isZero()
         assertThat(result.remaining).isZero()
-        assertThat(photo.variantNames).isEqualTo("thumbnail,medium,main")
+        verify(photoAccess).updateBackfilledVariants(org.mockito.ArgumentMatchers.any(SpotRecordPhotoUpload::class.java)
+            ?: SpotRecordPhotoUpload(photo.objectKey, 42L, "thumbnail,main", "SERVER_UPLOAD"))
+        assertThat(photo.variantNames).isNull()
         assertThat(objectStorage.uploadedKeys)
             .containsExactlyInAnyOrder("$PREFIX/thumbnail.jpg", "$PREFIX/medium.jpg")
     }
@@ -46,6 +65,8 @@ class SpotRecordPhotoVariantBackfillServiceTest {
         val healthy = photo("$PREFIX/main.jpg")
         objectStorage.put("$PREFIX/main.jpg", jpegBytes())
         stubTargets(listOf(broken, healthy), remaining = 1L)
+        stubActive(broken.objectKey)
+        stubActive(healthy.objectKey)
 
         val result = service.backfill(50)
 
@@ -54,7 +75,7 @@ class SpotRecordPhotoVariantBackfillServiceTest {
         assertThat(result.failed).isEqualTo(1)
         assertThat(result.remaining).isEqualTo(1L)
         assertThat(broken.variantNames).isNull()
-        assertThat(healthy.variantNames).isEqualTo("thumbnail,medium,main")
+        assertThat(healthy.variantNames).isNull()
     }
 
     @Test
@@ -64,6 +85,18 @@ class SpotRecordPhotoVariantBackfillServiceTest {
         val result = service.backfill(1_000)
 
         assertThat(result.scanned).isZero()
+    }
+
+    @Test
+    fun `삭제되어 참조가 사라진 조회 스냅샷으로 사진을 재생성하지 않는다`() {
+        val stale = photo("$PREFIX/main.jpg")
+        objectStorage.put(stale.objectKey, jpegBytes())
+        stubTargets(listOf(stale), remaining = 0L)
+
+        val result = service.backfill(50)
+
+        assertThat(result.updated).isZero()
+        assertThat(objectStorage.uploadedKeys).isEmpty()
     }
 
     private fun stubTargets(
@@ -76,6 +109,11 @@ class SpotRecordPhotoVariantBackfillServiceTest {
     }
 
     private fun photo(objectKey: String) = SpotRecordPhoto(spotRecordId = 1L, objectKey = objectKey, sortOrder = 1)
+
+    private fun stubActive(key: String) {
+        `when`(photoAccess.lockForBackfill(key)).thenReturn(SpotRecordPhotoUpload(key, 42L, "thumbnail,main", "SERVER_UPLOAD"))
+        `when`(spotRecordPhotoRepository.findReferencedObjectKeys(listOf(key))).thenReturn(listOf(key))
+    }
 
     private fun jpegBytes(): ByteArray {
         val output = ByteArrayOutputStream()

@@ -1,4 +1,4 @@
-import { request } from './api.js';
+import { request, resumeAfterLogin } from './api.js';
 
 const NAV_ITEMS = [
     ['dashboard', '/admin/index.html', '대시보드'],
@@ -88,6 +88,7 @@ export async function initLayout({ title, description }) {
         shell.classList.add('is-loading');
     }
 
+    await resumeAfterLogin();
     const session = await request('/api/admin/session');
     const activePage = document.body.dataset.page || 'dashboard';
     renderSidebar(activePage);

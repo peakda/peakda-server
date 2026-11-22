@@ -29,18 +29,18 @@ class OAuth2AuthenticationFailureHandler(
     ) {
         log.error("OAuth2 authentication failed: ${exception.message}", exception)
 
-        // 앱은 Custom Tab 안에서 JSON 에러를 받으면 되돌아올 길이 없다. 딥링크로 실패를 알린다.
-        if (OAuth2ClientKind.ofState(request.getParameter(OAuth2ParameterNames.STATE)) == OAuth2ClientKind.APP) {
-            AppLoginRedirect.send(
+        when (OAuth2ClientKind.ofState(request.getParameter(OAuth2ParameterNames.STATE))) {
+            // 앱은 Custom Tab 안에서 JSON 에러를 받으면 되돌아올 길이 없다. 딥링크로 실패를 알린다.
+            OAuth2ClientKind.APP -> AppLoginRedirect.send(
                 response = response,
                 redirectUri = appLoginProperties.redirectUri,
                 parameter = AppLoginRedirect.ERROR,
                 value = errorOf(exception),
             )
-            return
+            // 백오피스도 JSON 에러 화면에 멈추지 않도록 로그인 화면으로 돌려보내 사유를 보여준다.
+            OAuth2ClientKind.ADMIN -> AdminLoginRedirect.sendError(response, errorOf(exception))
+            OAuth2ClientKind.WEB -> resolver.resolveException(request, response, null, exception)
         }
-
-        resolver.resolveException(request, response, null, exception)
     }
 
     private fun errorOf(exception: AuthenticationException): String =
