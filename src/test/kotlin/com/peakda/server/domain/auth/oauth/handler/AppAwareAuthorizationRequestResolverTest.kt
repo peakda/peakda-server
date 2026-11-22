@@ -43,6 +43,15 @@ class AppAwareAuthorizationRequestResolverTest {
     }
 
     @Test
+    fun `백오피스에서 시작하면 백오피스 표식이 붙고 인가 URL 도 같은 state 를 쓴다`() {
+        val authorizationRequest = requireNotNull(resolver.resolve(authorizationRequest(client = "admin")))
+
+        assertThat(authorizationRequest.state).endsWith(".admin")
+        assertThat(authorizationRequest.authorizationRequestUri)
+            .contains("state=${encodedState(authorizationRequest.state)}")
+    }
+
+    @Test
     fun `웹에서 시작하면 state 를 건드리지 않는다`() {
         val authorizationRequest = requireNotNull(resolver.resolve(authorizationRequest(client = null)))
 

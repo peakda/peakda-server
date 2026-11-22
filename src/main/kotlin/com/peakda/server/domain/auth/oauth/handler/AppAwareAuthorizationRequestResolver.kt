@@ -10,7 +10,7 @@ import org.springframework.security.oauth2.core.endpoint.OAuth2AuthorizationRequ
 import org.springframework.stereotype.Component
 
 /**
- * 앱에서 시작한 인가 요청의 state 에 표식을 남겨, 콜백에서 앱임을 알아볼 수 있게 한다.
+ * 앱·백오피스에서 시작한 인가 요청의 state 에 표식을 남겨, 콜백에서 어느 클라이언트인지 알아볼 수 있게 한다.
  * state 를 바꾸면 인가 URL 도 함께 다시 만들어지므로 저장본과 콜백의 state 는 그대로 일치한다.
  */
 @Component
