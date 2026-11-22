@@ -1,0 +1,20 @@
+version: 2
+updates:
+  # 앱 런타임 이미지(Dockerfile)의 JRE 보안 패치를 PR 로 받는다.
+  # 마이그레이션용 이미지(infra/scripts)는 대상 DB 버전에 맞춰 수동으로 관리하므로 제외한다.
+  - package-ecosystem: docker
+    directory: /
+    schedule:
+      interval: weekly
+    target-branch: develop
+    # Java 메이저 버전 변경은 빌드 설정(toolchain·Gradle·Kotlin)과 함께 별도로 진행한다.
+    ignore:
+      - dependency-name: eclipse-temurin
+        update-types:
+          - version-update:semver-major
+    commit-message:
+      prefix: chore
+    labels:
+      - chore
+    assignees:
+      - jhyoo1203
