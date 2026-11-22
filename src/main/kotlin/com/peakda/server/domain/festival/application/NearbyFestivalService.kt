@@ -1,6 +1,5 @@
 package com.peakda.server.domain.festival.application
 
-import com.peakda.server.domain.festival.entity.FestivalKind
 import com.peakda.server.domain.festival.repository.FestivalRepository
 import org.springframework.stereotype.Service
 import java.time.LocalDate
@@ -16,7 +15,7 @@ class NearbyFestivalService(
     private val festivalDetailProperties: FestivalDetailProperties,
 ) {
     /**
-     * 반경 [radiusMeters] 안에서 [today] 에 진행 중이거나 [lookaheadDays] 안에 시작하는 축제를
+     * 반경 [radiusMeters] 안에서 [today] 에 진행 중이거나 [lookaheadDays] 안에 시작하는 축제·트리 명소를
      * 진행 중 우선, 가까운 순으로 최대 [limit] 개.
      */
     fun findNearby(
@@ -31,7 +30,6 @@ class NearbyFestivalService(
         val lngDelta = latDelta / cos(Math.toRadians(latitude)).coerceAtLeast(MIN_COS)
         return festivalRepository
             .findInBoundingBoxOverlapping(
-                kind = FestivalKind.FESTIVAL,
                 minLat = latitude - latDelta,
                 maxLat = latitude + latDelta,
                 minLng = longitude - lngDelta,
@@ -49,7 +47,7 @@ class NearbyFestivalService(
                 val phase = FestivalPhaseResolver.resolve(startsOn, endsOn, today, festivalDetailProperties.endingSoonDays)
                     ?.takeIf { it != FestivalPhase.ENDED }
                     ?: return@mapNotNull null
-                NearbyFestival(requireNotNull(festival.id), festival.name, startsOn, endsOn, phase, distance)
+                NearbyFestival(requireNotNull(festival.id), festival.name, festival.kind, startsOn, endsOn, phase, distance)
             }
             .sortedWith(compareBy<NearbyFestival> { it.phase == FestivalPhase.UPCOMING }.thenBy { it.distanceMeters })
             .take(limit)

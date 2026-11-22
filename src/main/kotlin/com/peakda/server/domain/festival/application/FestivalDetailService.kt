@@ -13,6 +13,7 @@ import com.peakda.server.domain.festival.repository.FestivalEditorialRepository
 import com.peakda.server.domain.festival.repository.FestivalHighlightRepository
 import com.peakda.server.domain.festival.repository.FestivalRepository
 import com.peakda.server.domain.seasonal.entity.BloomCategory
+import org.springframework.data.repository.findByIdOrNull
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 import java.time.LocalDate
@@ -29,7 +30,7 @@ class FestivalDetailService(
 
     @Transactional(readOnly = true)
     fun detail(festivalId: Long, today: LocalDate): FestivalDetailResponse {
-        val festival = festivalRepository.findByIdAndKind(festivalId, FestivalKind.FESTIVAL)
+        val festival = festivalRepository.findByIdOrNull(festivalId)
             ?: throw FestivalNotFoundException()
         val editorial = festivalEditorialRepository.findByFestivalIdAndStatus(
             festivalId,
@@ -37,7 +38,8 @@ class FestivalDetailService(
         )
         val highlights = editorial?.id?.let(festivalHighlightRepository::findByFestivalEditorialIdOrderBySortOrderAsc)
             ?: emptyList()
-        val category = BloomCategory.ofFestivalName(festival.name)
+        // 트리 명소는 꽃 타이밍 대상이 아니므로 이름에 꽃 이름이 들어 있어도 꽃 카테고리를 붙이지 않는다.
+        val category = if (festival.kind == FestivalKind.FESTIVAL) BloomCategory.ofFestivalName(festival.name) else null
         val startsOn = festival.startsOn
         val effectiveEndsOn = FestivalPhaseResolver.effectiveEndsOn(startsOn, festival.endsOn)
         val phase = FestivalPhaseResolver.resolve(startsOn, festival.endsOn, today, properties.endingSoonDays)
@@ -45,6 +47,7 @@ class FestivalDetailService(
         return FestivalDetailResponse(
             festivalId = requireNotNull(festival.id),
             name = festival.name,
+            kind = festival.kind,
             venue = festival.venue,
             roadAddress = festival.roadAddress,
             latitude = festival.latitude,

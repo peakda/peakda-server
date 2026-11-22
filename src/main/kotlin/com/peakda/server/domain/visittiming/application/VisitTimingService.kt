@@ -116,6 +116,7 @@ class VisitTimingService(
     private fun toFestival(festival: NearbyFestival) = VisitTimingResponse.NearbyFestivalItem(
         festivalId = festival.festivalId,
         name = festival.name,
+        kind = festival.kind,
         phase = festival.phase,
         startsOn = festival.startsOn,
         endsOn = festival.endsOn,
