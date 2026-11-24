@@ -35,6 +35,8 @@ interface SeasonalBloomControllerDocs {
             "date 는 방문예정일 기반 재계산용이며 동네형은 최근 관측값을 유지하므로 미래 날짜에서는 두 기준이 섞인다. " +
             "promotionalPins 는 개화 핀과 별도인 홍보 핀이며 탭 시 linkUrl 로 바로 연결한다. " +
             "북항 홍보 핀은 활성화된 경우 bbox 내, 권역 미지정 또는 경상 권역에서만 반환한다. " +
+            "트리(TREE)·일출(SUNRISE) 명소는 좌표가 있고 bbox 내이며 오늘(한국 시간) 기준 종료 전이면 시작 전도 반환한다. " +
+            "트리·일출 핀은 권역 필터와 무관하며 linkUrl 의 앱 내부 경로(/festivals/{id})로 이동한다. " +
             "꽃·상태·방문예정일 필터는 홍보 핀에 적용하지 않으며 count 는 기존 개화 핀 수를 유지한다.",
     )
     @ApiErrorResponses(

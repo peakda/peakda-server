@@ -21,7 +21,7 @@ import org.springframework.transaction.annotation.Transactional
 import java.time.LocalDate
 
 /**
- * 공공데이터에 없는 축제·트리 명소를 관리자가 직접 등록·수정·삭제한다.
+ * 공공데이터에 없는 축제·트리·일출 명소를 관리자가 직접 등록·수정·삭제한다.
  * 공공데이터 행은 동기화가 소유하므로 조회만 하고 고치지 않는다.
  */
 @Service

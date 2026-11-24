@@ -18,7 +18,7 @@ data class BloomMapResponse(
     @field:Schema(description = "Spot 핀 목록 (명소형 + 동네형)")
     val pins: List<BloomMapPin>,
 
-    @field:Schema(description = "영역 내 홍보 핀. 꽃·상태·방문예정일 필터와 무관하며, 비활성 또는 영역 밖이면 빈 목록이다.")
+    @field:Schema(description = "영역 내 북항·트리·일출 홍보 핀. 꽃·상태·방문예정일 필터와 무관하며 count에서 제외한다. 트리·일출은 권역과 무관하게 오늘 기준 종료 전만 반환한다.")
     val promotionalPins: List<PromotionalMapPinResponse> = emptyList(),
 ) {
     @Schema(description = "지도 핀 1건과 그 꽃 슬롯들")

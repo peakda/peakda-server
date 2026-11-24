@@ -15,7 +15,7 @@ class NearbyFestivalService(
     private val festivalDetailProperties: FestivalDetailProperties,
 ) {
     /**
-     * 반경 [radiusMeters] 안에서 [today] 에 진행 중이거나 [lookaheadDays] 안에 시작하는 축제·트리 명소를
+     * 반경 [radiusMeters] 안에서 [today] 에 진행 중이거나 [lookaheadDays] 안에 시작하는 축제·트리·일출 명소를
      * 진행 중 우선, 가까운 순으로 최대 [limit] 개.
      */
     fun findNearby(

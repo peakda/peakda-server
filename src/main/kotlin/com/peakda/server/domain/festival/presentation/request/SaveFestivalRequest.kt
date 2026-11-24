@@ -10,15 +10,15 @@ import jakarta.validation.constraints.Pattern
 import jakarta.validation.constraints.Size
 import java.time.LocalDate
 
-@Schema(description = "관리자 직접 등록 축제·트리 명소 등록·수정 요청")
+@Schema(description = "관리자 직접 등록 축제·트리·일출 명소 등록·수정 요청")
 data class SaveFestivalRequest(
     @field:NotNull
-    @field:Schema(description = "축제 종류. FESTIVAL(축제·행사)·TREE(트리 명소)", example = "TREE")
+    @field:Schema(description = "축제 종류. FESTIVAL(축제·행사)·TREE(트리 명소)·SUNRISE(일출 명소)", example = "TREE")
     val kind: FestivalKind,
 
     @field:NotBlank
     @field:Size(max = 200)
-    @field:Schema(description = "축제·트리 명소 이름", example = "더현대 서울 크리스마스 트리")
+    @field:Schema(description = "축제·트리·일출 명소 이름", example = "더현대 서울 크리스마스 트리")
     val name: String,
 
     @field:NotBlank

@@ -15,7 +15,7 @@ data class FestivalDetailResponse(
     @field:Schema(description = "축제명", example = "태백 해바라기축제")
     val name: String,
 
-    @field:Schema(description = "축제 종류. FESTIVAL(축제·행사)·TREE(트리 명소)", example = "FESTIVAL")
+    @field:Schema(description = "축제 종류. FESTIVAL(축제·행사)·TREE(트리 명소)·SUNRISE(일출 명소)", example = "FESTIVAL")
     val kind: FestivalKind,
 
     @field:Schema(description = "원천 행사 장소명", example = "구와우마을")
@@ -33,7 +33,7 @@ data class FestivalDetailResponse(
     @field:Schema(description = "축제 홈페이지 URL. 없으면 null", example = "https://example.com/festival")
     val homepageUrl: String?,
 
-    @field:Schema(description = "축제명으로 판정한 꽃 카테고리. 매칭되지 않거나 트리 명소(TREE)이면 null", example = "CHERRY")
+    @field:Schema(description = "축제명으로 판정한 꽃 카테고리. 매칭되지 않거나 명소(TREE·SUNRISE)이면 null", example = "CHERRY")
     val category: BloomCategory?,
 
     @field:Schema(description = "꽃 카테고리 표시명. 카테고리가 없으면 null", example = "벚꽃")

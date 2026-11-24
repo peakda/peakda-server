@@ -72,6 +72,20 @@ class FestivalAdminServiceTest {
     }
 
     @Test
+    fun `일출 명소를 직접 등록하면 SUNRISE 종류를 보존한다`() {
+        `when`(festivalRepository.saveAndFlush(anyFestival())).thenAnswer { invocation ->
+            invocation.getArgument<Festival>(0).also { ReflectionTestUtils.setField(it, "id", FESTIVAL_ID) }
+        }
+
+        service.create(ADMIN_ID, command(kind = FestivalKind.SUNRISE))
+
+        val captor = ArgumentCaptor.forClass(Festival::class.java)
+        verify(festivalRepository).saveAndFlush(captor.capture() ?: festival(Long.MIN_VALUE, FestivalSource.MANUAL))
+        assertThat(captor.value.kind).isEqualTo(FestivalKind.SUNRISE)
+        assertThat(captor.value.source).isEqualTo(FestivalSource.MANUAL)
+    }
+
+    @Test
     fun `종료일이 시작일보다 빠르면 등록하지 않는다`() {
         assertThatThrownBy { service.create(ADMIN_ID, command(endsOn = STARTS_ON.minusDays(1))) }
             .isInstanceOf(FestivalInvalidPeriodException::class.java)

@@ -21,7 +21,7 @@ import org.springframework.web.bind.annotation.PostMapping
 import org.springframework.web.bind.annotation.PutMapping
 import org.springframework.web.bind.annotation.RequestBody
 
-@Tag(name = "Festival Admin", description = "축제·트리 명소와 에디토리얼 관리자 API")
+@Tag(name = "Festival Admin", description = "축제·트리·일출 명소와 에디토리얼 관리자 API")
 interface FestivalAdminControllerDocs {
 
     @Operation(
@@ -42,8 +42,8 @@ interface FestivalAdminControllerDocs {
     ): ResponseEntity<ApiResponse<FestivalAdminDetailResponse>>
 
     @Operation(
-        summary = "축제·트리 명소 직접 등록",
-        description = "공공데이터에 없는 축제나 트리 명소를 등록한다. 직접 등록한 행은 공공데이터 동기화가 덮어쓰지 않는다.",
+        summary = "축제·트리·일출 명소 직접 등록",
+        description = "공공데이터에 없는 축제나 트리·일출 명소를 등록한다. 직접 등록한 행은 공공데이터 동기화가 덮어쓰지 않는다.",
         security = [SecurityRequirement(name = "accessTokenCookie")],
     )
     @ApiErrorResponses(
@@ -62,7 +62,7 @@ interface FestivalAdminControllerDocs {
     ): ResponseEntity<ApiResponse<FestivalIdResponse>>
 
     @Operation(
-        summary = "직접 등록 축제·트리 명소 수정",
+        summary = "직접 등록 축제·트리·일출 명소 수정",
         description = "직접 등록한 축제의 기본 정보를 요청 값으로 전부 교체한다. 공공데이터 축제는 수정할 수 없다.",
         security = [SecurityRequirement(name = "accessTokenCookie")],
     )
@@ -86,7 +86,7 @@ interface FestivalAdminControllerDocs {
     ): ResponseEntity<ApiResponse<Unit>>
 
     @Operation(
-        summary = "직접 등록 축제·트리 명소 삭제",
+        summary = "직접 등록 축제·트리·일출 명소 삭제",
         description = "직접 등록한 축제를 에디토리얼·주요 볼거리와 함께 삭제한다. 공공데이터 축제는 삭제할 수 없다.",
         security = [SecurityRequirement(name = "accessTokenCookie")],
     )

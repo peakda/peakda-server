@@ -3,6 +3,9 @@ package com.peakda.server.domain.seasonal.application
 import com.peakda.server.domain.attraction.application.AttractionEligibilityProperties
 import com.peakda.server.domain.attraction.entity.Attraction
 import com.peakda.server.domain.attraction.repository.AttractionRepository
+import com.peakda.server.domain.festival.entity.Festival
+import com.peakda.server.domain.festival.entity.FestivalKind
+import com.peakda.server.domain.festival.repository.FestivalRepository
 import com.peakda.server.domain.seasonal.entity.BloomCategory
 import com.peakda.server.domain.seasonal.entity.BloomStatus
 import com.peakda.server.domain.seasonal.entity.Estimator
@@ -27,6 +30,7 @@ import com.peakda.server.domain.spot.repository.SpotRepository
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Test
 import org.mockito.Mockito.mock
+import org.mockito.Mockito.verify
 import org.mockito.Mockito.`when`
 import org.springframework.test.util.ReflectionTestUtils
 import java.time.Clock
@@ -35,6 +39,7 @@ import java.time.ZoneId
 
 class SpotBloomMapServiceTest {
 
+    private val festivalRepository = mock(FestivalRepository::class.java)
     private val attractionRepository = mock(AttractionRepository::class.java)
     private val seasonalBloomEstimateRepository = mock(SeasonalBloomEstimateRepository::class.java)
     private val bloomBaseDateResolver = mock(BloomBaseDateResolver::class.java)
@@ -64,6 +69,8 @@ class SpotBloomMapServiceTest {
         localSpotBloomResolver,
         AttractionEligibilityProperties(setOf("12")),
         northPortPinService,
+        festivalRepository,
+        Clock.fixed(LocalDate.of(2026, 11, 25).atStartOfDay(KST).toInstant(), KST),
     )
 
     private val baseDate = LocalDate.of(2026, 3, 30)
@@ -396,6 +403,83 @@ class SpotBloomMapServiceTest {
         )
 
         assertThat(response.promotionalPins).isEmpty()
+    }
+
+    @Test
+    fun `트리와 일출 핀은 권역 꽃 상태 방문일 필터와 무관하게 한국 시간 오늘 기준으로 조회한다`() {
+        stubNoAttractions()
+        stubNoLocalSpots()
+        stubFestivalPins()
+
+        val response = serviceWithPromotion().map(
+            MIN_LAT, MAX_LAT, MIN_LNG, MAX_LNG,
+            categories = listOf(BloomCategory.CHERRY, BloomCategory.MAPLE),
+            status = BloomStatus.PEAK,
+            region = Region.CAPITAL,
+            date = LocalDate.of(2030, 1, 1),
+        )
+
+        assertThat(response.promotionalPins.map { it.id }).containsExactly("TREE_201", "SUNRISE_202")
+        assertThat(response.promotionalPins.map { it.iconKey }).containsExactly("TREE", "SUNRISE")
+        assertThat(response.promotionalPins.map { it.linkUrl }).containsExactly("/festivals/201", "/festivals/202")
+        assertThat(response.promotionalPins.map { it.name }).containsExactly("테스트 트리", "테스트 일출")
+        assertThat(response.promotionalPins.map { it.latitude }).containsOnly(MIN_LAT)
+        assertThat(response.promotionalPins.map { it.longitude }).containsOnly(MIN_LNG)
+        assertThat(response.pins).isEmpty()
+        assertThat(response.count).isZero()
+        verify(festivalRepository).findInBoundingBoxEndingOnOrAfter(
+            listOf(FestivalKind.TREE, FestivalKind.SUNRISE), MIN_LAT, MAX_LAT, MIN_LNG, MAX_LNG,
+            LocalDate.of(2026, 11, 25),
+        )
+    }
+
+    @Test
+    fun `개화 데이터가 없어도 북항 트리 일출 핀이 공존하며 count에 포함하지 않는다`() {
+        `when`(bloomBaseDateResolver.currentBaseDate()).thenReturn(null)
+        stubNoLocalSpots()
+        stubFestivalPins()
+
+        val response = serviceWithPromotion().map(MIN_LAT, MAX_LAT, MIN_LNG, MAX_LNG, category = null, date = null)
+
+        assertThat(response.baseDate).isNull()
+        assertThat(response.promotionalPins.map { it.id })
+            .containsExactly("BUSAN_NORTH_PORT", "TREE_201", "SUNRISE_202")
+        assertThat(response.pins).isEmpty()
+        assertThat(response.count).isZero()
+    }
+
+    @Test
+    fun `개화 핀 count는 트리 일출 핀 수와 독립적이다`() {
+        stubAttractions(attraction(ATTRACTION_ID, "남산"))
+        stubAttractionEstimates(estimate(BloomCategory.CHERRY, BloomStatus.PEAK, confidence = 0.9))
+        stubMaterializedSpot(spotId = 100L)
+        stubNoLocalSpots()
+        stubFestivalPins()
+
+        val response = serviceWithPromotion().map(MIN_LAT, MAX_LAT, MIN_LNG, MAX_LNG, category = null, date = null)
+
+        assertThat(response.pins).hasSize(1)
+        assertThat(response.count).isEqualTo(1)
+        assertThat(response.promotionalPins).hasSize(3)
+    }
+
+    private fun stubFestivalPins() {
+        val festivals = listOf(FestivalKind.TREE, FestivalKind.SUNRISE).mapIndexed { index, kind ->
+            Festival(
+                name = if (kind == FestivalKind.TREE) "테스트 트리" else "테스트 일출",
+                venue = "테스트 장소",
+                startDate = "2026-12-01",
+                startsOn = LocalDate.of(2026, 12, 1),
+                endsOn = LocalDate.of(2027, 1, 1),
+                latitude = MIN_LAT,
+                longitude = MIN_LNG,
+                kind = kind,
+            ).also { ReflectionTestUtils.setField(it, "id", 201L + index) }
+        }
+        `when`(festivalRepository.findInBoundingBoxEndingOnOrAfter(
+            listOf(FestivalKind.TREE, FestivalKind.SUNRISE), MIN_LAT, MAX_LAT, MIN_LNG, MAX_LNG,
+            LocalDate.of(2026, 11, 25),
+        )).thenReturn(festivals)
     }
 
     private fun serviceWithPromotion() = createService(
