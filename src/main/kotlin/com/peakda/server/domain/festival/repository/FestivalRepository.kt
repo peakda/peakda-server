@@ -144,6 +144,26 @@ interface FestivalRepository : JpaRepository<Festival, Long> {
         @Param("to") to: LocalDate,
     ): List<Festival>
 
+    /** 좌표 범위 안에서 종료 기준일이 [from] 이후인 [kinds] 명소. 종료일이 없으면 시작일을 기준으로 한다. */
+    @Query(
+        """
+            SELECT f FROM Festival f
+            WHERE f.kind IN :kinds
+              AND f.latitude BETWEEN :minLat AND :maxLat
+              AND f.longitude BETWEEN :minLng AND :maxLng
+              AND COALESCE(f.endsOn, f.startsOn) >= :from
+            ORDER BY f.id ASC
+        """,
+    )
+    fun findInBoundingBoxEndingOnOrAfter(
+        @Param("kinds") kinds: Collection<FestivalKind>,
+        @Param("minLat") minLat: Double,
+        @Param("maxLat") maxLat: Double,
+        @Param("minLng") minLng: Double,
+        @Param("maxLng") maxLng: Double,
+        @Param("from") from: LocalDate,
+    ): List<Festival>
+
     /**
      * 원천 축제를 등록하거나 갱신한다. 원천 값이 그대로인 행은 건드리지 않아 `updated_at` 이 실제 변경 시각으로 남는다
      * (sitemap lastmod 로 쓰인다). 같은 키의 관리자 직접 등록 행(`source = 'MANUAL'`)은 덮어쓰지 않는다.

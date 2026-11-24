@@ -13,7 +13,7 @@ import jakarta.persistence.UniqueConstraint
 import java.time.LocalDate
 
 /**
- * 공공데이터 원천 축제와 관리자가 직접 등록한 축제·트리 명소.
+ * 공공데이터 원천 축제와 관리자가 직접 등록한 축제·트리·일출 명소.
  *
  * 원천 문자열 [startDate]·[endDate]는 포맷이 혼재하므로 보존만 한다.
  * 날짜 질의·판정은 동기화 시점에 파싱해 채운 [startsOn]·[endsOn]을 사용한다.

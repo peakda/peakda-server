@@ -214,6 +214,45 @@ class FestivalRepositoryTest : IntegrationTestSupport() {
         assertThat(result.map { it.name }).containsExactlyInAnyOrder("봄꽃 축제", "크리스마스 트리")
     }
 
+    @Test
+    fun `홍보 명소 조회는 시작 전과 종료 당일을 포함하고 종류 좌표 영역 종료 기준으로 제한한다`() {
+        val today = LocalDate.of(2026, 11, 25)
+        fun placed(name: String, start: LocalDate?, end: LocalDate?, kind: FestivalKind = FestivalKind.TREE) =
+            festival(name, start, end, kind).placedAt(35.15, 128.66)
+        val included = listOf(
+            placed("시작 전 트리", today.plusDays(10), today.plusDays(30)),
+            placed("진행 중 트리", today.minusDays(10), today.plusDays(10)),
+            placed("종료 당일 일출", today.minusDays(10), today, FestivalKind.SUNRISE),
+            placed("종료일 없는 오늘 트리", today, null),
+            placed("종료일 없는 예정 일출", today.plusDays(10), null, FestivalKind.SUNRISE),
+            placed("남서 경계", today, today).placedAt(35.0, 128.5),
+            placed("북동 경계", today, today).placedAt(35.3, 128.8),
+        )
+        val excluded = listOf(
+            placed("종료한 트리", today.minusDays(10), today.minusDays(1)),
+            placed("종료한 일출", today.minusDays(10), today.minusDays(1), FestivalKind.SUNRISE),
+            placed("종료일 없는 지난 트리", today.minusDays(1), null),
+            placed("일반 축제", today, today, FestivalKind.FESTIVAL),
+            placed("날짜 미상", null, null),
+            placed("남쪽 밖", today, today).placedAt(34.999, 128.66),
+            placed("북쪽 밖", today, today).placedAt(35.301, 128.66),
+            placed("서쪽 밖", today, today).placedAt(35.15, 128.499),
+            placed("동쪽 밖", today, today).placedAt(35.15, 128.801),
+            placed("위도 없음", today, today).apply { latitude = null },
+            placed("경도 없음", today, today).apply { longitude = null },
+        )
+        repository.saveAllAndFlush(included + excluded)
+        entityManager.clear()
+
+        val result = repository.findInBoundingBoxEndingOnOrAfter(
+            kinds = listOf(FestivalKind.TREE, FestivalKind.SUNRISE),
+            minLat = 35.0, maxLat = 35.3, minLng = 128.5, maxLng = 128.8,
+            from = today,
+        )
+
+        assertThat(result.map { it.name }).containsExactlyElementsOf(included.map { it.name })
+    }
+
     private fun Festival.placedAt(lat: Double, lng: Double): Festival = apply {
         latitude = lat
         longitude = lng
