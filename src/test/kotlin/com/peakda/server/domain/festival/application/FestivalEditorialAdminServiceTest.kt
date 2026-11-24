@@ -84,6 +84,20 @@ class FestivalEditorialAdminServiceTest {
     }
 
     @Test
+    fun `일출 명소 종류 필터를 저장소에 전달한다`() {
+        val sunrise = festival(FESTIVAL_ID, "정동진 일출 명소", source = FestivalSource.MANUAL, kind = FestivalKind.SUNRISE)
+        val pageable = PageRequest.of(0, 10)
+        `when`(festivalRepository.findByKindOrderByIdDesc(FestivalKind.SUNRISE, pageable))
+            .thenReturn(PageImpl(listOf(sunrise), pageable, 1))
+        `when`(festivalEditorialRepository.findByFestivalIdIn(listOf(FESTIVAL_ID))).thenReturn(emptyList())
+
+        val response = service.list(" ", kind = FestivalKind.SUNRISE, today = STARTS_ON, pageable = pageable)
+
+        assertThat(response.content.single().kind).isEqualTo(FestivalKind.SUNRISE)
+        verify(festivalRepository).findByKindOrderByIdDesc(FestivalKind.SUNRISE, pageable)
+    }
+
+    @Test
     fun `관리자 에디토리얼 조회는 원본 키와 미리보기 URL을 함께 반환한다`() {
         val pinnedAt = Instant.parse("2026-10-27T01:00:00Z")
         val persisted = editorial(EDITORIAL_ID, FestivalEditorialStatus.PUBLISHED, heroImageKey = "curations/hero.webp", pinnedAt = pinnedAt)

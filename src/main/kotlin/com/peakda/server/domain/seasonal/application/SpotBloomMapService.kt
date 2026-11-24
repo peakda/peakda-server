@@ -3,6 +3,8 @@ package com.peakda.server.domain.seasonal.application
 import com.peakda.server.domain.attraction.application.AttractionEligibilityProperties
 import com.peakda.server.domain.attraction.entity.Attraction
 import com.peakda.server.domain.attraction.repository.AttractionRepository
+import com.peakda.server.domain.festival.entity.FestivalKind
+import com.peakda.server.domain.festival.repository.FestivalRepository
 import com.peakda.server.domain.seasonal.entity.BloomCategory
 import com.peakda.server.domain.seasonal.entity.BloomStatus
 import com.peakda.server.domain.seasonal.entity.Region
@@ -17,9 +19,12 @@ import com.peakda.server.domain.spot.entity.SpotRecordStatus
 import com.peakda.server.domain.spot.entity.SpotType
 import com.peakda.server.domain.spot.repository.SpotRecordRepository
 import com.peakda.server.domain.spot.repository.SpotRepository
+import com.peakda.server.domain.spot.presentation.response.PromotionalMapPinResponse
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
+import java.time.Clock
 import java.time.LocalDate
+import java.time.ZoneId
 
 /**
  * 지도 영역(bbox) 내 Spot 핀별 개화 상태를 조립한다 (결정 A — Spot 중심 지도).
@@ -43,6 +48,8 @@ class SpotBloomMapService(
     private val localSpotBloomResolver: LocalSpotBloomResolver,
     private val eligibilityProperties: AttractionEligibilityProperties,
     private val northPortPinService: NorthPortPinService,
+    private val festivalRepository: FestivalRepository,
+    private val clock: Clock = Clock.system(KST),
 ) {
     @Transactional(readOnly = true)
     fun map(
@@ -77,12 +84,36 @@ class SpotBloomMapService(
         val baseDate = bloomBaseDateResolver.currentBaseDate()
         val pins = buildAttractionPins(minLat, maxLat, minLng, maxLng, categories, status, region, date, baseDate) +
             buildLocalPins(minLat, maxLat, minLng, maxLng, categories, status, region)
-        val promotionalPins = if (region == null || region == Region.GYEONGSANG) {
+        val northPortPins = if (region == null || region == Region.GYEONGSANG) {
             northPortPinService.findInBoundingBox(minLat, maxLat, minLng, maxLng)
         } else {
             emptyList()
         }
+        val promotionalPins = northPortPins + buildFestivalPins(minLat, maxLat, minLng, maxLng)
         return BloomMapResponse(baseDate = baseDate, count = pins.size, pins = pins, promotionalPins = promotionalPins)
+    }
+
+    private fun buildFestivalPins(
+        minLat: Double,
+        maxLat: Double,
+        minLng: Double,
+        maxLng: Double,
+    ): List<PromotionalMapPinResponse> = festivalRepository.findInBoundingBoxEndingOnOrAfter(
+        kinds = listOf(FestivalKind.TREE, FestivalKind.SUNRISE),
+        minLat = minLat,
+        maxLat = maxLat,
+        minLng = minLng,
+        maxLng = maxLng,
+        from = LocalDate.now(clock),
+    ).map { festival ->
+        PromotionalMapPinResponse(
+            id = "${festival.kind.name}_${requireNotNull(festival.id)}",
+            name = festival.name,
+            latitude = requireNotNull(festival.latitude),
+            longitude = requireNotNull(festival.longitude),
+            iconKey = festival.kind.name,
+            linkUrl = "/festivals/${festival.id}",
+        )
     }
 
     private fun buildAttractionPins(
@@ -199,6 +230,7 @@ class SpotBloomMapService(
     )
 
     companion object {
+        private val KST = ZoneId.of("Asia/Seoul")
         private const val LOCAL_RECORD_CONFIDENCE = 0.5
     }
 }

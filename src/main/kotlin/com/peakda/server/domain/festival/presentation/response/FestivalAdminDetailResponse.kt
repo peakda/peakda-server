@@ -14,10 +14,10 @@ data class FestivalAdminDetailResponse(
     @field:Schema(description = "데이터 출처. PUBLIC_DATA(공공데이터)·MANUAL(직접 등록)", example = "MANUAL")
     val source: FestivalSource,
 
-    @field:Schema(description = "축제 종류. FESTIVAL(축제·행사)·TREE(트리 명소)", example = "TREE")
+    @field:Schema(description = "축제 종류. FESTIVAL(축제·행사)·TREE(트리 명소)·SUNRISE(일출 명소)", example = "TREE")
     val kind: FestivalKind,
 
-    @field:Schema(description = "축제·트리 명소 이름", example = "더현대 서울 크리스마스 트리")
+    @field:Schema(description = "축제·트리·일출 명소 이름", example = "더현대 서울 크리스마스 트리")
     val name: String,
 
     @field:Schema(description = "장소명", example = "더현대 서울 5층 사운즈 포레스트")

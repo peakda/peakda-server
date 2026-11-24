@@ -26,7 +26,7 @@ import org.springframework.web.bind.annotation.PutMapping
 import org.springframework.web.bind.annotation.RequestBody
 import org.springframework.web.bind.annotation.RequestParam
 
-@Tag(name = "Festival Admin", description = "축제·트리 명소와 에디토리얼 관리자 API")
+@Tag(name = "Festival Admin", description = "축제·트리·일출 명소와 에디토리얼 관리자 API")
 interface FestivalEditorialAdminControllerDocs {
 
     @Operation(
@@ -44,7 +44,7 @@ interface FestivalEditorialAdminControllerDocs {
     fun list(
         @Parameter(description = "축제명 부분 검색어", example = "해바라기")
         @RequestParam(name = "q", required = false) query: String?,
-        @Parameter(description = "축제 종류 필터. 없으면 전체", example = "TREE")
+        @Parameter(description = "축제 종류 필터. FESTIVAL·TREE·SUNRISE. 없으면 전체", example = "TREE")
         @RequestParam(name = "kind", required = false) kind: FestivalKind?,
         @Valid @ModelAttribute pageRequest: PageRequest,
     ): ResponseEntity<ApiResponse<PageResponse<FestivalAdminSummaryResponse>>>

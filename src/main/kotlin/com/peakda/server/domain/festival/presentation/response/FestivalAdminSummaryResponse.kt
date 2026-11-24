@@ -16,7 +16,7 @@ data class FestivalAdminSummaryResponse(
     @field:Schema(description = "데이터 출처. PUBLIC_DATA(공공데이터)·MANUAL(직접 등록)", example = "PUBLIC_DATA")
     val source: FestivalSource,
 
-    @field:Schema(description = "축제 종류. FESTIVAL(축제·행사)·TREE(트리 명소)", example = "FESTIVAL")
+    @field:Schema(description = "축제 종류. FESTIVAL(축제·행사)·TREE(트리 명소)·SUNRISE(일출 명소)", example = "FESTIVAL")
     val kind: FestivalKind,
 
     @field:Schema(description = "축제명", example = "태백 해바라기축제")

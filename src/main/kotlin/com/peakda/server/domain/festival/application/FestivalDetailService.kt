@@ -38,7 +38,7 @@ class FestivalDetailService(
         )
         val highlights = editorial?.id?.let(festivalHighlightRepository::findByFestivalEditorialIdOrderBySortOrderAsc)
             ?: emptyList()
-        // 트리 명소는 꽃 타이밍 대상이 아니므로 이름에 꽃 이름이 들어 있어도 꽃 카테고리를 붙이지 않는다.
+        // 트리·일출 명소는 꽃 타이밍 대상이 아니므로 이름에 꽃 이름이 들어 있어도 꽃 카테고리를 붙이지 않는다.
         val category = if (festival.kind == FestivalKind.FESTIVAL) BloomCategory.ofFestivalName(festival.name) else null
         val startsOn = festival.startsOn
         val effectiveEndsOn = FestivalPhaseResolver.effectiveEndsOn(startsOn, festival.endsOn)

@@ -5,7 +5,7 @@ import { badge, emptyTableRow, escapeHtml, formatDate, renderPagination, setLoad
 const MAX_HIGHLIGHTS = 3;
 const PAGE_SIZE = 10;
 const TABLE_COLUMNS = 5;
-const KIND_LABELS = { FESTIVAL: '축제·행사', TREE: '트리 명소' };
+const KIND_LABELS = { FESTIVAL: '축제·행사', TREE: '트리 명소', SUNRISE: '일출 명소' };
 const PHASE_BADGES = {
   UPCOMING: ['badge-pending', '시작 전'],
   ONGOING: ['badge-success', '진행 중'],
@@ -73,8 +73,8 @@ const state = {
 };
 
 await initLayout({
-  title: '축제·트리 명소 관리',
-  description: '축제·트리 명소 직접 등록과 에디토리얼 저장',
+  title: '축제·트리·일출 명소 관리',
+  description: '축제·트리·일출 명소 직접 등록과 에디토리얼 저장',
 });
 
 searchForm.addEventListener('submit', searchFestivals);
@@ -240,7 +240,7 @@ async function loadBase(festivalId) {
 
 function populateBase(festival) {
   const creating = !festival;
-  baseFormTitle.textContent = creating ? '축제·트리 명소 직접 등록' : '기본 정보';
+  baseFormTitle.textContent = creating ? '축제·트리·일출 명소 직접 등록' : '기본 정보';
   baseSaveButton.textContent = creating ? '등록' : '기본 정보 저장';
   baseDeleteButton.hidden = creating;
   baseFields.kind.value = festival?.kind || 'TREE';
@@ -571,7 +571,7 @@ function renderHeroPreview() {
 
 function originTags(festival) {
   const tags = [];
-  if (festival.kind === 'TREE') tags.push(`<span class="badge badge-app">${KIND_LABELS.TREE}</span>`);
+  if (festival.kind === 'TREE' || festival.kind === 'SUNRISE') tags.push(`<span class="badge badge-app">${KIND_LABELS[festival.kind]}</span>`);
   if (festival.source === 'MANUAL') tags.push('<span class="badge badge-admin">직접 등록</span>');
   return tags.join(' ');
 }

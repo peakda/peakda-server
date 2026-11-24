@@ -84,7 +84,7 @@ data class VisitTimingResponse(
         val festivalId: Long,
         @field:Schema(description = "축제명", example = "진해군항제")
         val name: String,
-        @field:Schema(description = "축제 종류. FESTIVAL(축제·행사)·TREE(트리 명소)", example = "FESTIVAL")
+        @field:Schema(description = "축제 종류. FESTIVAL(축제·행사)·TREE(트리 명소)·SUNRISE(일출 명소)", example = "FESTIVAL")
         val kind: FestivalKind,
         @field:Schema(description = "진행 상태", example = "ONGOING")
         val phase: FestivalPhase,

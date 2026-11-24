@@ -90,6 +90,20 @@ class FestivalDetailServiceTest {
     }
 
     @Test
+    fun `일출 명소도 이름에 꽃 이름이 있어도 꽃 카테고리를 붙이지 않는다`() {
+        val sunrise = festival(FESTIVAL_ID, STARTS_ON, ENDS_ON, FestivalKind.SUNRISE)
+        sunrise.name = "벚꽃 일출 명소"
+        stubFestival(sunrise)
+        stubNoEditorial()
+
+        val response = service.detail(FESTIVAL_ID, STARTS_ON)
+
+        assertThat(response.kind).isEqualTo(FestivalKind.SUNRISE)
+        assertThat(response.category).isNull()
+        assertThat(response.displayName).isNull()
+    }
+
+    @Test
     fun `DRAFT 에디토리얼은 상세에 노출하지 않는다`() {
         stubFestival(festival(FESTIVAL_ID, STARTS_ON, ENDS_ON))
         `when`(
